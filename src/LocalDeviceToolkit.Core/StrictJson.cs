@@ -8,7 +8,7 @@ public static class StrictJson
  public static readonly JsonSerializerOptions Options = CreateOptions();
  static JsonSerializerOptions CreateOptions()
  {
-  var result = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow, RespectRequiredConstructorParameters = true, MaxDepth = 64 };
+  var result = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow, RespectRequiredConstructorParameters = true, RespectNullableAnnotations = true, MaxDepth = 64 };
   result.Converters.Add(new StrictEnumConverterFactory()); return result;
  }
  public static JsonDocument Parse(ReadOnlyMemory<byte> bytes, int maximumBytes = RecordLimit)
