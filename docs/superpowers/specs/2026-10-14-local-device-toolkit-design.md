@@ -2,7 +2,7 @@
 
 Date: 14 October 2026
 
-Status: proposed design for user review. The user selected a new WPF toolkit built from M365 source. This document defines the implementation scope; application implementation has not started.
+Status: revised following the user's review-and-improve request. The user selected a new WPF toolkit built from M365 source. This document and its implementation plan remain reviewable proposals; application implementation has not started.
 
 ## 1. Intended outcome
 
@@ -42,7 +42,7 @@ The tenant Graph client, authentication flows, Exchange scripts and Intune polic
 
 ## 3. Application structure
 
-Use C# and .NET 10 with the source's pinned SDK as the initial build baseline. Ship self-contained win-x64 packages. Supported deployment targets are Windows 11 x64; other Windows versions may be inventoried but do not receive an unsupported-device readiness claim. ARM64 packaging is outside this initial build.
+Use C# 12 and .NET 10 with SDK 10.0.401 as the initial build baseline, matching the inspected source. Ship self-contained win-x64 packages. Supported deployment targets are Windows 11 x64; other Windows versions may be inventoried but do not receive an unsupported-device readiness claim. ARM64 packaging is outside this initial build.
 
 | Project | Responsibility |
 | --- | --- |
@@ -92,6 +92,10 @@ Map all 30 source controls into the local catalogue. An unsupported probe remain
 
 These are implementation requirements, not claims that the probes already exist. Each local transport must be supported on the target Windows edition/build. Do not translate an Intune CSP path into a guessed registry write. Show detected management ownership or conflicts and refuse an automated change that would knowingly fight managed policy.
 
+Required policy-precedence checks have three outcomes: no conflicting local evidence observed, conflict observed, and inspection unavailable. The last two block the affected change with a reason. No observed conflict does not prove the device is unmanaged. Missing OS/edition/identity evidence also blocks actions that depend on it; do not substitute optimistic defaults.
+
+The runtime catalogue must explicitly classify every source control as Automatic, Partial or Manual coverage, list the exact checks/actions available, and name remaining verification. Keep the original reference JSON immutable. The runtime mapping has its own version and digest and must not interpret Graph payloads as executable local instructions.
+
 Local encryption status cannot prove recovery escrow. A configured LAPS policy cannot prove successful password backup. An installed application cannot prove a licence, working sign-in or business function. Reports keep those distinctions.
 
 ## 6. Current-user execution and elevation
@@ -99,6 +103,8 @@ Local encryption status cannot prove recovery escrow. A configured LAPS policy c
 The main application uses asInvoker and does not collect or store administrator credentials. If it was launched from an already elevated shell, show the actual state and give normal-user relaunch guidance; never label the session unelevated.
 
 User-scope operations execute in the original process identity. Administrator credentials never redirect HKCU, the profile directory or user application installation into another person's account.
+
+Current user means the person running the application, not an inferred customer or another logged-on user. Display the account and SID beside every user-scoped change. A user's decision to launch the toolkit does not authorise changing every local profile.
 
 For an action whose supported adapter requires administrator rights (a machine-wide setting does not automatically imply elevation is necessary):
 
@@ -111,7 +117,15 @@ For an action whose supported adapter requires administrator rights (a machine-w
 
 Secure IPC and staged machine-action inputs against substitution, replay and path escape. Derive trusted system executable locations from Windows APIs rather than a mutable PATH. A digest can identify the reviewed bytes but does not authenticate a caller or publisher by itself.
 
+Use a single-run local named pipe with a cryptographically random name, explicit ACLs for the initiating user, administrators and SYSTEM, and rejection of remote pipe clients. Do not use CurrentUserOnly as the sole policy: that would reject the deliberately supported alternate-administrator flow. Both ends verify OS-reported peer process IDs and process creation times. The UI binds the peer to the process handle returned by its own UAC launch; the worker derives the original SID from the pipe server's token and verifies its expected executable identity. A failed or ambiguous launch/peer check refuses execution.
+
+Protocol messages are strict UTF-8 JSON with a 1 MiB maximum frame, a version and a run ID. Set a 30-second connection deadline after a successful UAC launch and recheck the original plan's ten-minute expiry at final dispatch. Reject duplicate/unknown fields, mismatched identities, replay and out-of-sequence messages. Worker action parameters are deserialised only through a closed operation registry. No credential values travel over the pipe.
+
+Create protected worker journals and installer staging beneath ProgramData/LocalDeviceToolkit with inherited permissions disabled and explicit administrator/SYSTEM write access. Check existing locations and refuse unsafe ownership, reparse points or unexpected files. The original user may receive access to the specific run's sanitised results; do not grant general write access to the worker directory. Hold a device-wide single-writer lock across protected before-capture, dispatch and verification.
+
 For installer execution, stage and revalidate the approved payload under administrator-controlled permissions before launching it. Validate file type, cryptographic hash, expected signer where applicable, declared install scope and explicit accepted arguments. An unsigned installer needs an explicit unsigned status and a reviewed hash; never describe its hash as publisher authentication.
+
+Validate all required package files, including transforms, configuration and dependencies, as one reviewed set. Keep staged files stable through execution; validate the staged bytes, not only the user-selected source. Refuse unsupported installer profiles rather than forwarding arbitrary command text. A trusted signer does not override a hash, product, architecture or scope mismatch.
 
 No service, scheduled SYSTEM task or stored credential is introduced to avoid UAC. Windows application-control or execution policy failures are surfaced with useful guidance; the toolkit does not weaken machine policy.
 
@@ -121,9 +135,15 @@ Plans are selective and expire after ten minutes. Changing the selection, inputs
 
 Run one mutating action at a time. Capture each action's before-state, requested change, observed execution outcome and independent after-state. Keep all previous rows if a later row fails.
 
+Persist intent durably before dispatch. If that save fails, do not execute the change. If the change may have started and subsequent evidence cannot be saved, retain an uncertain outcome and offer read-only reconciliation rather than replay. Close, cancellation, process loss and out-of-disk-space handling must preserve this distinction.
+
 Deployment profiles define package identity, installer type, original-user or machine scope, required inputs, expected hash/signer, explicit arguments, timeout, success/restart exit-code rules and a meaningful installed-version/postcondition check. A generic successful process exit does not prove application deployment. ESET and remote-management agent packages require client-specific inputs; no tenant-specific package or credentials are invented.
 
+Profiles distinguish MSI, reviewed vendor EXE, current-user MSIX/bundle and Office Deployment Tool packages, including each format's prerequisites. These are supported profile formats, not bundled licensed/vendor installers. A catalogue app without a complete validated profile remains Inventory/Manual deployment. Inventory must avoid Win32_Product because querying it can trigger MSI consistency checks or repair.
+
 Use documented restart-suppression arguments for each installer profile. Installer return values such as 3010 and 1641 remain restart-required/restart-initiated outcomes where documented for that installer. Do not request a restart automatically or promise that an installer cannot initiate one. Do not kill or replay an in-flight installer just because the UI was cancelled. Stop queues at safe boundaries and preserve an uncertain outcome until reconciled.
+
+Separate read-only process supervision from mutation supervision. The source OwnedProcess timeout/tree-kill behaviour may be adapted for bounded diagnostic reads; it must not be reused unchanged for installers. When a mutating process has started, timeout or loss of contact means Outcome unknown unless fresh evidence proves a narrower result. A normally exiting bootstrapper is insufficient if completion was delegated to an unobserved child.
 
 After a change, run the relevant local check again. Distinguish Applied and verified, Applied but verification incomplete, Restart required, Failed, Cancelled before execution and Outcome unknown. Data copied from a previous capture never counts as current verification.
 
@@ -136,6 +156,8 @@ Ship reviewed local PowerShell scripts where a supported Windows command is pref
 Every shipped script has a manifest and pinned content hash. Modified or unregistered scripts are refused by the integrated runner. Script scanning is a useful check, not a security sandbox. Arbitrary script authoring and general elevated command execution are outside this initial product.
 
 Store ordinary settings and evidence under the original user's LocalApplicationData/LocalDeviceToolkit directory. Use atomic creation, versioned strict schemas, bounded loads and run/device/user identity validation. Protected worker records use an administrator-controlled location and record both original and elevated identities.
+
+Use GUID-based record filenames and validate resolved paths stay within the selected evidence root. Reject reparse/path escapes, unknown schema versions, duplicate JSON members, invalid timestamps and inconsistent outcome/evidence combinations. Limit each evidence record to 8 MiB, diagnostic output to 1 MiB per stream, and history to pages of 100 entries. Surface size-limit and directory-access failures; a page boundary is not the end of history.
 
 History loading must report malformed, unreadable, missing and wrong-device records while retaining healthy entries. Never silently rewrite old evidence to fit new outcome terminology.
 
@@ -166,4 +188,4 @@ The implementation is complete only when an engineer can follow the assess → r
 
 Tenant administration, remote fleet execution, wholesale import of the tenant application, automatic encryption/escrow changes, automatic reboots and unsupported CSP-to-registry conversion are outside this initial implementation. These limits do not hide catalogue controls or erase their required manual checks.
 
-Next step after approval: write the implementation plan with concrete file changes and verification steps, following the requested Superpowers workflow.
+The implementation plan is docs/superpowers/plans/2026-10-14-local-device-toolkit.md. Implementation starts after the written plan is reviewed and an execution method is selected, following the requested Superpowers workflow.
