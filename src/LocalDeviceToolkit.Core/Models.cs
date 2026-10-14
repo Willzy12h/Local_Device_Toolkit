@@ -6,7 +6,7 @@ public enum CoverageMode { Automatic, Partial, Manual }
 public enum OperationScope { CurrentUser, Machine }
 public enum PrivilegeRequirement { CurrentUser, Administrator }
 public enum ActionOutcome { AppliedVerified, AppliedUnverified, RestartRequired, Failed, CancelledBeforeExecution, OutcomeUnknown }
-public sealed record DeviceContext(string DeviceId, string ComputerName, string OriginalUserSid, string OriginalUserName, bool IsElevated, Version OsVersion, string Architecture);
+public sealed record DeviceContext(string DeviceId, string ComputerName, string OriginalUserSid, string OriginalUserName, bool IsElevated, Version OsVersion, string Architecture, bool IsWorkstation);
 public sealed record ExecutionActor(string Sid, string UserName, bool IsElevated, int ProcessId, DateTimeOffset ProcessStartedAt);
 public sealed record CatalogueIdentity(string Version, string SourceCommit, string SourceSha256, string LocalSha256);
 public sealed record WorkflowOrigin(string WorkflowId, string StageId);

@@ -8,6 +8,13 @@
       "destinationPath": "src/LocalDeviceToolkit.Core/CanonicalJson.cs",
       "mode": "Adapted",
       "notes": "Canonical ordered JSON and SHA-256 only; tenant template/subset functions excluded."
+    },
+    {
+      "sourcePath": "src/BuildStandard.Engine/Scripts/Runner/OwnedProcess.cs",
+      "sourceSha256": "b4b27991e355b64ae7f21a145d26f0da231ee0fc4bcaf43961a76c2be521390c",
+      "destinationPath": "src/LocalDeviceToolkit.Windows/Processes/OwnedProcess.cs",
+      "mode": "Adapted",
+      "notes": "Internal diagnostic-only process ownership; exception and namespace changed. Not used for installers."
     }
   ]
 }

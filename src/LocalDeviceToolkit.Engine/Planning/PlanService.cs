@@ -56,7 +56,7 @@ public sealed class DeploymentQueue(DeviceContext context,OperationRegistry regi
 }
 public sealed class PlanService(OperationRegistry registry,TimeProvider clock)
 {
- public static bool SupportedTarget(DeviceContext context)=>context.OsVersion.Major==10&&context.OsVersion.Build>=22000&&context.Architecture=="x64";
+ public static bool SupportedTarget(DeviceContext context)=>context.IsWorkstation&&context.OsVersion.Major==10&&context.OsVersion.Build>=22000&&context.Architecture=="x64";
  public async Task<ReviewedPlan> CreateAsync(DeviceContext context,LocalCatalogue catalogue,IReadOnlyList<ActionRequest> requests,CancellationToken ct)
  {
   if(!SupportedTarget(context))throw new PlanValidationException("Local deployments require a supported Windows 11 x64 device.");

@@ -56,3 +56,5 @@ The portable product suite now has 24 passing tests (zero failures/skips), cover
 The user’s pasted request authorises direct implementation and testing of the full solution. Continue with T4–T12 using the execution ledger; the completed branch requires an independent review.
 
 Implementation is under way with the executing-plans and test-driven-development skills. Setup and diagnostics use shared task definitions, a shared queue and common evidence services. No further plan-approval pause is pending.
+
+15 October: Windows inspection adapters and read-only pinned script implemented. Portable solution checks: 47 passing tests. Actual Windows PowerShell 5.1 and hardware/privilege reads remain native acceptance gates. Setup/diagnostics UI implementation is next; guarded actions and deployment adapters remain pending.

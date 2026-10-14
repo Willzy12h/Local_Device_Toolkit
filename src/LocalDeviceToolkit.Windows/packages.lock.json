@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net10.0-windows7.0": {
+      "localdevicetoolkit.core": {
+        "type": "Project"
+      },
+      "localdevicetoolkit.engine": {
+        "type": "Project",
+        "dependencies": {
+          "LocalDeviceToolkit.Core": "[0.1.0-preview.1, )"
+        }
+      }
+    }
+  }
+}

@@ -9,6 +9,10 @@ using Xunit;
 namespace LocalDeviceToolkit.Tests;
 public sealed class PlanningTests
 {
+ [Fact] public void Server_build_numbers_do_not_imply_a_supported_windows_11_device()
+ {
+  Assert.False(PlanService.SupportedTarget(TestData.Context with { IsWorkstation=false }));
+ }
  [Fact] public async Task Expiry_is_exact_and_never_renewed()
  {
   using var f=new PlanningFixture();var plan=await f.CreatePlan();

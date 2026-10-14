@@ -31,8 +31,14 @@ public static class AssessmentService
  }
  static bool? Match(string id,JsonElement value)
  {
-  // Additional check comparators are admitted with their Windows probe tests in T4.
-  if(id=="extensions.visible")return value.ValueKind is JsonValueKind.True or JsonValueKind.False ? value.GetBoolean() : null;
+  if(!ProbeValues.Accepts(id,value))return null;
+  if(id is "secureboot.enabled" or "tpm.ready" or "bitlocker.protected" or "codeintegrity.enforced" or "antivirus.active" or "extensions.visible" or "paths.enabled" or "keyboard.uk" or "store.installed")return value.GetBoolean();
+  if(id=="faststartup.enabled")return !value.GetBoolean();
+  if(id=="power.acsleep.seconds")return value.GetUInt32()==0;
+  if(id=="os.version")return Version.Parse(value.GetString()!)>=new Version(10,0,26200);
+  if(id=="timezone.id")return value.GetString()=="GMT Standard Time";
+  if(id=="region.culture")return value.GetString()=="en-GB";
+  // Presence of policy/profile keys or an inventory is evidence for manual review, never proof of its contents or licensing.
   return null;
  }
 }

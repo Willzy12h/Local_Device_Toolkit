@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "scripts": [
+    {
+      "id": "device.facts",
+      "path": "diagnostics/Get-DeviceFacts.ps1",
+      "sha256": "8fd0b27982df7d9a90f82666aeed3fde7e0c913b58a378a7a448236d856dfea0",
+      "readOnly": true
+    }
+  ]
+}
