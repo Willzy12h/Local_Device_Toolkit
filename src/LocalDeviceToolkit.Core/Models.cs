@@ -16,10 +16,10 @@ public sealed record DeviceCapture(Guid Id, DeviceContext Context, CatalogueIden
 public sealed record Finding(string ControlId, FindingStatus Status, string Reason, IReadOnlyList<ProbeObservation> Observations);
 public sealed record ActionRequest(string TaskId, string OperationId, JsonElement Parameters, WorkflowOrigin Origin);
 public sealed record ActionReadiness(bool CanExecute, OperationScope Scope, PrivilegeRequirement Privilege, string Reason);
-public sealed record PlannedAction(Guid Id, ActionRequest Request, ActionReadiness Readiness, string BeforeDigest);
+public sealed record PlannedAction(Guid Id, ActionRequest Request, ActionReadiness Readiness, IReadOnlyList<ProbeObservation> Before, string BeforeDigest);
 public sealed record ReviewedPlan(Guid Id, DeviceContext Context, CatalogueIdentity Catalogue, DateTimeOffset CreatedAt, DateTimeOffset ExpiresAt, IReadOnlyList<PlannedAction> Actions, string Digest);
 public sealed record ActionResult(Guid ActionId, ActionOutcome Outcome, ExecutionActor? Actor, string Reason, IReadOnlyList<ProbeObservation> After);
-public sealed record RunRecord(Guid Id, Guid PlanId, DeviceContext Context, DateTimeOffset StartedAt, DateTimeOffset? FinishedAt, IReadOnlyList<ActionResult> Results);
+public sealed record RunRecord(Guid Id, Guid PlanId, DeviceContext Context, DateTimeOffset StartedAt, DateTimeOffset? FinishedAt, IReadOnlyList<ActionResult> Results, bool EvidenceComplete);
 public sealed record LocalControl(string Id, string Name, string ExpectedDescription, CoverageMode Coverage, string[] CheckIds, string[] OperationIds, string ManualInstructions);
 public sealed record TaskDefinition(string Id, string Title, string[] ControlIds, string[] CheckIds, string? OperationId);
 public sealed record WorkflowStage(string Id, string Title, string[] TaskIds);

@@ -47,7 +47,7 @@ public sealed class WorkflowCatalogue
  readonly Dictionary<string,TaskDefinition> tasks;
  readonly WorkflowDefinition[] workflows;
  public IReadOnlyList<WorkflowDefinition> Workflows => Array.AsReadOnly(workflows);
- WorkflowCatalogue(TaskDefinition[] definitions,WorkflowDefinition[] workflows)
+ public WorkflowCatalogue(TaskDefinition[] definitions,WorkflowDefinition[] workflows)
  {
   this.workflows=workflows;
   if(definitions.Length!=definitions.Select(t=>t.Id).Distinct(StringComparer.Ordinal).Count())throw new CatalogueValidationException("Duplicate task definition.");

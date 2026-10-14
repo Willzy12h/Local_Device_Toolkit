@@ -1,6 +1,6 @@
 # Implementation status
 
-Reviewed on 14 October 2026. This records inspected repository contents, not intended future behaviour.
+Reviewed on 14 October 2026; execution update 15 October 2026. This records inspected repository contents, not intended future behaviour.
 
 ## Created
 
@@ -9,7 +9,7 @@ Reviewed on 14 October 2026. This records inspected repository contents, not int
 | Native WPF design proposal | [Design](superpowers/specs/2026-10-14-local-device-toolkit-design.md): source selection, five UI areas, current-user execution, per-action elevation, local controls, deployments and verification. |
 | Versioned source reference | [30 Windows controls](reference/m365-windows-controls.json), compared with the exact upstream definitions and source SHA-256. |
 | Review corrections | The design now defines IPC peer validation, protected staging, required-policy inspection failures, durable intent before dispatch, separate installer supervision and bounded history handling. |
-| Implementation plan | [12 tasks](superpowers/plans/2026-10-14-local-device-toolkit.md) with file boundaries, interfaces, failure cases and verification commands. None of the implementation tasks has been executed. |
+| Implementation plan | [12 tasks](superpowers/plans/2026-10-14-local-device-toolkit.md) with file boundaries, interfaces, failure cases and verification commands. T1–T3 are implemented and tested; T4–T12 remain in progress or pending. |
 | Repository entry point | [README](../README.md) identifies the current status and links the working documents. |
 
 The initial design/reference commit is cbfa3ae. Review and planning changes are recorded in subsequent Git history. No remote push, pull request, merge, release or publication is claimed.
@@ -18,7 +18,7 @@ The initial design/reference commit is cbfa3ae. Review and planning changes are 
 
 | Finding | Improvement made | Remaining proof |
 | --- | --- | --- |
-| There is no application to review or run. | Added explicit repository status and a complete implementation task map. | Build the application and run its checks. |
+| The native application has not yet been built. | Added explicit repository status and a complete implementation task map. | Build the application and run its checks. |
 | The elevation boundary did not specify how the real caller and worker are verified. | Added OS-observed peer PID/creation-time checks, original-SID derivation, local-only pipes, explicit ACLs, bounded messages and refusal rules. | Implement negative tests and native Windows/UAC validation. |
 | Reusing the M365 read runner could terminate an installer mid-change. | Required separate mutation supervision, durable pre-dispatch intent and reconciliation for unknown outcomes. | Installer fixtures and authorised Windows acceptance. |
 | An unavailable policy probe could be confused with an unmanaged device. | Required explicit unavailable/conflict states that block dependent changes. | Adapter and planner refusal tests. |
@@ -29,9 +29,9 @@ The initial design/reference commit is cbfa3ae. Review and planning changes are 
 
 | Capability | Plan tasks | Current state |
 | --- | --- | --- |
-| Solution, source imports and executable catalogue | T1 | Not started |
-| Evidence persistence and corruption handling | T2 | Not started |
-| Assessment, planning, expiry and sequencing | T3 | Not started |
+| Solution, source imports and executable catalogue | T1 | Implemented; portable tests passed |
+| Evidence persistence and corruption handling | T2 | Implemented; portable tests passed |
+| Assessment, planning, expiry and sequencing | T3 | Implemented; portable tests passed |
 | Local Windows inventory and probes | T4 | Not started |
 | Authenticated UAC worker and protected journals | T5 | Not started |
 | Current-user settings | T6 | Not started |
@@ -49,10 +49,10 @@ The initial design/reference commit is cbfa3ae. Review and planning changes are 
 - Verified that upstream file's SHA-256 is 124a033454385b262960db2a6f61392ee3e64ad8abb1a6f0d8276db29e21302f.
 - Reviewed the design and plan against the requested native UI, current-user execution, selective administration, local deployment and cross-checking workflow.
 
-Application builds, automated product tests, native UI tests, UAC, package extraction and real-device execution have not been run. There are no product test projects yet. The current cloud host is Linux.
+The portable product suite now has 24 passing tests (zero failures/skips), covering catalogue, evidence, planning, shared queue and result guards. Engine warning-as-error builds pass. Native UI, UAC, package extraction and real-device checks have not run; this cloud host is Linux.
 
 ## Next step
 
-Review the revised design and implementation plan, then select direct implementation in this session or task-by-task subagents. Direct implementation is recommended because the engine, Windows adapters and worker share tightly coupled contracts; the completed branch still needs an independent review.
+The user’s pasted request authorises direct implementation and testing of the full solution. Continue with T4–T12 using the execution ledger; the completed branch requires an independent review.
 
-The requested Superpowers writing-plans workflow requires review of the written plan and selection of an execution method before implementation. This is the pending workflow gate, not a missing repository or missing historical-source blocker.
+Implementation is under way with the executing-plans and test-driven-development skills. Setup and diagnostics use shared task definitions, a shared queue and common evidence services. No further plan-approval pause is pending.
