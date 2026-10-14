@@ -1,0 +1,13 @@
+{
+  "repository": "https://github.com/Willzy12h/M365-Buildstandards",
+  "commit": "80f01a9482c0ae20e995f9df357c9fca9217f623",
+  "files": [
+    {
+      "sourcePath": "src/BuildStandard.Core/Json/CanonicalJson.cs",
+      "sourceSha256": "64919b74b4264e120d7b97b7e2dbf95677001affc6f60e12412591d97e0f818a",
+      "destinationPath": "src/LocalDeviceToolkit.Core/CanonicalJson.cs",
+      "mode": "Adapted",
+      "notes": "Canonical ordered JSON and SHA-256 only; tenant template/subset functions excluded."
+    }
+  ]
+}

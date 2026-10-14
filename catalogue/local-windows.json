@@ -1,0 +1,272 @@
+[
+  {
+    "id": "CMP-WIN-001",
+    "name": "Windows core compliance",
+    "expectedDescription": "Supported OS, BitLocker, Secure Boot, code integrity, TPM and antivirus required according to the approved release profile.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Deploy the unassigned candidate, validate against a pilot device, then assign to the managed Windows device group."
+  },
+  {
+    "id": "CFG-WIN-001",
+    "name": "BitLocker and recovery escrow",
+    "expectedDescription": "Recovery information must be saved to Entra ID before new encryption starts; silent encryption for standard users.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Review the exact supplied TPM-only settings and unconfigured options; deploy an unassigned candidate, verify its portal readback, then separately pilot assignment and recovery-key escrow."
+  },
+  {
+    "id": "CFG-WIN-002",
+    "name": "Windows LAPS",
+    "expectedDescription": "Entra backup; 20-character random passwords with four character classes; seven-day rotation; reset and log off the managed administrator 24 hours after use.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Enable and verify the Entra LAPS tenant prerequisite through the reviewed EntraLapsService prerequisite operation. Manages the built-in administrator by SID; does not enable or create an account. After use, reset its password and log off its sessions after 24 hours. Check conflicting LAPS GPO/CSP settings and test password escrow/retrieval before assignment."
+  },
+  {
+    "id": "CFG-WIN-003",
+    "name": "Windows Hello for Business",
+    "expectedDescription": "Windows Hello PIN minimum eight characters, lowercase letter required (1), digits allowed (0); digits-only PIN refused.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Review the candidate, create it, validate on a TPM 2.0 pilot device, confirm a user can enrol a PIN and sign in with biometrics, then assign to managed Windows devices."
+  },
+  {
+    "id": "CFG-WIN-004",
+    "name": "Windows core restrictions",
+    "expectedDescription": "Apply the core device restrictions and lock behaviour; avoid duplicate settings across profiles.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Review the candidate and required policy inputs, create, verify, then approve exact targets separately."
+  },
+  {
+    "id": "CFG-WIN-005",
+    "name": "OneDrive sign-in and Known Folder Move",
+    "expectedDescription": "Silent account configuration and Known Folder Move for Desktop, Documents and Pictures; opt-out blocked; verified on a pilot device.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Review the candidate and required policy inputs, create, verify, then approve exact targets separately."
+  },
+  {
+    "id": "CFG-WIN-006",
+    "name": "Microsoft Edge configuration",
+    "expectedDescription": "Work account sign-in and the agreed browser settings; effective configuration verified on a pilot device.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Review the candidate and required policy inputs, create, verify, then approve exact targets separately."
+  },
+  {
+    "id": "CFG-WIN-007",
+    "name": "Long paths",
+    "expectedDescription": "Enable native LongPathsEnabled by default for the standard population.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Select explicitly, review and create an unassigned custom configuration. Review other Settings Catalogue policies for overlap before separate assignment."
+  },
+  {
+    "id": "CFG-WIN-008",
+    "name": "Windows web sign-in",
+    "expectedDescription": "Windows web sign-in; ./Device/Vendor/MSFT/Policy/Config/Authentication/EnableWebSignIn = 1",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Windows web sign-in; ./Device/Vendor/MSFT/Policy/Config/Authentication/EnableWebSignIn = 1"
+  },
+  {
+    "id": "CFG-WIN-009",
+    "name": "Chrome single sign-on",
+    "expectedDescription": "Built-in Chrome settings catalog: CloudAPAuthEnabled = true. No uploaded ADMX.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Built-in Chrome settings catalog: CloudAPAuthEnabled = true. No uploaded ADMX."
+  },
+  {
+    "id": "CFG-WIN-010",
+    "name": "UK region and keyboard",
+    "expectedDescription": "At setup choose United Kingdom region and UK keyboard. Engineers configure the Windows Welcome screen and new-user defaults manually.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "At setup choose United Kingdom region and UK keyboard. Engineers configure the Windows Welcome screen and new-user defaults manually."
+  },
+  {
+    "id": "CFG-WIN-011",
+    "name": "UK time zone",
+    "expectedDescription": "UK time zone; ./Device/Vendor/MSFT/Policy/Config/TimeLanguageSettings/ConfigureTimeZone = GMT Standard Time",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "UK time zone; ./Device/Vendor/MSFT/Policy/Config/TimeLanguageSettings/ConfigureTimeZone = GMT Standard Time"
+  },
+  {
+    "id": "CFG-WIN-012",
+    "name": "Show file extensions",
+    "expectedDescription": "File Explorer > View > Show > File name extensions: on.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "File Explorer > View > Show > File name extensions: on."
+  },
+  {
+    "id": "CFG-WIN-013",
+    "name": "OneDrive Files On-Demand",
+    "expectedDescription": "Built-in OneDrive FilesOnDemandEnabled = 1. Keep cloud files available on demand and verify hydration with the user.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Built-in OneDrive FilesOnDemandEnabled = 1. Keep cloud files available on demand and verify hydration with the user."
+  },
+  {
+    "id": "CFG-WIN-014",
+    "name": "Storage Sense",
+    "expectedDescription": "Storage Sense; ./Device/Vendor/MSFT/Policy/Config/Storage/AllowStorageSenseGlobal = 1",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Storage Sense; ./Device/Vendor/MSFT/Policy/Config/Storage/AllowStorageSenseGlobal = 1"
+  },
+  {
+    "id": "CFG-WIN-015",
+    "name": "Hide consumer features",
+    "expectedDescription": "Hide consumer features; ./Device/Vendor/MSFT/Policy/Config/Experience/AllowWindowsConsumerFeatures = 0",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Hide consumer features; ./Device/Vendor/MSFT/Policy/Config/Experience/AllowWindowsConsumerFeatures = 0"
+  },
+  {
+    "id": "CFG-WIN-016",
+    "name": "Taskbar starting layout",
+    "expectedDescription": "Starting pins: Edge, File Explorer, Outlook, Teams, Microsoft 365 Copilot. No Word or Excel. Users can subsequently unpin.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Starting pins: Edge, File Explorer, Outlook, Teams, Microsoft 365 Copilot. No Word or Excel. Users can subsequently unpin."
+  },
+  {
+    "id": "CFG-WIN-017",
+    "name": "Microsoft Store available",
+    "expectedDescription": "Microsoft Store is not restricted; approved store apps may be deployed.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Microsoft Store is not restricted; approved store apps may be deployed."
+  },
+  {
+    "id": "CFG-WIN-018",
+    "name": "Windows settings backup and restore (ESR successor)",
+    "expectedDescription": "Windows settings backup and restore (ESR successor); ./Device/Vendor/MSFT/Policy/Config/SettingsSync/EnableWindowsBackup = <enabled/>",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Windows settings backup and restore (ESR successor); ./Device/Vendor/MSFT/Policy/Config/SettingsSync/EnableWindowsBackup = <enabled/>"
+  },
+  {
+    "id": "CFG-WIN-019",
+    "name": "Fast startup off",
+    "expectedDescription": "Power Options > Choose what the power buttons do > Change settings currently unavailable > clear Turn on fast startup.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Power Options > Choose what the power buttons do > Change settings currently unavailable > clear Turn on fast startup."
+  },
+  {
+    "id": "CFG-WIN-020",
+    "name": "No sleep on mains",
+    "expectedDescription": "No sleep on mains; ./Device/Vendor/MSFT/Policy/Config/Power/StandbyTimeoutPluggedIn = <enabled/><data id=\"EnterACStandbyTimeOut\" value=\"0\"/>",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "No sleep on mains; ./Device/Vendor/MSFT/Policy/Config/Power/StandbyTimeoutPluggedIn = <enabled/><data id=\"EnterACStandbyTimeOut\" value=\"0\"/>"
+  },
+  {
+    "id": "CFG-WIN-021",
+    "name": "Remove consumer Copilot app",
+    "expectedDescription": "Remove consumer Copilot app; ./Device/Vendor/MSFT/Policy/Config/WindowsAI/RemoveMicrosoftCopilotApp = 1",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Remove consumer Copilot app; ./Device/Vendor/MSFT/Policy/Config/WindowsAI/RemoveMicrosoftCopilotApp = 1"
+  },
+  {
+    "id": "APP-WIN-001",
+    "name": "Microsoft 365 Apps",
+    "expectedDescription": "Microsoft 365 Apps for business, 64-bit, en-GB, Monthly Enterprise channel; assigned to GRP - Office Install Ready after ESP.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Review the candidate and required policy inputs, create, verify, then approve exact targets separately."
+  },
+  {
+    "id": "APP-WIN-002",
+    "name": "Company Portal",
+    "expectedDescription": "Company Portal deployed to the agreed Windows scope.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Review the candidate and required policy inputs, create, verify, then approve exact targets separately."
+  },
+  {
+    "id": "APP-WIN-003",
+    "name": "Google Chrome",
+    "expectedDescription": "Deploy the approved Chrome package to supported Windows devices.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Review the candidate and required policy inputs, create, verify, then approve exact targets separately."
+  },
+  {
+    "id": "APP-WIN-004",
+    "name": "Adobe Acrobat Reader",
+    "expectedDescription": "Deploy the approved Reader package; retain paid-product exceptions.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Review the candidate and required policy inputs, create, verify, then approve exact targets separately."
+  },
+  {
+    "id": "APP-WIN-005",
+    "name": "OneDrive application",
+    "expectedDescription": "Confirm the sync client is available and maintained on the per-machine installer.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Review the candidate and required policy inputs, create, verify, then approve exact targets separately."
+  },
+  {
+    "id": "APP-WIN-006",
+    "name": "Microsoft Teams",
+    "expectedDescription": "Deploy the approved Teams package and verify sign-in.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Review the candidate and required policy inputs, create, verify, then approve exact targets separately."
+  },
+  {
+    "id": "APP-WIN-007",
+    "name": "Remote management agent",
+    "expectedDescription": "Use the client-specific installer and validate the device appears in the management console.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Supply vendor inputs, create the unassigned candidate, publish the reviewed package, then separately approve groups."
+  },
+  {
+    "id": "APP-WIN-008",
+    "name": "ESET endpoint protection (client package)",
+    "expectedDescription": "ESET antivirus and EDR installed and healthy using the client-approved package and licence. No ESET installer or tenant secret is shipped.",
+    "coverage": "Manual",
+    "checkIds": [],
+    "operationIds": [],
+    "manualInstructions": "Supply vendor inputs, create the unassigned candidate, publish the reviewed package, then separately approve groups."
+  }
+]

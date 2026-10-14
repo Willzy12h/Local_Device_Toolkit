@@ -1,0 +1,166 @@
+[
+  {
+    "id": "setup",
+    "title": "New device setup",
+    "stages": [
+      {
+        "id": "readiness",
+        "title": "Identify and check readiness",
+        "taskIds": [
+          "security.device-readiness"
+        ]
+      },
+      {
+        "id": "assessment",
+        "title": "Assess the build standard",
+        "taskIds": [
+          "security.device-readiness",
+          "control.cfg-win-001",
+          "control.cfg-win-002",
+          "control.cfg-win-003",
+          "control.cfg-win-004",
+          "control.cfg-win-005",
+          "control.cfg-win-006",
+          "control.cfg-win-007",
+          "control.cfg-win-008",
+          "control.cfg-win-009",
+          "control.cfg-win-010",
+          "control.cfg-win-011",
+          "windows.file-extensions",
+          "control.cfg-win-013",
+          "control.cfg-win-014",
+          "control.cfg-win-015",
+          "control.cfg-win-016",
+          "control.cfg-win-017",
+          "control.cfg-win-018",
+          "control.cfg-win-019",
+          "windows.power-ac-sleep",
+          "control.cfg-win-021",
+          "apps.installation"
+        ]
+      },
+      {
+        "id": "windows",
+        "title": "Configure Windows",
+        "taskIds": [
+          "control.cfg-win-001",
+          "control.cfg-win-002",
+          "control.cfg-win-003",
+          "control.cfg-win-004",
+          "control.cfg-win-005",
+          "control.cfg-win-006",
+          "control.cfg-win-007",
+          "control.cfg-win-008",
+          "control.cfg-win-009",
+          "control.cfg-win-010",
+          "control.cfg-win-011",
+          "windows.file-extensions",
+          "control.cfg-win-013",
+          "control.cfg-win-014",
+          "control.cfg-win-015",
+          "control.cfg-win-016",
+          "control.cfg-win-017",
+          "control.cfg-win-018",
+          "control.cfg-win-019",
+          "windows.power-ac-sleep",
+          "control.cfg-win-021"
+        ]
+      },
+      {
+        "id": "applications",
+        "title": "Install applications",
+        "taskIds": [
+          "apps.installation"
+        ]
+      },
+      {
+        "id": "handover",
+        "title": "Verify and hand over",
+        "taskIds": [
+          "security.device-readiness",
+          "control.cfg-win-001",
+          "control.cfg-win-002",
+          "control.cfg-win-003",
+          "control.cfg-win-004",
+          "control.cfg-win-005",
+          "control.cfg-win-006",
+          "control.cfg-win-007",
+          "control.cfg-win-008",
+          "control.cfg-win-009",
+          "control.cfg-win-010",
+          "control.cfg-win-011",
+          "windows.file-extensions",
+          "control.cfg-win-013",
+          "control.cfg-win-014",
+          "control.cfg-win-015",
+          "control.cfg-win-016",
+          "control.cfg-win-017",
+          "control.cfg-win-018",
+          "control.cfg-win-019",
+          "windows.power-ac-sleep",
+          "control.cfg-win-021",
+          "apps.installation"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "diagnostics",
+    "title": "Diagnostics",
+    "stages": [
+      {
+        "id": "health",
+        "title": "Device health",
+        "taskIds": [
+          "security.device-readiness"
+        ]
+      },
+      {
+        "id": "security",
+        "title": "Security and compliance",
+        "taskIds": [
+          "security.device-readiness",
+          "control.cfg-win-001",
+          "control.cfg-win-002",
+          "control.cfg-win-003",
+          "control.cfg-win-004",
+          "control.cfg-win-008"
+        ]
+      },
+      {
+        "id": "applications",
+        "title": "Applications and deployments",
+        "taskIds": [
+          "apps.installation"
+        ]
+      },
+      {
+        "id": "configuration",
+        "title": "Windows and user experience",
+        "taskIds": [
+          "control.cfg-win-001",
+          "control.cfg-win-002",
+          "control.cfg-win-003",
+          "control.cfg-win-004",
+          "control.cfg-win-005",
+          "control.cfg-win-006",
+          "control.cfg-win-007",
+          "control.cfg-win-008",
+          "control.cfg-win-009",
+          "control.cfg-win-010",
+          "control.cfg-win-011",
+          "windows.file-extensions",
+          "control.cfg-win-013",
+          "control.cfg-win-014",
+          "control.cfg-win-015",
+          "control.cfg-win-016",
+          "control.cfg-win-017",
+          "control.cfg-win-018",
+          "control.cfg-win-019",
+          "windows.power-ac-sleep",
+          "control.cfg-win-021"
+        ]
+      }
+    ]
+  }
+]

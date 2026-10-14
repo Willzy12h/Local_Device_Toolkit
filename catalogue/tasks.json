@@ -1,0 +1,216 @@
+[
+  {
+    "id": "security.device-readiness",
+    "title": "Windows core compliance",
+    "controlIds": [
+      "CMP-WIN-001"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "control.cfg-win-001",
+    "title": "BitLocker and recovery escrow",
+    "controlIds": [
+      "CFG-WIN-001"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "control.cfg-win-002",
+    "title": "Windows LAPS",
+    "controlIds": [
+      "CFG-WIN-002"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "control.cfg-win-003",
+    "title": "Windows Hello for Business",
+    "controlIds": [
+      "CFG-WIN-003"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "control.cfg-win-004",
+    "title": "Windows core restrictions",
+    "controlIds": [
+      "CFG-WIN-004"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "control.cfg-win-005",
+    "title": "OneDrive sign-in and Known Folder Move",
+    "controlIds": [
+      "CFG-WIN-005"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "control.cfg-win-006",
+    "title": "Microsoft Edge configuration",
+    "controlIds": [
+      "CFG-WIN-006"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "control.cfg-win-007",
+    "title": "Long paths",
+    "controlIds": [
+      "CFG-WIN-007"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "control.cfg-win-008",
+    "title": "Windows web sign-in",
+    "controlIds": [
+      "CFG-WIN-008"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "control.cfg-win-009",
+    "title": "Chrome single sign-on",
+    "controlIds": [
+      "CFG-WIN-009"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "control.cfg-win-010",
+    "title": "UK region and keyboard",
+    "controlIds": [
+      "CFG-WIN-010"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "control.cfg-win-011",
+    "title": "UK time zone",
+    "controlIds": [
+      "CFG-WIN-011"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "windows.file-extensions",
+    "title": "Show file extensions",
+    "controlIds": [
+      "CFG-WIN-012"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "control.cfg-win-013",
+    "title": "OneDrive Files On-Demand",
+    "controlIds": [
+      "CFG-WIN-013"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "control.cfg-win-014",
+    "title": "Storage Sense",
+    "controlIds": [
+      "CFG-WIN-014"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "control.cfg-win-015",
+    "title": "Hide consumer features",
+    "controlIds": [
+      "CFG-WIN-015"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "control.cfg-win-016",
+    "title": "Taskbar starting layout",
+    "controlIds": [
+      "CFG-WIN-016"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "control.cfg-win-017",
+    "title": "Microsoft Store available",
+    "controlIds": [
+      "CFG-WIN-017"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "control.cfg-win-018",
+    "title": "Windows settings backup and restore (ESR successor)",
+    "controlIds": [
+      "CFG-WIN-018"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "control.cfg-win-019",
+    "title": "Fast startup off",
+    "controlIds": [
+      "CFG-WIN-019"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "windows.power-ac-sleep",
+    "title": "No sleep on mains",
+    "controlIds": [
+      "CFG-WIN-020"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "control.cfg-win-021",
+    "title": "Remove consumer Copilot app",
+    "controlIds": [
+      "CFG-WIN-021"
+    ],
+    "checkIds": [],
+    "operationId": null
+  },
+  {
+    "id": "apps.installation",
+    "title": "Application inventory and deployment",
+    "controlIds": [
+      "APP-WIN-001",
+      "APP-WIN-002",
+      "APP-WIN-003",
+      "APP-WIN-004",
+      "APP-WIN-005",
+      "APP-WIN-006",
+      "APP-WIN-007",
+      "APP-WIN-008"
+    ],
+    "checkIds": [],
+    "operationId": null
+  }
+]
