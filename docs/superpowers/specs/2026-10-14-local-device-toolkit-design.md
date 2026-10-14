@@ -2,11 +2,15 @@
 
 Date: 14 October 2026
 
-Status: revised following the user's review-and-improve request. The user selected a new WPF toolkit built from M365 source. This document and its implementation plan remain reviewable proposals; application implementation has not started.
+Revised: 15 October 2026 — setup and diagnostics workspaces over shared tasks.
+
+Status: implementation authorised by the user’s pasted request on 15 October 2026. The user selected a new WPF toolkit built from M365 source, with setup and diagnostics sharing the same tasks and execution code.
 
 ## 1. Intended outcome
 
 Give an engineer a portable native Windows application for inspecting the current device, comparing its observed configuration with the applicable M365 build standard, selecting local changes or application deployments, and verifying their results.
+
+The primary journeys are New device setup and Diagnostics. The same task may appear in both journeys, but its inputs, probes, scripts, deployment adapter and verification have one canonical implementation.
 
 The application normally runs as the engineer's current Windows user. Only an operation that needs administrator rights requests Windows UAC elevation. User settings continue to target the original user when a different administrator supplies credentials.
 
@@ -46,8 +50,8 @@ Use C# 12 and .NET 10 with SDK 10.0.401 as the initial build baseline, matching 
 
 | Project | Responsibility |
 | --- | --- |
-| LocalDeviceToolkit.Core | Device/user identities, catalogue and evidence models, typed action contracts, result states and deterministic validation. |
-| LocalDeviceToolkit.Engine | Assessment, applicability, plan creation/invalidation, sequencing, evidence persistence, history and exports. No direct Windows mutations. |
+| LocalDeviceToolkit.Core | Device/user identities, canonical task definitions, workflow references, catalogue and evidence models, typed action contracts, result states and deterministic validation. |
+| LocalDeviceToolkit.Engine | Shared task resolution, assessment, applicability, one device-bound deployment queue, plan creation/invalidation, sequencing, evidence persistence, history and exports. No direct Windows mutations. |
 | LocalDeviceToolkit.Windows | Windows probes, approved user-scope actions, process adapters, effective-policy observations and package verification. |
 | LocalDeviceToolkit.App | WPF views/view models and workflow orchestration. Normal launch requests asInvoker. |
 | LocalDeviceToolkit.Worker | Short-lived elevated Windows worker with a compiled allowlist of administrator operations and its own request validation. |
@@ -59,15 +63,70 @@ UI code does not construct arbitrary command lines or perform device mutations. 
 
 Use the newer M365 teal/neutral visual language with Local Device Toolkit branding and five navigation areas:
 
-1. Overview: device identity, OS/build, current user, actual elevation state, selected standard, last capture and the next useful step.
-2. Assess: searchable control groups, expected versus observed values, applicability, evidence source/time, and actionable explanations.
-3. Deploy: selected settings/packages, exact proposed changes, required privilege, likely restart, prerequisites and an explicit reviewed queue.
-4. Scripts and tools: registered local diagnostic and configuration actions, validated input forms and privilege labels.
-5. History and reports: completed, partial and interrupted runs; source/version context; copyable summaries; JSON, CSV and HTML exports.
+1. Home: current device/user/elevation/standard, last evidence and two prominent entry points for New device setup and Diagnostics.
+2. New device setup: a staged build workflow that leads from readiness through configuration and applications to verification and handover.
+3. Diagnostics: checks grouped around device health, security, applications and user experience, with findings and deliberate repair proposals.
+4. Deployments: the shared queue, exact reviewed changes, prerequisites, privilege/scope, execution progress, verification and reconciliation.
+5. Reports and history: setup handovers, diagnostic ticket summaries and deployment records over the same underlying evidence.
+
+Search and a task-library command expose all available tasks without creating another execution path. Native build-standard detail is accessible from each relevant task. The common task form, input binding, action review, output panel and export components are reused across the two workspaces.
 
 Selecting a row only opens detail; checking a row adds it to the proposed queue. Navigation never runs a probe or action. No deployment is selected by default. A persistent header identifies the local device and original Windows user; elevated actions also identify the actual administrator account.
 
 Reference details remain visible beside the current task or in a collapsible native drawer at smaller sizes. Errors and outcomes remain reachable when action buttons wrap. Support keyboard operation, labelled controls, visible focus, high-contrast compatibility and scaling checks at 100%, 150% and 200%.
+
+### 4.1 New device setup
+
+Present these stages with actual evidence-based status, requirements, outstanding work and a useful next action:
+
+| Stage | Engineer workflow |
+| --- | --- |
+| Identify and check readiness | Confirm device, current user, supported OS/build and hardware/security prerequisites. Offer explicit protected checks where required. |
+| Assess the build standard | Compare applicable controls with observed local state; show manual checks, policy conflicts and missing evidence. |
+| Configure Windows | Review selected current-user and machine settings, including region/keyboard, time zone, extensions, power and supported security/configuration tasks. |
+| Install applications | Review installed versions and selected package profiles, vendor inputs, scope, prerequisites and restart behaviour. |
+| Verify and hand over | Capture fresh post-change observations, review manual checks and exceptions, and generate a setup/handover report. |
+
+Stage status is Not started, In progress, Needs attention or Complete. Opening a stage or selecting an action does not complete it. Show automated verification, explicitly recorded manual checks, unknowns and optional exclusions separately. A skipped optional task retains its reason; a failed or unknown required check prevents a ready-for-handover claim. A recorded manual check includes the engineer, time, outcome and note and is never relabelled as automated proof.
+
+### 4.2 Diagnostics
+
+The workspace starts with read-only checks. Group tasks into Device health, Security and compliance, Applications and deployments, and Windows and user experience. Allow selection of individual checks or a declared diagnostic group and show what will be read before starting it.
+
+Findings include the observed value, expected standard where applicable, evidence source/time, limitations and a practical next step. A read requiring administrator rights uses the same explicit elevation flow. Missing evidence remains Unknown or Requires elevation.
+
+An available repair is a proposal using the same canonical change action as setup. The engineer chooses Review fix to add it to Deployments; running diagnostics or viewing a finding never performs a repair. Previous deployment failures can be opened for read-only reconciliation from this workspace.
+
+### 4.3 Shared tasks and execution
+
+Store task definitions once, with a stable TaskId, source control/check IDs, input schema, optional change OperationId and evidence/verification requirements. Workflow definitions contain stages and references to TaskId values; they contain no script bodies, command lines or separate copies of business logic. Task definitions resolve the existing shared script/operation registry.
+
+Examples:
+
+| Canonical task | New device setup | Diagnostics | Shared implementation |
+| --- | --- | --- | --- |
+| windows.file-extensions | Configure Windows: review showing extensions | Windows/user experience: check and review a fix | settings.show-file-extensions and its shared probe |
+| windows.power-ac-sleep | Configure Windows: review mains sleep | Windows/user experience: investigate sleep behaviour | settings.no-ac-sleep and its shared probe |
+| apps.installation | Install applications: review a chosen product | Applications/deployments: inspect or reconcile a product | packages.install, product inventory and postcondition checks |
+| security.device-readiness | Identify/readiness: inspect required security state | Security/compliance: investigate the same state | Shared TPM, Secure Boot, encryption and provider probes |
+
+The two workspaces use one queue bound to the current device and original user. Resolve a change's logical target, such as a setting or product identity, through the registered operation. Identical parameters for an already queued target produce Already queued; conflicting parameters require an explicit keep/replace decision. Different application products can coexist in the queue. An entry point's label or workflow identity cannot change privilege, inputs or authorisation.
+
+Changing the active workspace alone neither starts work nor changes a valid reviewed plan. Changing queued actions, their targets or inputs invalidates review through the existing planner. A mutation and a conflicting diagnostic run must not execute concurrently.
+
+Record workflow/stage/task provenance in versioned captures, plans and results. Viewing the same run from another workspace references its original run ID; it does not copy evidence, count a deployment twice or claim that old verification was newly performed.
+
+### 4.4 Usability and reporting from Build Standard
+
+Reuse grouped task navigation, search/filtering, selection distinct from inspection, pinned standard detail, visible prerequisites, exact reviewed changes, accessible result panels and context-aware next steps. Every disabled Run, Review or Deploy action explains the missing prerequisite. Task cards show current-user/machine scope, actual privilege requirements and whether the capability is automatic, partial or manual.
+
+All report types use the same validated evidence and safe export services:
+
+- Setup/handover: selected standard and device identity, stage status, expected/before/requested/after values, application versions, manual checks, exceptions, restart requirements and outstanding handover work.
+- Diagnostic/ticket: selected checks, findings and their limitations, relevant bounded evidence, proposed/applied fixes, verification and follow-up work.
+- Deployment: exact reviewed actions and originating workflow, execution/verification outcomes, original engineer and actual elevated actor, and unresolved or restart-required results.
+
+Read-only diagnostics and assessments can produce reports without a mutation run. Report projections must accept their actual capture evidence rather than fabricate a successful deployment record. HTML, CSV, JSON and copyable ticket summaries share the same status interpretation. History filters by workflow, stage, task and run while retaining a single record for each actual run.
 
 ## 5. Local assessment and standards mapping
 

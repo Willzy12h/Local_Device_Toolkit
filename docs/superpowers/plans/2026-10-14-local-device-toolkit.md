@@ -10,7 +10,7 @@
 
 **Spec:** [Native toolkit design](../specs/2026-10-14-local-device-toolkit-design.md).
 
-**Status:** Proposed plan. No task below has been implemented or tested. The user's request authorises reviewing and improving the current work; the written implementation plan and execution method still require review under the requested Superpowers workflow.
+**Status:** Execution authorised by the user’s pasted request on 15 October 2026 to design, improve, review, implement and test the full solution. Execute directly in this session. This revision incorporates separate setup and diagnostics workspaces over shared tasks; checkboxes remain evidence-based.
 
 ## Global Constraints
 
@@ -58,9 +58,11 @@ Keep models immutable. T1 defines these shared types; later tasks must use the s
 - ExecutionActor(Sid, UserName, IsElevated, ProcessId, ProcessStartedAt): OS-observed string identity fields, bool, int and UTC DateTimeOffset. This records the actual executing account separately from the original user in DeviceContext.
 - CatalogueIdentity(Version, SourceCommit, SourceSha256, LocalSha256): string fields, distinct upstream provenance and packaged mapping identity.
 - ProbeObservation(ControlId, CheckId, State, Value, Source, CapturedAt, Reason): string IDs/source/reason, ObservationState, nullable JsonElement value, DateTimeOffset capture. Values have per-check schemas; unavailable evidence has no invented value.
-- DeviceCapture(Id, Context, Catalogue, CapturedBy, CapturedAt, Observations): Guid, DeviceContext, CatalogueIdentity, ExecutionActor, DateTimeOffset, IReadOnlyList<ProbeObservation>.
+- DeviceCapture(Id, Context, Catalogue, Origin, CapturedBy, CapturedAt, Observations): Guid, DeviceContext, CatalogueIdentity, WorkflowOrigin, ExecutionActor, DateTimeOffset, IReadOnlyList<ProbeObservation>.
 - Finding(ControlId, Status, Reason, Observations): FindingStatus is MeetsStandard, DoesNotMeetStandard, Unknown, RequiresElevation, NotApplicable or ManualVerification.
-- ActionRequest(OperationId, Parameters): string ID and cloned immutable JsonElement validated by the registered operation schema.
+- WorkflowOrigin(WorkflowId, StageId): immutable strings recording where a capture/change was requested; never an authorisation source.
+- TaskDefinition(Id, Title, ControlIds, CheckIds, OperationId): canonical task metadata, with optional change OperationId. Workflow stages reference task IDs rather than copying implementations.
+- ActionRequest(TaskId, OperationId, Parameters, Origin): stable task/operation IDs, cloned immutable JsonElement validated by the registered operation schema, and WorkflowOrigin.
 - ActionReadiness(CanExecute, Scope, Privilege, Reason): bool, OperationScope CurrentUser/Machine, PrivilegeRequirement CurrentUser/Administrator, string. Scope and privilege are independent; an adapter determines actual required privilege.
 - PlannedAction(Id, Request, Readiness, BeforeDigest): Guid, ActionRequest, ActionReadiness, string.
 - ReviewedPlan(Id, Context, Catalogue, CreatedAt, ExpiresAt, Actions, Digest): Guid, the context/catalogue types, UTC DateTimeOffset values, IReadOnlyList<PlannedAction>, string.
@@ -73,11 +75,11 @@ ObservationState is Known, AccessDenied, Unavailable, NotSupported or Manual. Co
 
 ### T1: Verified local catalogue and source import foundation
 
-**Files:** Create build/Import-Upstream.ps1, provenance/import-manifest.json, catalogue/local-windows.json, Core/Models/{Context,Catalogue,Observation,Planning,RunRecord}.cs, Core/Json/{StrictJson,CanonicalJson}.cs, Engine/Catalogue/CatalogueLoader.cs and tests/LocalDeviceToolkit.Tests/CatalogueTests.cs. Project-relative paths below are under src unless prefixed tests, build, scripts or catalogue. Modify the solution/build files listed above and preserve docs/reference/m365-windows-controls.json.
+**Files:** Create build/Import-Upstream.ps1, provenance/import-manifest.json, catalogue/{local-windows,tasks,workflows}.json, Core/Models/{Context,Catalogue,Workflow,Observation,Planning,RunRecord}.cs, Core/Json/{StrictJson,CanonicalJson}.cs, Engine/Catalogue/CatalogueLoader.cs and tests/LocalDeviceToolkit.Tests/CatalogueTests.cs. Project-relative paths below are under src unless prefixed tests, build, scripts or catalogue. Modify the solution/build files listed above and preserve docs/reference/m365-windows-controls.json.
 
-**Interfaces:** Produce LocalCatalogue with Identity and Controls; each LocalControl has Id, Name, ExpectedDescription, Coverage, CheckIds, OperationIds and ManualInstructions. CatalogueLoader.Load(string packageRoot, IReadOnlySet<string> knownChecks, IReadOnlySet<string> knownOperations) returns LocalCatalogue or throws CatalogueValidationException. StrictJson.Parse(ReadOnlyMemory<byte> bytes, int maximumBytes) rejects duplicate members and invalid UTF-8. Define TestData reference/context fixtures for later tests.
+**Interfaces:** Produce LocalCatalogue with Identity and Controls; each LocalControl has Id, Name, ExpectedDescription, Coverage, CheckIds, OperationIds and ManualInstructions. CatalogueLoader.Load(string packageRoot, IReadOnlySet<string> knownChecks, IReadOnlySet<string> knownOperations) returns LocalCatalogue or throws CatalogueValidationException. StrictJson.Parse(ReadOnlyMemory<byte> bytes, int maximumBytes) rejects duplicate members and invalid UTF-8. Define TestData reference/context fixtures for later tests. WorkflowCatalogue resolves canonical TaskDefinition objects for setup/diagnostics stage references; reject missing tasks, duplicate IDs and direct script bodies/command overrides in workflow files.
 
-- [ ] Create the minimal Core/Engine/test project files with central pinned dependencies and write CatalogueTests.All_source_controls_have_truthful_coverage and Changed_reference_or_duplicate_members_are_refused.
+- [ ] Create the minimal Core/Engine/test project files with central pinned dependencies and write CatalogueTests.All_source_controls_have_truthful_coverage and Changed_reference_or_duplicate_members_are_refused; add WorkflowCatalogueTests.Setup_and_diagnostics_resolve_the_same_task.
 
 Test assertions:
 
@@ -118,7 +120,7 @@ Test assertions:
 
 **Files:** Create Engine/Assessment/AssessmentService.cs, Engine/Planning/{OperationRegistry,PlanService}.cs, Engine/Execution/{RunCoordinator,ActionContracts}.cs and tests/LocalDeviceToolkit.Tests/{AssessmentTests,PlanTests,RunCoordinatorTests}.cs.
 
-**Interfaces:** IDeviceInspector.CaptureAsync(IReadOnlyList<string> controlIds, CancellationToken ct) returns Task<DeviceCapture>. IExecutionContextProvider.GetCurrentAsync(CancellationToken ct) returns Task<DeviceContext>. ILocalOperation exposes Id, InspectAsync(DeviceContext, JsonElement, CancellationToken), CaptureBeforeAsync(DeviceContext, JsonElement, CancellationToken), and ExecuteAsync(DeviceContext, Guid actionId, JsonElement, CancellationToken), returning Task<ActionReadiness>, Task<IReadOnlyList<ProbeObservation>> and Task<ActionResult> respectively. Registry validation creates only known typed ActionRequests.
+**Interfaces:** CaptureRequest carries control IDs and WorkflowOrigin. IDeviceInspector.CaptureAsync(CaptureRequest request, CancellationToken ct) returns Task<DeviceCapture>. IExecutionContextProvider.GetCurrentAsync(CancellationToken ct) returns Task<DeviceContext>. ILocalOperation exposes Id, InspectAsync(DeviceContext, JsonElement, CancellationToken), CaptureBeforeAsync(DeviceContext, JsonElement, CancellationToken), and ExecuteAsync(DeviceContext, Guid actionId, JsonElement, CancellationToken), returning Task<ActionReadiness>, Task<IReadOnlyList<ProbeObservation>> and Task<ActionResult> respectively. Registry validation creates only known typed ActionRequests.
 
 AssessmentService.Assess(LocalCatalogue, DeviceCapture) returns IReadOnlyList<Finding>. PlanService.CreateAsync(DeviceContext, LocalCatalogue, IReadOnlyList<ActionRequest>, CancellationToken) returns Task<ReviewedPlan>; it uses injected TimeProvider and throws PlanValidationException for a request that cannot form an executable plan. PlanService.Validate(ReviewedPlan, DeviceContext, CatalogueIdentity, IReadOnlyDictionary<Guid,string> currentBeforeDigests, DateTimeOffset now) returns PlanValidation with IsValid and Reasons. IActionDispatcher.DispatchAsync(ReviewedPlan, PlannedAction, CancellationToken) returns Task<ActionResult>. RunCoordinator.ExecuteAsync(ReviewedPlan, CancellationToken stop) returns Task<RunRecord>.
 
@@ -242,13 +244,13 @@ Test assertions:
 - [ ] Rerun all package tests with synthetic executables and mocked installer/Windows APIs. Record actual vendor-package acceptance separately.
 - [ ] Commit package deployment and its fixtures/tests.
 
-### T9: Native five-area engineer application
+### T9: Native setup and diagnostics workspaces
 
-**Files:** Create App/{App.xaml,App.xaml.cs,MainWindow.xaml,MainWindow.xaml.cs,app.manifest}, App/Infrastructure/{ObservableObject,Commands}.cs, App/ViewModels/{Shell,Overview,Assessment,Deploy,Scripts,History}ViewModel.cs, matching App/Views XAML files, and tests/LocalDeviceToolkit.App.Tests/{NavigationTests,SelectionTests,IdentityPresentationTests,DeploymentJourneyTests}.cs.
+**Files:** Create App/{App.xaml,App.xaml.cs,MainWindow.xaml,MainWindow.xaml.cs,app.manifest}, App/Infrastructure/{ObservableObject,Commands}.cs, App/ViewModels/{Shell,Home,NewDeviceSetup,Diagnostics,Deployments,Reports,TaskDetail}ViewModel.cs, matching App/Views XAML files, and tests/LocalDeviceToolkit.App.Tests/{NavigationTests,SelectionTests,SharedTaskTests,SetupJourneyTests,DiagnosticsJourneyTests,IdentityPresentationTests,DeploymentJourneyTests}.cs.
 
-**Interfaces:** ShellViewModel owns CurrentPage, Context, Catalogue, BusyState, Error and selection-independent inspection. Page keys are overview, assess, deploy, scripts and history. The composition root injects the T1–T8 services. View-model commands call those interfaces; XAML/code-behind does not invoke Windows operations.
+**Interfaces:** ShellViewModel owns CurrentPage, Context, Catalogue, BusyState, Error and selection-independent inspection. Page keys are home, setup, diagnostics, deployments and reports. Setup stages are readiness, assessment, windows, applications and handover; diagnostic groups are health, security, applications and configuration. Both resolve canonical task IDs through WorkflowCatalogue. TaskDetailViewModel and its input/review/result views are shared. The composition root injects the T1–T8 services. View-model commands call those interfaces; XAML/code-behind does not invoke Windows operations.
 
-- [ ] Write SelectionTests.Inspecting_a_row_never_queues_it, NavigationTests.Navigation_never_collects_or_mutates and IdentityPresentationTests.Original_and_elevated_accounts_are_distinct.
+- [ ] Write SelectionTests.Inspecting_a_row_never_queues_it, NavigationTests.Navigation_never_collects_or_mutates and IdentityPresentationTests.Original_and_elevated_accounts_are_distinct. Add SharedTaskTests.Both_workspaces_use_one_action_and_queue, SetupJourneyTests.Navigation_does_not_complete_stages and DiagnosticsJourneyTests.Checks_never_apply_repairs.
 
 Test assertions:
 
@@ -256,10 +258,14 @@ Test assertions:
     Assert.Equal(0, inspector.CaptureCallsAfterNavigation);
     Assert.Equal(0, dispatcher.CallsAfterNavigation);
     Assert.Contains(originalSid, userActionReview.TargetIdentity);
+    Assert.Same(setupTask.Definition, diagnosticTask.Definition);
+    Assert.Single(queue.RequestsAfterAddingTheSameChangeFromBothWorkspaces);
+    Assert.Equal(0, dispatcher.CallsAfterDiagnosticsChecks);
 
 - [ ] Run the targeted App tests on Windows and confirm failures.
 - [ ] Adapt upstream App.xaml, Infrastructure/ObservableObject.cs and Commands.cs, and the native MainWindow/task/detail layout. Record every import/adaptation in provenance. Retain accessible names, visible focus, readable text statuses, native reference detail and a persistent device/user/elevation header.
-- [ ] Wire the full assess → select → review → execute → verify flow. Start with no queued deployment. Disable stale-plan execution and show its reason. Protected probes require an explicit action; routine page navigation does not open UAC. Treat an already elevated parent truthfully.
+- [ ] Implement a shared DeploymentQueue bound to device/user, using a registered operation’s logical target (setting or product) and canonical parameters. Identical requests from either workspace are Already queued; different parameters for the same target require an explicit keep/replace choice. Different application products may coexist. Replacing entries invalidates approval. Workspace navigation alone does not change plan contents.
+- [ ] Wire setup stages and diagnostic groups to the full assess → select → review → execute → verify flow. Stage progress derives from current evidence, separate manual checks and declared optional exclusions. Viewing a stage cannot complete it. Diagnostics defaults to reads; Review fix adds the canonical action to the shared deployment queue. Start with no queued deployment. Disable stale-plan execution and show its reason. Protected probes require an explicit action; routine page navigation does not open UAC. Treat an already elevated parent truthfully.
 - [ ] Rerun App tests with synthetic services, partial results, long labels, smaller windows and queued operations. No fixture data appears in ordinary startup; demo/test identities must be explicit.
 - [ ] Commit the WPF interface and app tests.
 
@@ -267,7 +273,7 @@ Test assertions:
 
 **Files:** Create Engine/Scripts/{LocalScriptCatalogue,ScriptInputBinder,RegisteredToolService}.cs, App/Views/ToolInputView.xaml, App/ViewModels/ToolInputViewModel.cs, build/Verify-ScriptRegistry.ps1 and tests/LocalDeviceToolkit.Tests/ScriptCatalogueTests.cs plus tests/LocalDeviceToolkit.App.Tests/ScriptWorkflowTests.cs. Extend scripts/registry.json using the T4/T6 scripts.
 
-**Interfaces:** LocalScriptCatalogue.Load(string root) returns registered manifests only. ScriptInputBinder.Bind(LocalScriptDefinition, IReadOnlyDictionary<string,string?> inputs) returns BoundToolInput with IsValid and Problems. RegisteredToolService.CreateRequest(string scriptId, BoundToolInput) returns a registered ActionRequest or bounded diagnostic request; it never returns arbitrary executable text.
+**Interfaces:** LocalScriptCatalogue.Load(string root) returns registered manifests only. ScriptInputBinder.Bind(LocalScriptDefinition, IReadOnlyDictionary<string,string?> inputs) returns BoundToolInput with IsValid and Problems. RegisteredToolService.CreateRequest(string scriptId, BoundToolInput, WorkflowOrigin origin) returns a registered ActionRequest or bounded diagnostic request; it never returns arbitrary executable text.
 
 - [ ] Write ScriptCatalogueTests.Changed_body_and_undeclared_parameters_are_refused and ScriptWorkflowTests.Invalid_inputs_cannot_run_or_elevate.
 
@@ -287,15 +293,17 @@ Test assertions:
 
 **Files:** Create Engine/Reports/{ReportProjection,JsonReport,CsvReport,HtmlReport}.cs, Engine/Execution/RunReconciler.cs, App/ViewModels/RunDetailViewModel.cs, App/Views/RunDetailView.xaml and tests/LocalDeviceToolkit.Tests/{ReportTests,ReconciliationTests}.cs plus tests/LocalDeviceToolkit.App.Tests/HistoryWorkflowTests.cs.
 
-**Interfaces:** ReportProjection.From(DeviceCapture?, ReviewedPlan?, RunRecord) returns LocalReport with original device/user, source versions, expected/requested/observed values and explicit limitations. ReportExporter.ExportAsync(LocalReport, ReportFormat, string destination, CancellationToken) returns Task<ExportReceipt> and refuses overwrite by default. RunReconciler.RecheckAsync(Guid runId, CancellationToken) returns Task<ReconciliationRecord>; this record references the immutable original run and cannot dispatch writes.
+**Interfaces:** ReportProjection.From(ReportPurpose purpose, DeviceCapture? capture, ReviewedPlan? plan, RunRecord? run) returns LocalReport with original device/user, source versions, workflow/stage/task provenance, expected/requested/observed values and explicit limitations. ReportPurpose is SetupHandover, DiagnosticTicket or DeploymentAudit. At least one valid source record is required; a read-only capture must not require a fabricated mutation run. ReportExporter.ExportAsync(LocalReport, ReportFormat, string destination, CancellationToken) returns Task<ExportReceipt> and refuses overwrite by default. RunReconciler.RecheckAsync(Guid runId, CancellationToken) returns Task<ReconciliationRecord>; this record references the immutable original run and cannot dispatch writes.
 
-- [ ] Write ReportTests.Unknown_results_do_not_inflate_success, Csv_formula_and_html_markup_are_escaped and ReconciliationTests.Recheck_never_replays_the_action.
+- [ ] Write ReportTests.Unknown_results_do_not_inflate_success, Csv_formula_and_html_markup_are_escaped and ReconciliationTests.Recheck_never_replays_the_action. Add ReportTests.Read_only_diagnostics_report_needs_no_deployment and HistoryWorkflowTests.Shared_run_is_not_counted_twice.
 
 Test assertions:
 
     Assert.Equal(0, report.VerifiedCountForUnknownOnlyRun);
     Assert.Equal(0, dispatcher.CallsDuringReconciliation);
     Assert.Equal(originalBytes, File.ReadAllBytes(originalRecordPath));
+    Assert.Empty(diagnosticsReport.DeploymentActions);
+    Assert.Single(history.ResultsForSameRunShownInBothWorkspaces);
 
 - [ ] Run the targeted report/reconciliation/App tests and confirm failures.
 - [ ] Adapt suitable upstream safe export primitives and record their provenance. Implement native read-only history/detail views, healthy entries plus corruption diagnostics, explicit other-device context, paging, copyable summaries and deliberate non-overwriting exports.
@@ -334,4 +342,4 @@ Test assertions:
 
 **Recommended execution:** direct implementation in this session with the executing-plans skill, followed by an independent whole-branch review. These tasks share evolving identity, evidence and execution contracts; implementing them coherently is preferable to concurrent changes to those contracts. Task-by-task subagents remain an available alternative if the user selects them.
 
-Before implementation, review this written plan together with the revised design and confirm the execution method. The plan is not a record of completed software, and no unchecked item may be reported as implemented or verified.
+The user’s pasted implementation request authorises direct execution of this plan, incorporating the revised setup/diagnostics design. The plan is not a record of completed software, and no unchecked item may be reported as implemented or verified.
