@@ -79,10 +79,24 @@ public sealed class RestorationTests
   var fixture=new Fixture();fixture.Source.Record=fixture.Source.Record with {Before=fixture.Source.Record.Before with {Value=StrictJson.Value(new{exists=false,value=(int?)null,path="arbitrary"})}};
   Assert.False((await fixture.Operation.InspectAsync(TestData.Context,fixture.Parameters,default)).CanExecute);
  }
+ [Fact] public void Missing_expected_setting_cannot_claim_a_queue_target()
+ {
+  var fixture=new Fixture();
+  Assert.Throws<PlanValidationException>(()=>fixture.Operation.ValidateParameters(StrictJson.Value(new RecordedSettingRestorationParameters(Guid.NewGuid(),Guid.NewGuid(),Guid.NewGuid(),true))));
+ }
+ [Fact] public async Task Claimed_setting_must_match_the_independently_loaded_source()
+ {
+  var fixture=new Fixture();
+  var parameters=StrictJson.Value(new RecordedSettingRestorationParameters(fixture.Source.Record.SourcePlanId,fixture.Source.Record.SourceActionId,fixture.Source.Record.SourceRunId,true,SettingId.LongPaths));
+  var action=await fixture.Plan();
+  Assert.False((await fixture.Operation.InspectAsync(TestData.Context,parameters,default)).CanExecute);
+  var result=await fixture.Operation.ExecuteAsync(TestData.Context,action with {Request=action.Request with {Parameters=parameters}},default);
+  Assert.Equal(ActionOutcome.Failed,result.Outcome);Assert.Equal(0,fixture.Backend.Writes);
+ }
  sealed class Fixture
  {
   public readonly Backend Backend=new();public readonly Source Source=new();public readonly RecordedSettingRestorationOperation Operation;
-  public System.Text.Json.JsonElement Parameters=>StrictJson.Value(new RecordedSettingRestorationParameters(Source.Record.SourcePlanId,Source.Record.SourceActionId,Source.Record.SourceRunId,true));
+  public System.Text.Json.JsonElement Parameters=>StrictJson.Value(new RecordedSettingRestorationParameters(Source.Record.SourcePlanId,Source.Record.SourceActionId,Source.Record.SourceRunId,true,Source.Record.Setting));
   public SettingSnapshot Snapshot(RegistryDwordState value,SettingId id=SettingId.ShowFileExtensions)=>new(id,StrictJson.Value(value),"fixture registry snapshot",DateTimeOffset.UtcNow);
   public Fixture(){Source.Record=new(Guid.NewGuid(),Guid.NewGuid(),Guid.NewGuid(),TestData.Context,CatalogueLoader.LoadShipped().Identity,SettingId.ShowFileExtensions,OperationScope.CurrentUser,PrivilegeRequirement.CurrentUser,Snapshot(new(false,null)),Snapshot(new(true,0)),TestData.Actor,ActionOutcome.AppliedVerified,false);Operation=new(Source,Backend,CatalogueLoader.LoadShipped().Identity);}
   public async Task<PlannedAction> Plan(){var before=await Operation.CaptureBeforeAsync(TestData.Context,Parameters,default);return new(Guid.NewGuid(),new("settings.restore-recorded",Operation.Id,Parameters,new("setup","windows")),await Operation.InspectAsync(TestData.Context,Parameters,default),before,ObservationFingerprint.Of(before));}

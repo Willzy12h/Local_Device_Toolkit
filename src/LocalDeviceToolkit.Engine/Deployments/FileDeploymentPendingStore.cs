@@ -14,7 +14,7 @@ public sealed class FileDeploymentPendingStore(string root):IDeploymentPendingSt
    await using var file=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read,4096,FileOptions.Asynchronous);
    if(file.Length>65536)throw new InvalidDataException("Pending deployment guard is oversized; inspect manually.");
    var bytes=new byte[checked((int)file.Length)];await file.ReadExactlyAsync(bytes,ct);var pending=StrictJson.Read<DeploymentPending>(bytes,65536);
-   if(pending.Target!=target||pending.ActionId==Guid.Empty||string.IsNullOrWhiteSpace(pending.OriginalUserSid)||pending.ClaimedAt.Offset!=TimeSpan.Zero)throw new InvalidDataException("Invalid pending deployment guard; inspect manually.");
+   if(pending.Target!=target||pending.ActionId==Guid.Empty||string.IsNullOrWhiteSpace(pending.OriginalUserSid)||pending.ClaimedAt.Offset!=TimeSpan.Zero||pending.BootSession==Guid.Empty)throw new InvalidDataException("Invalid pending deployment guard; inspect manually.");
    return pending;
   }
   catch(FileNotFoundException){return null;}catch(DirectoryNotFoundException){return null;}

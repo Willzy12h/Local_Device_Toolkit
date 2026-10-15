@@ -18,7 +18,7 @@ public sealed class RestorationInputWindow:Window
   panel.Children.Add(new TextBlock{Text="Restoration uses the exact saved prior value or absence. Machine changes require independent protected-journal evidence. Subsequent drift, policy changes or a different standard block restoration. Installers, language changes and app removal have no automatic undo.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,12,0,12)});
   panel.Children.Add(runs);var next=new Button{Content="Load next history page"};panel.Children.Add(next);panel.Children.Add(new TextBlock{Text="Original action",Margin=new Thickness(0,12,0,4)});panel.Children.Add(actions);panel.Children.Add(notice);panel.Children.Add(confirm);panel.Children.Add(add);panel.Children.Add(new Button{Content="Cancel",IsCancel=true});
   next.Click+=async(_,_)=>await LoadAsync();Loaded+=async(_,_)=>await LoadAsync();runs.SelectionChanged+=async(_,_)=>await SelectRunAsync();actions.SelectionChanged+=(_,_)=>Update();confirm.Checked+=(_,_)=>Update();confirm.Unchecked+=(_,_)=>Update();
-  add.Click+=(_,_)=>{if(actions.SelectedItem is SourceAction selected){Parameters=new(selected.Run.PlanId,selected.Action.Id,selected.Run.Id,true);DialogResult=true;}};
+  add.Click+=(_,_)=>{if(actions.SelectedItem is SourceAction selected){Parameters=new(selected.Run.PlanId,selected.Action.Id,selected.Run.Id,true,FixedSettingOperation.Definitions.Single(d=>d.OperationId==selected.Action.Request.OperationId).Setting);DialogResult=true;}};
  }
  async Task LoadAsync()
  {

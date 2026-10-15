@@ -17,7 +17,7 @@ public sealed class ReportsWindow : Window
  readonly ListBox history = new() { SelectionMode = SelectionMode.Extended, MinHeight = 120, MaxHeight = 210 };
  readonly ComboBox purpose = new() { ItemsSource = Enum.GetValues<ReportPurpose>(), SelectedIndex = 0, MinWidth = 180 };
  readonly TextBlock status = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 8) };
- readonly TextBox details = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+ readonly TextBox details = new() { MinHeight=180,MaxHeight=400, IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
  readonly DataGrid controls = new() { IsReadOnly = true, AutoGenerateColumns = false, MinHeight = 160, MaxHeight = 260 };
  readonly Button next = new() { Content = "Next history page", IsEnabled = false };
  readonly List<HistoryDiagnostic> diagnostics = [];
@@ -32,9 +32,9 @@ public sealed class ReportsWindow : Window
  public ReportsWindow(ReportService service, WorkbenchSession session, ManualReviewRecorder? recorder = null)
  {
   this.service = service; this.session = session; this.recorder = recorder;
-  Title = "Saved device reports and recorded reviews"; Width = 1120; Height = 850; MinWidth = 800; MinHeight = 600; FontSize = 14;
+  Title = "Saved device reports and recorded reviews"; Width = 1120; Height = 850; MinWidth = 800; MinHeight = 480; FontSize = 14;
   WindowStartupLocation = WindowStartupLocation.CenterOwner;
-  var panel = new DockPanel { Margin = new Thickness(20) }; Content = panel;
+  var panel = new DockPanel { Margin = new Thickness(20) }; Content = new ScrollViewer{Content=panel,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};
   var top = new StackPanel(); DockPanel.SetDock(top, Dock.Top); panel.Children.Add(top);
   top.Children.Add(new TextBlock { Text = "Saved evidence and snapshot reports", FontSize = 24 });
   top.Children.Add(new TextBlock { Text = "Select saved records with Ctrl/Shift. History pages use record IDs, not date order. Reports use only selected records; selection never executes or replays an action.", TextWrapping = TextWrapping.Wrap });

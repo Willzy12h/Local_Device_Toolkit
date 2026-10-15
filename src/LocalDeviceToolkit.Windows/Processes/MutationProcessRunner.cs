@@ -4,7 +4,7 @@ public enum MutationEnd { Exited,NotStarted,StillRunning,CancelledWhileRunning,O
 public sealed record MutationObservation(MutationEnd End,int? ProcessId,DateTimeOffset? ProcessStartedAt,int? ExitCode);
 public sealed class MutationProcessRunner
 {
- internal async Task<MutationObservation> StartAndObserveAsync(ProcessStartInfo start,TimeSpan timeout,CancellationToken stop)
+ internal async Task<MutationObservation> StartAndObserveAsync(ProcessStartInfo start,TimeSpan timeout,CancellationToken stop,Func<MutationObservation,Task>? onStarted=null)
  {
   stop.ThrowIfCancellationRequested();if(timeout<=TimeSpan.Zero||timeout>TimeSpan.FromHours(1))throw new ArgumentOutOfRangeException(nameof(timeout));
   start.UseShellExecute=false;start.CreateNoWindow=true;
@@ -17,6 +17,7 @@ public sealed class MutationProcessRunner
   try
   {
    created=new DateTimeOffset(process.StartTime.ToUniversalTime());
+   if(onStarted is not null)await onStarted(new(MutationEnd.StillRunning,pid,created,null));
    using var deadline=CancellationTokenSource.CreateLinkedTokenSource(stop);deadline.CancelAfter(timeout);
    try{await process.WaitForExitAsync(deadline.Token);return new(MutationEnd.Exited,pid,created,process.ExitCode);}
    catch(OperationCanceledException)

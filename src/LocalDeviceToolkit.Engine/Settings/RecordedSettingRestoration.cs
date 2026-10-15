@@ -5,7 +5,7 @@ using LocalDeviceToolkit.Engine.Evidence;
 using LocalDeviceToolkit.Engine.Planning;
 namespace LocalDeviceToolkit.Engine.Settings;
 
-public sealed record RecordedSettingRestorationParameters(Guid SourcePlanId,Guid SourceActionId,Guid SourceRunId,bool ConfirmManagedPolicyReview);
+public sealed record RecordedSettingRestorationParameters(Guid SourcePlanId,Guid SourceActionId,Guid SourceRunId,bool ConfirmManagedPolicyReview,SettingId? ExpectedSetting=null);
 public sealed record RecordedSettingSource(Guid SourcePlanId,Guid SourceActionId,Guid SourceRunId,DeviceContext Context,CatalogueIdentity Catalogue,SettingId Setting,OperationScope Scope,PrivilegeRequirement Privilege,SettingSnapshot Before,SettingSnapshot VerifiedAfter,ExecutionActor Actor,ActionOutcome Outcome,bool ProtectedJournal);
 /// <summary>Adapters must validate original plan/action/run/result linkage before returning a source. Presentation adapters may classify protected sources but cannot authorize a write.</summary>
 public interface IRecordedSettingSource
@@ -28,12 +28,13 @@ public sealed class RecordedSettingRestorationOperation(IRecordedSettingSource s
   {
    var value=StrictJson.Read<RecordedSettingRestorationParameters>(StrictJson.Bytes(parameters),4096);
    if(value.SourcePlanId==Guid.Empty||value.SourceActionId==Guid.Empty||value.SourceRunId==Guid.Empty)throw new PlanValidationException("Original plan, action and run identities are required.");
+   if(value.ExpectedSetting is not SettingId setting||!FixedSettingOperation.Definitions.Any(d=>d.Setting==setting))throw new PlanValidationException("A supported recorded setting identity is required.");
    return value;
   }
-  catch(Exception e) when(e is JsonException or InvalidDataException or InvalidOperationException){throw new PlanValidationException("Restoration accepts only original evidence identities and policy review confirmation.");}
+  catch(Exception e) when(e is JsonException or InvalidDataException or InvalidOperationException){throw new PlanValidationException("Restoration accepts only original evidence identities, a supported setting identity and policy review confirmation.");}
  }
  public string GetTargetKey(DeviceContext context,JsonElement parameters)
- {var p=ReadParameters(parameters);return context.DeviceId+"/"+p.SourcePlanId.ToString("D")+"/"+p.SourceActionId.ToString("D")+"/"+p.SourceRunId.ToString("D");}
+ {var p=ReadParameters(parameters);var definition=FixedSettingOperation.Definitions.Single(d=>d.Setting==p.ExpectedSetting);return (definition.Scope==OperationScope.CurrentUser?context.OriginalUserSid:context.DeviceId)+"/"+definition.Setting;}
  static T State<T>(SettingSnapshot snapshot)=>StrictJson.Read<T>(StrictJson.Bytes(snapshot.Value),4096);
  static bool SameValue(SettingSnapshot a,SettingSnapshot b)=>a.Setting==b.Setting&&CanonicalJson.Digest(a.Value)==CanonicalJson.Digest(b.Value);
  static void ValidateSnapshot(SettingSnapshot snapshot,SettingId setting)
@@ -53,6 +54,7 @@ public sealed class RecordedSettingRestorationOperation(IRecordedSettingSource s
  async Task<RecordedSettingSource> LoadAsync(DeviceContext context,RecordedSettingRestorationParameters parameters,CancellationToken ct)
  {
   var record=await source.LoadAsync(parameters,ct);
+  if(record.Setting!=parameters.ExpectedSetting)throw new PlanValidationException("The recorded source does not match the selected setting identity.");
   if(record.SourcePlanId!=parameters.SourcePlanId||record.SourceActionId!=parameters.SourceActionId||record.SourceRunId!=parameters.SourceRunId||record.Context!=context||record.Catalogue!=catalogue||record.Outcome!=ActionOutcome.AppliedVerified)throw new PlanValidationException("Original verified evidence does not match this device, catalogue and source identities.");
   var definition=FixedSettingOperation.Definitions.SingleOrDefault(d=>d.Setting==record.Setting)??throw new PlanValidationException("Unsupported restoration setting.");
   if(record.Scope!=definition.Scope||!Enum.IsDefined(record.Privilege)||record.Actor is null||record.Actor.ProcessId<=0||record.Actor.ProcessStartedAt.Offset!=TimeSpan.Zero)throw new PlanValidationException("Original execution scope or actor is invalid.");

@@ -16,6 +16,20 @@ public sealed class ProfileStoreTests : IDisposable
   Assert.Equal(profile.Id, reopened.Id); Assert.Equal(profile.Files[0], Assert.Single(reopened.Files)); Assert.Equal(CanonicalJson.Digest(profile with { Id = "" }), reopened.Id);
   await Assert.ThrowsAsync<IOException>(() => store.SaveAsync(profile, default));
  }
+ [Fact] public async Task Reimport_can_restore_a_lost_preview_cache_without_overwriting_protected_approval()
+ {
+  var profile=Profile();var store=new ApprovedProfileStore(root);var first=await store.SaveOrLoadIdenticalAsync(profile,default);var path=Path.Combine(root,profile.Id+".json");var bytes=await File.ReadAllBytesAsync(path);
+  var reopened=await new ApprovedProfileStore(root).SaveOrLoadIdenticalAsync(profile,default);Assert.Equal(first.Id,reopened.Id);Assert.Equal(bytes,await File.ReadAllBytesAsync(path));
+  await File.WriteAllBytesAsync(path,StrictJson.Bytes(profile with{ProductName="tampered"}));await Assert.ThrowsAsync<InvalidDataException>(()=>store.SaveOrLoadIdenticalAsync(profile,default));
+ }
+ [Fact] public async Task A_queued_profile_can_be_removed_after_its_preview_file_disappears()
+ {
+  var profile=Profile();var store=new ApprovedProfileStore(root);await store.SaveAsync(profile,default);
+  var registry=new LocalDeviceToolkit.Engine.Planning.OperationRegistry(LocalDeviceToolkit.Engine.Catalogue.WorkflowCatalogue.LoadShipped(),[new ApprovedPackageOperation(store,new FileDeploymentPendingStore(Path.Combine(root,"pending")),true)]);
+  var context=new DeviceContext("device","PC","S-1-5-21-123","engineer",false,new Version(10,0,26200),"x64",true);var queue=new LocalDeviceToolkit.Engine.Planning.DeploymentQueue(context,registry);
+  var request=new ActionRequest("apps.installation","packages.install",StrictJson.Value(new DeploymentParameters(profile.Id,Path.GetFullPath("media"))),new("setup","applications"));queue.Add(request);File.Delete(Path.Combine(root,profile.Id+".json"));
+  Assert.True(queue.Remove(queue.Requests[0]));Assert.Empty(queue.Requests);
+ }
  [Fact] public async Task Mutated_profile_and_unsafe_id_are_refused()
  {
   var store = new ApprovedProfileStore(root); var profile = Profile();

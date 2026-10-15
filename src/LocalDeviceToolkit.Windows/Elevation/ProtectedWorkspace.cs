@@ -15,6 +15,7 @@ public sealed class ProtectedWorkspace
   var parent=Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
   Root=Path.Combine(parent,"LocalDeviceToolkit");EvidenceStore.RefuseReparsePath(Root);
   CreateOrValidate(Root);
+  GrantRead(Root,FileSystemRights.Traverse|FileSystemRights.ReadPermissions|FileSystemRights.ReadAttributes,false);
  }
  static void CreateOrValidate(string path)
  {
@@ -34,10 +35,15 @@ public sealed class ProtectedWorkspace
   foreach(FileSystemAccessRule rule in actual.GetAccessRules(true,true,typeof(SecurityIdentifier)))
    if(rule.AccessControlType==AccessControlType.Allow&&(rule.FileSystemRights&write)!=0&&!rule.IdentityReference.Equals(Administrators)&&!rule.IdentityReference.Equals(SystemSid))throw new UnauthorizedAccessException("Protected storage permits an unexpected writer.");
  }
+ static void GrantRead(string path,FileSystemRights rights,bool inherit)
+ {
+  var directory=new DirectoryInfo(path);var security=directory.GetAccessControl(AccessControlSections.Access);
+  security.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid,null),rights,inherit?InheritanceFlags.ContainerInherit|InheritanceFlags.ObjectInherit:InheritanceFlags.None,PropagationFlags.None,AccessControlType.Allow));directory.SetAccessControl(security);
+ }
  public string Directory(string name)
  {
   if(name is not ("journals" or "scripts" or "staging" or "runtime" or "profiles"))throw new ArgumentException("Unregistered protected directory.");
-  var path=Path.Combine(Root,name);CreateOrValidate(path);return path;
+  var path=Path.Combine(Root,name);CreateOrValidate(path);if(name=="profiles")GrantRead(path,FileSystemRights.ReadAndExecute,true);return path;
  }
  public FileStream AcquireWriter()=>new(Path.Combine(Root,"device-writer.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None);
  public string StageReadOnlyScripts()

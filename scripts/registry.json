@@ -12,6 +12,12 @@
       "path": "settings/Invoke-UserSetting.ps1",
       "sha256": "ae894db9e66880bd277a4a59ca3304ae4d6b6084b7dd49ba2363d9653e413c43",
       "readOnly": false
+    },
+    {
+      "id": "deployments.msix",
+      "path": "deployments/Invoke-CurrentUserMsix.ps1",
+      "sha256": "6befa2bbef6be7c878e914eb2ee0ba123250315e59343102091f06ec1b3aae6b",
+      "readOnly": false
     }
   ]
 }

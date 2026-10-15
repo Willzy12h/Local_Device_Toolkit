@@ -12,6 +12,15 @@ public sealed class MutationProcessTests
   Assert.Equal(MutationEnd.StillRunning,result.End);Assert.NotNull(result.ProcessId);using var child=Process.GetProcessById(result.ProcessId!.Value);Assert.False(child.HasExited);
   using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(15));await child.WaitForExitAsync(deadline.Token);
  }
+ [Fact] public async Task Process_identity_is_reported_while_the_installer_is_still_running()
+ {
+  var start=OperatingSystem.IsWindows()?new ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell","v1.0","powershell.exe")):new ProcessStartInfo("/usr/bin/sleep");
+  if(OperatingSystem.IsWindows()){foreach(var arg in new[]{"-NoProfile","-NonInteractive","-Command","[System.Threading.Thread]::Sleep(2000)"})start.ArgumentList.Add(arg);}else start.ArgumentList.Add("2");
+  MutationObservation? identity=null;
+  var result=await new MutationProcessRunner().StartAndObserveAsync(start,TimeSpan.FromSeconds(10),default,observed=>
+  {identity=observed;Assert.NotNull(observed.ProcessStartedAt);using var child=Process.GetProcessById(observed.ProcessId!.Value);Assert.False(child.HasExited);return Task.CompletedTask;});
+  Assert.NotNull(identity);Assert.Equal(identity.ProcessId,result.ProcessId);Assert.Equal(identity.ProcessStartedAt,result.ProcessStartedAt);Assert.Equal(MutationEnd.Exited,result.End);
+ }
  [Fact] public async Task Cancelled_queue_does_not_start_a_mutation()
  {
   using var cancelled=new CancellationTokenSource();cancelled.Cancel();

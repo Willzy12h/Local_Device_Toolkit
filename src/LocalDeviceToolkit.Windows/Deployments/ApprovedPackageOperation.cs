@@ -4,14 +4,26 @@ using LocalDeviceToolkit.Engine.Deployments;
 using LocalDeviceToolkit.Engine.Execution;
 namespace LocalDeviceToolkit.Windows.Deployments;
 /// <summary>Reloads immutable approved profile IDs. User copies supply previews; the worker independently uses protected copies.</summary>
-public sealed class ApprovedPackageOperation(ApprovedProfileStore profiles,IDeploymentPendingStore pending):ILocalOperation
+public sealed class ApprovedPackageOperation(ApprovedProfileStore profiles,IDeploymentPendingStore pending,bool originalUserHost=false):ILocalOperation
 {
+ public static string UserPendingRoot=>Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"LocalDeviceToolkit","deployment-pending");
  public string Id=>"packages.install";
  public PackageDeploymentOperation Resolve(JsonElement parameters)
  {
   DeploymentParameters input;
   try{input=StrictJson.Read<DeploymentParameters>(StrictJson.Bytes(parameters),8192);}catch(Exception e) when(e is JsonException or InvalidDataException or InvalidOperationException){throw new PlanValidationException("Choose an approved profile and its local media directory.");}
-  try {var profile=profiles.LoadAsync(input.ProfileId,default).GetAwaiter().GetResult();return new([profile],new WindowsDeploymentBackend(),pending);}
+  try
+  {
+   var profile=profiles.LoadAsync(input.ProfileId,default).GetAwaiter().GetResult();
+   if(profile.Scope==OperationScope.CurrentUser)
+   {
+    if(!originalUserHost)throw new PlanValidationException("Original-user package operations cannot execute in the administrator worker.");
+    profile=ApprovedProfileAuthority.LoadAsync(profile.Id,default).GetAwaiter().GetResult();
+    if(profile.Scope!=OperationScope.CurrentUser)throw new PlanValidationException("The independent approved scope differs.");
+    return new([profile],new WindowsDeploymentBackend(),new FileDeploymentPendingStore(UserPendingRoot));
+   }
+   return new([profile],new WindowsDeploymentBackend(),pending);
+  }
   catch(Exception e) when(e is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException){throw new PlanValidationException("Approved deployment profile unavailable: "+e.Message);}
  }
  public void ValidateParameters(JsonElement parameters)=>Resolve(parameters).ValidateParameters(parameters);

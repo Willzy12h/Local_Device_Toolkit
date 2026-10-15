@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 namespace LocalDeviceToolkit.Windows.Deployments;
 public sealed class WindowsSignatureTrust:IPackageSignatureTrust
 {
@@ -28,7 +29,9 @@ public sealed class WindowsSignatureTrust:IPackageSignatureTrust
     if(certificate.Encoded==IntPtr.Zero||certificate.EncodedSize is <1 or >1048576)return new(false,"The verified signer certificate is invalid.");
     var bytes=new byte[certificate.EncodedSize];Marshal.Copy(certificate.Encoded,bytes,0,bytes.Length);
     var actual=Convert.ToHexString(SHA256.HashData(bytes));
-    return actual.Equals(expectedCertificateSha256,StringComparison.OrdinalIgnoreCase)?new(true,"Windows Authenticode chain and verified primary signer certificate SHA-256 match the approved pin."):new(false,"The Windows-verified signer certificate differs from the approved profile pin.");
+    using var signerCertificate=X509CertificateLoader.LoadCertificate(bytes);
+    var organizations=signerCertificate.SubjectName.EnumerateRelativeDistinguishedNames().Where(r=>!r.HasMultipleElements&&r.GetSingleElementType().Value=="2.5.4.10").Select(r=>r.GetSingleElementValue()).ToArray();var organization=organizations.Length==1?organizations[0]:null;
+    return actual.Equals(expectedCertificateSha256,StringComparison.OrdinalIgnoreCase)?new(true,"Windows Authenticode chain and verified primary signer certificate SHA-256 match the approved pin.",organization):new(false,"The Windows-verified signer certificate differs from the approved profile pin.");
    }
    finally{data.StateAction=2;_ = WinVerifyTrust(new IntPtr(-1),ref action,ref data);}
   }

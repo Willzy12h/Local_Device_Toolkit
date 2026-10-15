@@ -34,6 +34,13 @@ public sealed class ApprovedProfileStore
   if (!DeploymentProfiles.Hash(id) || id != id.ToLowerInvariant()) throw new ArgumentException("A lowercase SHA-256 profile ID is required.", nameof(id));
   EvidenceStore.RefuseReparsePath(Root); return Path.Combine(Root, id + ".json");
  }
+ public async Task<DeploymentProfile> SaveOrLoadIdenticalAsync(DeploymentProfile profile,CancellationToken ct)
+ {
+  Validate(profile);
+  try{await SaveAsync(profile,ct);return profile;}
+  catch(IOException) when(File.Exists(PathFor(profile.Id)))
+  {var existing=await LoadAsync(profile.Id,ct);if(CanonicalJson.Digest(existing)!=CanonicalJson.Digest(profile))throw new InvalidDataException("Existing approval does not match this complete profile.");return existing;}
+ }
  public async Task SaveAsync(DeploymentProfile profile, CancellationToken ct)
  {
   ct.ThrowIfCancellationRequested(); Validate(profile);

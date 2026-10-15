@@ -18,7 +18,7 @@ public partial class MainWindow:Window
  public MainWindow(WorkbenchSession session,IEvidenceStore evidence,LocalDeviceToolkit.Engine.Planning.PlanService plans,LocalDeviceToolkit.Engine.Execution.RunCoordinator coordinator,LocalDeviceToolkit.Engine.Reporting.ReportService reportService,LocalDeviceToolkit.Engine.Reporting.ManualReviewRecorder manualReviews)
  {
   this.reportService=reportService;this.manualReviews=manualReviews;
-  InitializeComponent();this.session=session;this.evidence=evidence;this.plans=plans;this.coordinator=coordinator;
+  InitializeComponent();Height=Math.Min(Height,SystemParameters.WorkArea.Height);Width=Math.Min(Width,SystemParameters.WorkArea.Width);this.session=session;this.evidence=evidence;this.plans=plans;this.coordinator=coordinator;
   var osLabel=!session.Context.IsWorkstation?"Windows Server":session.Context.OsVersion.Major==10&&session.Context.OsVersion.Build>=22000?"Windows 11":"Windows";
   DeviceHeader.Text=$"{session.Context.ComputerName}  •  {session.Context.OriginalUserName}  •  {osLabel} build {session.Context.OsVersion.Build} ({session.Context.Architecture})";
   StandardHeader.Text=$"Build standard {session.Catalogue.Identity.Version}  •  30 controls";
@@ -26,18 +26,31 @@ public partial class MainWindow:Window
   if(!LocalDeviceToolkit.Engine.Planning.PlanService.SupportedTarget(session.Context))SessionNotice.Text+=" Inventory only on this OS; local deployments require Windows 11 x64.";
   Closing+=(_,_)=>lifetime.Cancel();Render();
  }
- internal void RenderSmokePages(string output)
+ internal async Task RenderSmokePagesAsync(string output)
  {
   if(Directory.Exists(output)||File.Exists(output))throw new IOException("Smoke output must be a new directory.");Directory.CreateDirectory(output);
-  var pages=new[]{("home",(string?)null),("setup","windows"),("diagnostics","configuration"),("deployments",(string?)null),("reports",(string?)null)};
-  foreach(var (area,stage) in pages)
+  static void Save(Window window,string path)
   {
-   session.Navigate(area,stage);Render();UpdateLayout();
-   var bitmap=new System.Windows.Media.Imaging.RenderTargetBitmap((int)Math.Ceiling(ActualWidth),(int)Math.Ceiling(ActualHeight),96,96,System.Windows.Media.PixelFormats.Pbgra32);bitmap.Render(this);
-   var encoder=new System.Windows.Media.Imaging.PngBitmapEncoder();encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));using var file=new FileStream(Path.Combine(output,area+".png"),FileMode.CreateNew,FileAccess.Write,FileShare.None);encoder.Save(file);
+   window.UpdateLayout();
+   if(window.ActualWidth<1||window.ActualHeight<1)throw new InvalidOperationException("The actual native window has no rendered bounds.");
+   var bitmap=new System.Windows.Media.Imaging.RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth),(int)Math.Ceiling(window.ActualHeight),96,96,System.Windows.Media.PixelFormats.Pbgra32);bitmap.Render(window);
+   var encoder=new System.Windows.Media.Imaging.PngBitmapEncoder();encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));using var file=new FileStream(path,FileMode.CreateNew,FileAccess.Write,FileShare.None);encoder.Save(file);
+  }
+  var pages=new[]{("home",(string?)null),("setup","windows"),("diagnostics","configuration"),("deployments",(string?)null),("reports",(string?)null)};
+  foreach(var (area,stage) in pages){session.Navigate(area,stage);Render();await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle);Save(this,Path.Combine(output,area+".png"));}
+  Width=900;Height=520;
+  foreach(var (area,stage) in pages.Where(p=>p.Item1!="home")){session.Navigate(area,stage);Render();await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle);Save(this,Path.Combine(output,area+"-compact.png"));}
+  Window[] dialogs=[new ReportsWindow(reportService,session,manualReviews),new DeploymentInputWindow(new ApprovedProfileStore(ApprovedProfileStore.UserCacheRoot),(_,_,_)=>throw new InvalidOperationException("Smoke rendering cannot approve media.")),new RestorationInputWindow(evidence),new ManualReviewWindow(session.Catalogue),new ActionInputWindow(session.Workflows.ResolveTask("control.cfg-win-011"),session.Context)];
+  string[] names=["saved-reports","deployment-inputs","recorded-restoration","manual-review","setting-inputs"];
+  for(var index=0;index<dialogs.Length;index++)
+  {
+   var window=dialogs[index];window.Owner=this;window.Height=Math.Min(window.Height,SystemParameters.WorkArea.Height);window.Width=Math.Min(window.Width,SystemParameters.WorkArea.Width);window.Show();
+   await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle);Save(window,Path.Combine(output,names[index]+".png"));window.Height=Math.Max(window.MinHeight,Math.Min(520,window.Height));await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle);Save(window,Path.Combine(output,names[index]+"-compact.png"));window.Close();
   }
  }
  void Navigate_Click(object sender,RoutedEventArgs e){if(sender is FrameworkElement { Tag:string area }){session.Navigate(area);Search.Text="";Render();}}
+ void OpenApplications_Click(object sender,RoutedEventArgs e){session.Navigate("setup","applications");Render();}
+ void OpenWindowsSettings_Click(object sender,RoutedEventArgs e){session.Navigate("setup","windows");Render();}
  void Queue_Click(object sender,RoutedEventArgs e){session.Navigate("deployments");Render();}
  void Render()
  {
@@ -120,17 +133,20 @@ public partial class MainWindow:Window
    await session.AcceptProtectedCaptureAsync(response.Capture,origin,lifetime.Token);RefreshTasks();StatusLine.Text="Protected evidence saved. Original engineer and executing administrator are recorded separately.";
   });
  }
- void ReviewFix_Click(object sender,RoutedEventArgs e)
+ async void ReviewFix_Click(object sender,RoutedEventArgs e)
  {
   if(TaskList.SelectedItem is not TaskStatus task||task.Definition.OperationId is null||isBusy)return;
+  await RunUiAsync(()=>
+  {
   System.Text.Json.JsonElement parameters;
   if(task.Definition.OperationId=="settings.restore-recorded")
-  {var restore=new RestorationInputWindow(evidence){Owner=this};if(restore.ShowDialog()!=true)return;parameters=StrictJson.Value(restore.Parameters);}
+  {var restore=new RestorationInputWindow(evidence){Owner=this};if(restore.ShowDialog()!=true)return Task.CompletedTask;parameters=StrictJson.Value(restore.Parameters);}
   else if(task.Definition.OperationId=="packages.install")
-  {var deployment=new DeploymentInputWindow(new ApprovedProfileStore(ApprovedProfileStore.UserCacheRoot),ApproveProfileAsync,reconcile:ReconcileDeploymentAsync){Owner=this};if(deployment.ShowDialog()!=true)return;parameters=StrictJson.Value(deployment.Parameters);}
-  else {var form=new ActionInputWindow(task.Definition,session.Context) {Owner=this};if(form.ShowDialog()!=true)return;parameters=StrictJson.Value(form.Parameters);}
+  {var deployment=new DeploymentInputWindow(new ApprovedProfileStore(ApprovedProfileStore.UserCacheRoot),ApproveProfileAsync,reconcile:ReconcileDeploymentAsync){Owner=this};if(deployment.ShowDialog()!=true)return Task.CompletedTask;parameters=StrictJson.Value(deployment.Parameters);}
+  else {var form=new ActionInputWindow(task.Definition,session.Context) {Owner=this};if(form.ShowDialog()!=true)return Task.CompletedTask;parameters=StrictJson.Value(form.Parameters);}
   var request=new ActionRequest(task.Definition.Id,task.Definition.OperationId,parameters,session.Origin);
-  var added=session.Queue.Add(request);StatusLine.Text=added switch {LocalDeviceToolkit.Engine.Execution.QueueAddResult.AlreadyQueued=>"This identical change is already in the shared queue.",LocalDeviceToolkit.Engine.Execution.QueueAddResult.Added=>"Added to the shared queue. Review the complete plan before execution.",_=>"A different change already targets this setting; remove it explicitly before adding this request."};Render();
+  var added=session.Queue.Add(request);StatusLine.Text=added switch {LocalDeviceToolkit.Engine.Execution.QueueAddResult.AlreadyQueued=>"This identical change is already in the shared queue.",LocalDeviceToolkit.Engine.Execution.QueueAddResult.Added=>"Added to the shared queue. Review the complete plan before execution.",_=>"A different change already targets this setting; remove it explicitly before adding this request."};Render();return Task.CompletedTask;
+  });
  }
  async Task<DeploymentProfile> ApproveProfileAsync(DeploymentProfile profile,string directory,CancellationToken ct)
  {
@@ -141,11 +157,25 @@ public partial class MainWindow:Window
  }
  async Task<string> ReconcileDeploymentAsync(DeploymentParameters parameters,bool resolve,CancellationToken ct)
  {
+  var cached=await new ApprovedProfileStore(ApprovedProfileStore.UserCacheRoot).LoadAsync(parameters.ProfileId,ct);
+  if(cached.Scope==OperationScope.CurrentUser)
+  {
+   var operation=await UserPackageAsync(parameters,ct);Guid? receipt=null;
+   if(resolve)receipt=await operation.ResolveReviewedAsync(session.Context,StrictJson.Value(parameters),new(true,OperationScope.CurrentUser),evidence,ct);
+   var observed=await operation.ReconcileAsync(session.Context,StrictJson.Value(parameters),ct);
+   return "Original-user read-only reconciliation; no installer was launched.\n"+System.Text.Json.JsonSerializer.Serialize(new{observed,ResolutionReceipt=receipt},new System.Text.Json.JsonSerializerOptions(StrictJson.Options){WriteIndented=true});
+  }
   var broker=new UacWorkerBroker(Path.Combine(AppContext.BaseDirectory,"worker","LocalDeviceToolkit.Worker.exe"));
   var response=await broker.RequestAsync(new(1,resolve?WorkerMode.ResolveDeployment:WorkerMode.ReconcileDeployment,session.Context,null,null,null,DeploymentReconcile:parameters,DeploymentResolutionReview:resolve?new(true):null),ct);
   if(!response.Success||response.DeploymentStatus is null)throw new InvalidOperationException(response.Message);
   if(response.DeploymentResolution is not null)await evidence.SaveNewAsync(response.DeploymentResolution,ct);
   return response.Message+"\nObserved by: "+response.Actor.UserName+" ("+response.Actor.Sid+")\n"+System.Text.Json.JsonSerializer.Serialize(new{response.DeploymentStatus,ResolutionReceipt=response.DeploymentResolution},new System.Text.Json.JsonSerializerOptions(StrictJson.Options){WriteIndented=true});
+ }
+ static async Task<PackageDeploymentOperation> UserPackageAsync(DeploymentParameters input,CancellationToken ct)
+ {
+  var profile=await ApprovedProfileAuthority.LoadAsync(input.ProfileId,ct);
+  if(profile.Scope!=OperationScope.CurrentUser)throw new InvalidOperationException("The independently approved profile does not have original-user scope.");
+  return new([profile],new WindowsDeploymentBackend(),new FileDeploymentPendingStore(ApprovedPackageOperation.UserPendingRoot));
  }
  void UpdateQueueButtons(){ReviewQueue.IsEnabled=RemoveQueued.IsEnabled=ClearQueue.IsEnabled=!isBusy&&session.Queue.Requests.Count>0;}
  void RemoveQueued_Click(object sender,RoutedEventArgs e){if(isBusy)return;var index=QueueList.SelectedIndex;var requests=session.Queue.Requests;if(index>=0&&index<requests.Count)session.Queue.Remove(requests[index]);Render();}
@@ -157,6 +187,11 @@ public partial class MainWindow:Window
   if(session.Queue.Revision!=revision)throw new InvalidOperationException("The queue changed after review. Review a fresh plan.");
   var run=await coordinator.ExecuteAsync(plan,lifetime.Token);
   RunResults.Text=$"Run {run.Id:D} • Evidence complete: {run.EvidenceComplete}\nOriginal engineer: {run.Context.OriginalUserName}\n"+string.Join("\n\n",run.Results.Select(r=>$"{r.Outcome} • {r.Reason}\nExecuting account: {r.Actor?.UserName??"Not confirmed / not started"}\n{string.Join("; ",r.After.Select(o=>o.CheckId+" = "+o.Value?.GetRawText()))}"));
+  foreach(var action in plan.Actions.Where(a=>a.Request.OperationId=="packages.install"&&a.Readiness.Privilege==PrivilegeRequirement.CurrentUser&&run.Results.Any(r=>r.ActionId==a.Id)))
+  {
+   try{var input=StrictJson.Read<DeploymentParameters>(StrictJson.Bytes(action.Request.Parameters));await(await UserPackageAsync(input,CancellationToken.None)).AcknowledgeRecordedRunAsync(session.Context,action.Request.Parameters,run.Id,evidence,CancellationToken.None);}
+   catch(Exception error) when(error is IOException or UnauthorizedAccessException or LocalDeviceToolkit.Engine.Execution.PlanValidationException or EvidenceValidationException){RunResults.Text+="\nOriginal-user deployment guard retained; use read-only reconciliation before another attempt.";}
+  }
   session.Queue.Clear();Render();StatusLine.Text="Run recorded. Review each outcome; recheck the affected controls before handover. Uncertain operations are never replayed automatically.";
  });
  void History_Click(object sender,RoutedEventArgs e)

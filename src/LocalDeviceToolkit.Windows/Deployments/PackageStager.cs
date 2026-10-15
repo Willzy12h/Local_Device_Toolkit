@@ -9,6 +9,12 @@ public sealed class PackageStager(PackageVerifier verifier)
   // ProtectedWorkspace checks the real elevated token, owner and ACL; submitted paths never select machine staging.
   var root=new ProtectedWorkspace().Directory("staging");return StageIntoAsync(profile,source,root,ct);
  }
+ public async Task<VerifiedDeploymentFiles> StageUserAsync(DeploymentProfile profile,string source,LocalDeviceToolkit.Core.DeviceContext original,CancellationToken ct)
+ {
+  var current=await new LocalDeviceToolkit.Windows.Inspection.WindowsContextProvider().GetCurrentAsync(ct);
+  if(profile.Scope!=LocalDeviceToolkit.Core.OperationScope.CurrentUser||current.OriginalUserSid!=original.OriginalUserSid||current.DeviceId!=original.DeviceId)throw new UnauthorizedAccessException("MSIX staging must remain in the original user's profile on the reviewed device.");
+  var root=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"LocalDeviceToolkit","staging");return await StageIntoAsync(profile,source,root,ct);
+ }
  internal async Task<VerifiedDeploymentFiles> StageIntoAsync(DeploymentProfile profile,string source,string protectedRoot,CancellationToken ct)
  {
   await using var media=await verifier.OpenVerifiedAsync(profile,source,ct);

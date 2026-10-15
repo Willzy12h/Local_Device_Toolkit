@@ -28,7 +28,11 @@ public sealed class DeploymentPackageTests
  {using var temp=new Media();Assert.False(new WindowsSignatureTrust().Verify(Path.Combine(temp.Root,"setup.msi"),new string('B',64)).Accepted);}
  [Fact] public async Task Deep_unlisted_directory_tree_is_bounded_before_media_inspection()
  {using var temp=new Media();var path=temp.Root;for(var i=0;i<35;i++){path=Path.Combine(path,"nested");Directory.CreateDirectory(path);}await Assert.ThrowsAsync<InvalidDataException>(()=>new PackageVerifier(new Trust(),new Metadata()).OpenVerifiedAsync(temp.Profile,temp.Root,default));}
- sealed class Trust(bool accepted=true):IPackageSignatureTrust{public SignatureTrust Verify(string path,string expected)=>new(accepted,accepted?"fixture trust":"fixture trust rejected");}
+ [Fact] public async Task Oversized_media_is_refused_before_an_unbounded_hash_read()
+ {using var temp=new Media();using(var file=new FileStream(Path.Combine(temp.Root,"data.cab"),FileMode.Open,FileAccess.Write))file.SetLength(1025);using var stop=new CancellationTokenSource(TimeSpan.FromMilliseconds(100));await Assert.ThrowsAsync<InvalidDataException>(()=>new PackageVerifier(new Trust(),new Metadata(),maximumFileBytes:1024).OpenVerifiedAsync(temp.Profile,temp.Root,stop.Token));}
+ [Fact] public async Task Closed_Microsoft_vendor_profile_rejects_a_trusted_different_publisher()
+ {using var temp=new Media();File.Move(Path.Combine(temp.Root,"setup.msi"),Path.Combine(temp.Root,"setup.exe"));File.Delete(Path.Combine(temp.Root,"data.cab"));var p=temp.Profile with{Format=DeploymentFormat.OneDriveMachineExe,ControlId="APP-WIN-005",ProductIdentity="Microsoft.OneDrive",ProductName="Microsoft OneDrive",Publisher="Microsoft Corporation",EntryPoint="setup.exe",Files=new[]{temp.Profile.Files[0] with{RelativePath="setup.exe"}}};await Assert.ThrowsAsync<InvalidDataException>(()=>new PackageVerifier(new Trust(true,"Other Vendor"),new Metadata()).OpenVerifiedAsync(p,temp.Root,default));}
+ sealed class Trust(bool accepted=true,string? organization=null):IPackageSignatureTrust{public SignatureTrust Verify(string path,string expected)=>new(accepted,accepted?"fixture trust":"fixture trust rejected",organization);}
  sealed class Metadata(bool accepted=true):IInstallerMetadata{public void Validate(DeploymentProfile p,string path){if(!accepted)throw new InvalidDataException("Package metadata mismatch.");}}
  sealed class Media:IDisposable
  {

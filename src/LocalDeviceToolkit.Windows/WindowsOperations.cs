@@ -9,7 +9,7 @@ public static class WindowsOperations
   var users=Enum.GetValues<LocalDeviceToolkit.Engine.Settings.UserSettingId>().Select(id=>(LocalDeviceToolkit.Engine.Execution.ILocalOperation)new LocalDeviceToolkit.Engine.Settings.UserSettingOperation(id,new Settings.WindowsUserSettingsBackend(Path.Combine(AppContext.BaseDirectory,"scripts"))));
   var operations=settings.Concat(users);
   if(settingSource is not null)operations=operations.Append(new LocalDeviceToolkit.Engine.Settings.RecordedSettingRestorationOperation(new LocalDeviceToolkit.Engine.Settings.EvidenceRecordedSettingSource(settingSource,protectedAuthority),new Settings.WindowsSettingsBackend(originalProcessId),CatalogueLoader.LoadShipped().Identity));
-  if(deploymentProfiles is not null&&deploymentPending is not null)operations=operations.Append(new Deployments.ApprovedPackageOperation(deploymentProfiles,deploymentPending));
+  if(deploymentProfiles is not null&&deploymentPending is not null)operations=operations.Append(new Deployments.ApprovedPackageOperation(deploymentProfiles,deploymentPending,!protectedAuthority));
   return new(workflows,operations);
  }
 }

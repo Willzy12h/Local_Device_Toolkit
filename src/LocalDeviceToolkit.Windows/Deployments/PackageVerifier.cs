@@ -3,7 +3,7 @@ using LocalDeviceToolkit.Core;
 using LocalDeviceToolkit.Engine.Deployments;
 using LocalDeviceToolkit.Engine.Evidence;
 namespace LocalDeviceToolkit.Windows.Deployments;
-public sealed record SignatureTrust(bool Accepted,string Reason);
+public sealed record SignatureTrust(bool Accepted,string Reason,string? SignerOrganization=null);
 public interface IPackageSignatureTrust {SignatureTrust Verify(string path,string expectedCertificateSha256);}
 public interface IInstallerMetadata {void Validate(DeploymentProfile profile,string installerPath);}
 public sealed class VerifiedDeploymentFiles:IAsyncDisposable
@@ -12,10 +12,11 @@ public sealed class VerifiedDeploymentFiles:IAsyncDisposable
  internal VerifiedDeploymentFiles(string root,string digest,Dictionary<string,FileStream> files){Root=root;InputDigest=digest;Files=new System.Collections.ObjectModel.ReadOnlyDictionary<string,FileStream>(files);}
  public ValueTask DisposeAsync(){foreach(var file in Files.Values)file.Dispose();return ValueTask.CompletedTask;}
 }
-public sealed class PackageVerifier(IPackageSignatureTrust signatures,IInstallerMetadata metadata)
+public sealed class PackageVerifier(IPackageSignatureTrust signatures,IInstallerMetadata metadata,long maximumFileBytes=16L*1024*1024*1024,long maximumTotalBytes=64L*1024*1024*1024)
 {
  public async Task<VerifiedDeploymentFiles> OpenVerifiedAsync(DeploymentProfile profile,string directory,CancellationToken ct)
  {
+  if(maximumFileBytes is <1 or >16L*1024*1024*1024||maximumTotalBytes<maximumFileBytes||maximumTotalBytes>64L*1024*1024*1024)throw new ArgumentOutOfRangeException(nameof(maximumFileBytes));
   DeploymentProfiles.Validate(profile);directory=Path.GetFullPath(directory);
   if(directory.StartsWith(@"\\",StringComparison.Ordinal)||directory.StartsWith("//",StringComparison.Ordinal))throw new InvalidDataException("Use local media copied to a local disk, not a UNC share.");
   var files=new Dictionary<string,FileStream>(StringComparer.OrdinalIgnoreCase);
@@ -30,15 +31,17 @@ public sealed class PackageVerifier(IPackageSignatureTrust signatures,IInstaller
     {ct.ThrowIfCancellationRequested();if(++visitedEntries>4096)throw new InvalidDataException("Media directory entries exceed the inspection limit.");Safe(entry);if(Directory.Exists(entry))InspectTree(entry,depth+1);else{if(observed.Count>=256)throw new InvalidDataException("Media exceeds the approved file count.");observed.Add(Path.GetRelativePath(directory,entry).Replace(Path.DirectorySeparatorChar,'/'));}}
    }
    InspectTree(directory,0);if(!expected.SetEquals(observed))throw new InvalidDataException("The media file set differs from the complete approved manifest. Unlisted side-load files and missing dependencies are refused.");
-   var hashes=new List<object>();
+   var hashes=new List<object>();long totalBytes=0;
    foreach(var pin in profile.Files.OrderBy(f=>f.RelativePath,StringComparer.Ordinal))
    {
     ct.ThrowIfCancellationRequested();var path=Path.Combine(directory,pin.RelativePath.Replace('/',Path.DirectorySeparatorChar));Safe(path);
     var file=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read,65536,FileOptions.Asynchronous|FileOptions.SequentialScan);files.Add(pin.RelativePath,file);Safe(path);
+    totalBytes=checked(totalBytes+file.Length);if(file.Length>maximumFileBytes||totalBytes>maximumTotalBytes)throw new InvalidDataException("Approved media exceeds the bounded file or full-set inspection size.");
     var digest=Convert.ToHexString(await SHA256.HashDataAsync(file,ct));file.Position=0;
     if(!digest.Equals(pin.Sha256,StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("Hash mismatch for approved dependency: "+pin.RelativePath);
     if(pin.SignerCertificateSha256 is not null)
-    {var trust=signatures.Verify(path,pin.SignerCertificateSha256);if(!trust.Accepted)throw new InvalidDataException("Windows signature verification failed for "+pin.RelativePath+": "+trust.Reason);}
+    {var trust=signatures.Verify(path,pin.SignerCertificateSha256);if(!trust.Accepted)throw new InvalidDataException("Windows signature verification failed for "+pin.RelativePath+": "+trust.Reason);
+     if(pin.RelativePath.Equals(profile.EntryPoint,StringComparison.OrdinalIgnoreCase)&&profile.Format is DeploymentFormat.OneDriveMachineExe or DeploymentFormat.OfficeOdt&&trust.SignerOrganization!="Microsoft Corporation")throw new InvalidDataException("The closed Microsoft installer profile requires a Microsoft Corporation certificate organization from the actual Windows-verified signer.");}
     hashes.Add(new{pin.RelativePath,Sha256=digest,Signer=pin.SignerCertificateSha256?.ToUpperInvariant()});
    }
    metadata.Validate(profile,Path.Combine(directory,profile.EntryPoint.Replace('/',Path.DirectorySeparatorChar)));

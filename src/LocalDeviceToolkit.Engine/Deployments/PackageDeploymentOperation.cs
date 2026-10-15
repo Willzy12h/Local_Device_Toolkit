@@ -6,9 +6,9 @@ using LocalDeviceToolkit.Engine.Evidence;
 namespace LocalDeviceToolkit.Engine.Deployments;
 public sealed class PackageDeploymentOperation:ILocalOperation
 {
- readonly IReadOnlyDictionary<string,DeploymentProfile> profiles;readonly IDeploymentBackend backend;readonly IDeploymentPendingStore pending;
- public PackageDeploymentOperation(IEnumerable<DeploymentProfile> profiles,IDeploymentBackend backend,IDeploymentPendingStore pending)
- {this.profiles=profiles.Select(p=>{DeploymentProfiles.Validate(p);return p with{Files=Array.AsReadOnly(p.Files.ToArray())};}).ToDictionary(p=>p.Id,StringComparer.Ordinal);this.backend=backend;this.pending=pending;}
+ readonly IReadOnlyDictionary<string,DeploymentProfile> profiles;readonly IDeploymentBackend backend;readonly IDeploymentPendingStore pending;readonly TimeProvider clock;
+ public PackageDeploymentOperation(IEnumerable<DeploymentProfile> profiles,IDeploymentBackend backend,IDeploymentPendingStore pending,TimeProvider? clock=null)
+ {this.profiles=profiles.Select(p=>{DeploymentProfiles.Validate(p);return p with{Files=Array.AsReadOnly(p.Files.ToArray())};}).ToDictionary(p=>p.Id,StringComparer.Ordinal);this.backend=backend;this.pending=pending;this.clock=clock??TimeProvider.System;}
  public string Id=>"packages.install";
  DeploymentParameters Parameters(JsonElement value)
  {
@@ -19,8 +19,9 @@ public sealed class PackageDeploymentOperation:ILocalOperation
  public string GetTargetKey(DeviceContext context,JsonElement parameters)=>DeploymentTarget.For(context,profiles[Parameters(parameters).ProfileId]);
  public async Task<ActionReadiness> InspectAsync(DeviceContext context,JsonElement parameters,CancellationToken ct)
  {
-  var input=Parameters(parameters);var profile=profiles[input.ProfileId];ActionReadiness Ready(bool ready,string why)=>new(ready,profile.Scope,PrivilegeRequirement.Administrator,why);
+  var input=Parameters(parameters);var profile=profiles[input.ProfileId];ActionReadiness Ready(bool ready,string why)=>new(ready,profile.Scope,profile.Scope==OperationScope.CurrentUser?PrivilegeRequirement.CurrentUser:PrivilegeRequirement.Administrator,why);
   if(context.Architecture!="x64"||!context.IsWorkstation||context.OsVersion.Major!=10||context.OsVersion.Build<22000)return Ready(false,"Deployment is supported on Windows 11 x64 workstations only.");
+  if(profile.Scope==OperationScope.CurrentUser&&(await backend.GetActorAsync(ct)).Sid!=context.OriginalUserSid)return Ready(false,"MSIX must execute as the original engineer, never as an alternate administrator.");
   if(await pending.ReadAsync(DeploymentTarget.For(context,profile),ct)is not null)return Ready(false,"An earlier deployment may have started. Read-only reconciliation is required; automatic replay is blocked.");
   var check=await backend.CheckInputsAsync(profile,input.SourceDirectory,ct);return Ready(check.Accepted,check.Reason);
  }
@@ -29,7 +30,7 @@ public sealed class PackageDeploymentOperation:ILocalOperation
  {
   var check=await backend.CheckInputsAsync(p,source,ct);var inventory=await backend.ReadInventoryAsync(p,context,ct);
   if(!check.Accepted)throw new PlanValidationException(check.Reason);
-  return new(p.ControlId,Check,ObservationState.Known,StrictJson.Value(new DeploymentReviewState(p.Id,check.Digest,inventory)),"Verified package manifest and fresh installed-product inventory",DateTimeOffset.UtcNow,"Package input fingerprint and independent installed-state evidence; no installer is executed during review.");
+  return new(p.ControlId,Check,ObservationState.Known,StrictJson.Value(new DeploymentReviewState(p.Id,check.Digest,inventory)),"Verified package manifest and fresh installed-product inventory",clock.GetUtcNow(),"Package input fingerprint and independent installed-state evidence; no installer is executed during review.");
  }
  public async Task<IReadOnlyList<ProbeObservation>> CaptureBeforeAsync(DeviceContext context,JsonElement parameters,CancellationToken ct)
  {var input=Parameters(parameters);return new[]{await Snapshot(profiles[input.ProfileId],context,input.SourceDirectory,ct)};}
@@ -38,23 +39,27 @@ public sealed class PackageDeploymentOperation:ILocalOperation
   var input=Parameters(action.Request.Parameters);var profile=profiles[input.ProfileId];var readiness=await InspectAsync(context,action.Request.Parameters,ct);
   ActionResult Before(string reason)=>new(action.Id,ActionOutcome.Failed,null,"Not started: "+reason,[]);
   if(!readiness.CanExecute||action.Readiness.Scope!=readiness.Scope||action.Readiness.Privilege!=readiness.Privilege)return Before(readiness.Reason);
-  var actor=await backend.GetActorAsync(ct);if(!actor.IsElevated)return Before("An authenticated elevated actor is required for this machine profile.");
+  var actor=await backend.GetActorAsync(ct);if(profile.Scope==OperationScope.Machine&&!actor.IsElevated)return Before("An authenticated elevated actor is required for this machine profile.");
+  if(profile.Scope==OperationScope.CurrentUser&&actor.Sid!=context.OriginalUserSid)return Before("The actual current-user actor differs from the original engineer.");
   var fresh=await Snapshot(profile,context,input.SourceDirectory,ct);
   if(action.Before.Count!=1||ObservationFingerprint.Of(new[]{fresh})!=action.BeforeDigest)return Before("Package inputs or installed state changed after review.");
   var review=StrictJson.Read<DeploymentReviewState>(System.Text.Encoding.UTF8.GetBytes(fresh.Value!.Value.GetRawText()));
   await using var prepared=await backend.PrepareAsync(profile,input.SourceDirectory,context,ct);
   if(prepared.InputDigest!=review.InputDigest)return Before("The staged file set differs from the reviewed input fingerprint.");
   ct.ThrowIfCancellationRequested();
-  var claim=new DeploymentPending(action.Id,DeploymentTarget.For(context,profile),context.OriginalUserSid,DateTimeOffset.UtcNow,null);
+  if(action.Before.Count==0||clock.GetUtcNow()>=action.Before.Min(o=>o.CapturedAt).AddMinutes(10))return Before("The original reviewed state expired while staging; review a fresh plan.");
+  if(await backend.GetActorAsync(ct)!=actor)return Before("The actual execution actor changed while staging.");
+  var bootSession=await backend.GetBootSessionAsync(ct);
+  var claim=new DeploymentPending(action.Id,DeploymentTarget.For(context,profile),context.OriginalUserSid,clock.GetUtcNow(),null,bootSession);
   await pending.ClaimAsync(claim,ct); // Failure here propagates to the coordinator; mutation has not begun.
   try
   {
    if(ct.IsCancellationRequested){await pending.CompleteAsync(claim,CancellationToken.None);return new(action.Id,ActionOutcome.CancelledBeforeExecution,null,"Queue stopped before installer launch.",[]);}
-   var process=await prepared.StartAsync(ct);claim=claim with{Process=process};await pending.ObserveAsync(claim,CancellationToken.None);
+   var process=await prepared.StartAsync(async started=>{claim=claim with{Process=started};await pending.ObserveAsync(claim,CancellationToken.None);},ct);claim=claim with{Process=process};await pending.ObserveAsync(claim,CancellationToken.None);
    if(process.End==DeploymentProcessEnd.NotStarted){await pending.CompleteAsync(claim,CancellationToken.None);return new(action.Id,ActionOutcome.Failed,actor,"Windows refused to start the approved installer.",[]);}
    var inventory=await backend.ReadInventoryAsync(profile,context,CancellationToken.None);
    var verified=inventory.Available&&inventory.Present&&inventory.ProductIdentity==profile.ProductIdentity&&inventory.Version==profile.Version;
-   var after=new ProbeObservation(profile.ControlId,"deployment.installed-product",inventory.Available?ObservationState.Known:ObservationState.Unavailable,inventory.Available?StrictJson.Value(inventory):null,"Fresh installed-product query",DateTimeOffset.UtcNow,inventory.Reason);
+   var after=new ProbeObservation(profile.ControlId,"deployment.installed-product",inventory.Available?ObservationState.Known:ObservationState.Unavailable,inventory.Available?StrictJson.Value(inventory):null,"Fresh installed-product query",clock.GetUtcNow(),inventory.Reason);
    bool uncertain=process.End!=DeploymentProcessEnd.Exited||process.MayDetach;
    ActionOutcome outcome;
    if(uncertain)outcome=ActionOutcome.OutcomeUnknown;
@@ -62,7 +67,7 @@ public sealed class PackageDeploymentOperation:ILocalOperation
    else if(process.ExitCode==0)outcome=verified?ActionOutcome.AppliedVerified:ActionOutcome.AppliedUnverified;
    else outcome=ActionOutcome.Failed;
    // Keep the guard until the coordinator has durably persisted a matching run receipt.
-   var reason=uncertain?"Installer completion is uncertain; its process was never killed and no automatic retry is permitted. The persistent pending guard remains. Reconcile fresh product state and process identity; a detached bootstrapper may still have children.":outcome==ActionOutcome.RestartRequired?"The MSI reported restart required or restart initiated (3010/1641). No toolkit restart was requested.":verified&&outcome==ActionOutcome.AppliedVerified?"The installer exited successfully and fresh installed-product identity and exact version match the approved profile.":"Installer exit: "+process.ExitCode+". "+(verified?"Expected product observed.":"Expected installed-product identity and version were not independently confirmed. Inspect before a new reviewed attempt.");
+   var reason=uncertain?"Observed parent process: "+process.End+", exit code "+(process.ExitCode?.ToString()??"unavailable")+". Installer completion is uncertain; its process was never killed and no automatic retry is permitted. The persistent pending guard remains. Reconcile fresh product state and process identity; a detached bootstrapper may still have children.":outcome==ActionOutcome.RestartRequired?"The MSI reported restart required or restart initiated (3010/1641). No toolkit restart was requested.":verified&&outcome==ActionOutcome.AppliedVerified?"The installer exited successfully and fresh installed-product identity and exact version match the approved profile.":"Installer exit: "+process.ExitCode+". "+(verified?"Expected product observed.":"Expected installed-product identity and version were not independently confirmed. Inspect before a new reviewed attempt.");
    return new(action.Id,outcome,actor,reason,new[]{after});
   }
   catch(Exception error) when(error is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException or OperationCanceledException)
@@ -71,18 +76,21 @@ public sealed class PackageDeploymentOperation:ILocalOperation
  public async Task<DeploymentReconciliation> ReconcileAsync(DeviceContext context,JsonElement parameters,CancellationToken ct)
  {
   var input=Parameters(parameters);var profile=profiles[input.ProfileId];var guard=await pending.ReadAsync(DeploymentTarget.For(context,profile),ct);var inventory=await backend.ReadInventoryAsync(profile,context,ct);var status=await backend.InspectProcessAsync(guard?.Process,ct);
-  return new(guard,inventory,status,"Read-only reconciliation never launches or retries an installer, deletes a pending guard, or infers detached child completion from a parent PID. Installed-state evidence and process identity must be reviewed separately.");
+  Guid? currentBoot=null;
+  if(guard is {Process:null,BootSession:Guid previousBoot}&&previousBoot!=Guid.Empty){currentBoot=await backend.GetBootSessionAsync(ct);if(currentBoot is Guid observedBoot&&observedBoot!=Guid.Empty&&observedBoot!=previousBoot)status=DeploymentProcessStatus.NotRunning;}
+  return new(guard,inventory,status,"Read-only reconciliation never launches/retries an installer or deletes a pending guard. A positively different boot identity proves a prior-boot process ended; it does not prove installed state or vendor completion. Installed inventory, process identity and pending children remain separate evidence.",currentBoot);
  }
  public async Task<Guid> ResolveReviewedAsync(DeviceContext context,JsonElement parameters,DeploymentResolutionReview review,IEvidenceStore trustedEvidence,CancellationToken ct)
  {
   var input=Parameters(parameters);var profile=profiles[input.ProfileId];var guard=await pending.ReadAsync(DeploymentTarget.For(context,profile),ct)??throw new PlanValidationException("There is no pending deployment to resolve.");
   var actor=await backend.GetActorAsync(ct);
-  if(!actor.IsElevated||profile.Scope!=OperationScope.Machine||!review.ConfirmVendorCompletionAndNoPendingChildren)throw new PlanValidationException("Resolution requires the current authenticated device context, an elevated engineer and explicit review of vendor completion and pending children.");
-  var process=await backend.InspectProcessAsync(guard.Process,ct);
+  if((profile.Scope==OperationScope.Machine?!actor.IsElevated:actor.Sid!=context.OriginalUserSid||guard.OriginalUserSid!=context.OriginalUserSid)||!review.ConfirmVendorCompletionAndNoPendingChildren)throw new PlanValidationException("Resolution requires the authenticated device/original-user scope, the required execution privilege and explicit review of vendor completion and pending children.");
+  var process=await backend.InspectProcessAsync(guard.Process,ct);Guid? currentBoot=null;
+  if(guard.Process is null&&guard.BootSession is Guid previousBoot&&previousBoot!=Guid.Empty){currentBoot=await backend.GetBootSessionAsync(ct);if(currentBoot is Guid observedBoot&&observedBoot!=Guid.Empty&&observedBoot!=previousBoot)process=DeploymentProcessStatus.NotRunning;}
   if(process is not (DeploymentProcessStatus.NotRunning or DeploymentProcessStatus.IdentityMismatch))throw new PlanValidationException("The original installer is running or cannot be identified. Its pending guard cannot be cleared by a confirmation checkbox.");
   var inventory=await backend.ReadInventoryAsync(profile,context,ct);
   if(!inventory.Available||!inventory.Present||inventory.ProductIdentity!=profile.ProductIdentity||inventory.Version!=profile.Version)throw new PlanValidationException("Resolution requires fresh exact installed-product identity and version. Absent or incomplete inventory does not prove a safe retry.");
-  var resolution=new DeploymentResolution(Guid.NewGuid(),context,guard,inventory,process,actor,DateTimeOffset.UtcNow,true);
+  var resolution=new DeploymentResolution(Guid.NewGuid(),context,guard,inventory,process,actor,clock.GetUtcNow(),true,profile.Scope,currentBoot);
   await trustedEvidence.SaveNewAsync(EvidenceRecord.Create(resolution.Id,"deployment-resolution",context,resolution.ReviewedAt,StrictJson.Value(resolution)),ct);
   // Clearing the gate happens only after the separate explicit-review receipt is durable. This performs no device mutation.
   await pending.CompleteAsync(guard,ct);return resolution.Id;

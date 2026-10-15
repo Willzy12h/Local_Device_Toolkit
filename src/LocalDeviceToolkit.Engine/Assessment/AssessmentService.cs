@@ -18,7 +18,7 @@ public static class AssessmentService
     if(matches.Length!=1){missing=true;continue;}
     var observation=matches[0];
     if(observation.State==ObservationState.AccessDenied){denied=true;continue;}
-    if(observation.State!=ObservationState.Known||!observation.Value.HasValue){missing=true;continue;}
+    if(observation.State!=ObservationState.Known||!observation.Value.HasValue||!ProbeValues.Accepts(id,observation.Value.Value)){missing=true;continue;}
     bool? match=Match(id,observation.Value.Value);
     if(match is false)failed=true;else if(match is null)manual=true;
    }

@@ -93,7 +93,7 @@ public partial class App:Application
   else if(request.Mode==WorkerMode.ApproveDeploymentProfile)
   {
    var input=request.DeploymentApproval!;var check=await new WindowsDeploymentBackend().CheckInputsAsync(input.Profile,input.SourceDirectory,default);if(!check.Accepted)throw new PlanValidationException(check.Reason);
-   var approved=ApprovedProfileStore.WithContentId(input.Profile);await profileStore.SaveAsync(approved,default);
+   var approved=ApprovedProfileStore.WithContentId(input.Profile);approved=await profileStore.SaveOrLoadIdenticalAsync(approved,default);
    response=new(1,true,"Approved exact profile saved; no software was installed.",actor,null,null,approved);
   }
   else if(request.Mode is WorkerMode.ReconcileDeployment or WorkerMode.ResolveDeployment)

@@ -27,7 +27,7 @@ public sealed class OperationRegistry
  {
   Validate(request);var target=Find(request.OperationId).GetTargetKey(context,request.Parameters);
   if(string.IsNullOrWhiteSpace(target)||target.Length>256||target.Any(char.IsControl))throw new PlanValidationException("Invalid logical change target.");
-  return request.OperationId+"|"+target;
+  return target;
  }
 }
 public static class ObservationFingerprint
@@ -51,7 +51,12 @@ public sealed class DeploymentQueue(DeviceContext context,OperationRegistry regi
   var key=registry.Key(context,request);if(!requests.ContainsKey(key))throw new PlanValidationException("The conflicting queue target no longer exists.");
   requests[key]=Clone(request);Revision++;
  }
- public bool Remove(ActionRequest request){if(!requests.Remove(registry.Key(context,request)))return false;Revision++;return true;}
+ public bool Remove(ActionRequest request)
+ {
+  // Removal must remain available when referenced media/profile files have disappeared. It grants no execution authority.
+  var digest=CanonicalJson.Digest(request);var key=requests.Where(pair=>CanonicalJson.Digest(pair.Value)==digest).Select(pair=>pair.Key).FirstOrDefault();
+  if(key is null||!requests.Remove(key))return false;Revision++;return true;
+ }
  public void Clear(){if(requests.Count==0)return;requests.Clear();Revision++;}
 }
 public sealed class PlanService(OperationRegistry registry,TimeProvider clock)
@@ -81,7 +86,7 @@ public sealed class PlanService(OperationRegistry registry,TimeProvider clock)
  }
  public static void ValidateBefore(IReadOnlyList<ProbeObservation> before,DateTimeOffset now)
  {
-  if(before.Count==0||before.Any(o=>o is null||o.State!=ObservationState.Known||(!o.Value.HasValue||o.Value.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)||o.CapturedAt.Offset!=TimeSpan.Zero||o.CapturedAt>now.AddMinutes(2)||o.CapturedAt<now.AddMinutes(-10))||before.Select(o=>o.ControlId+"|"+o.CheckId).Distinct(StringComparer.Ordinal).Count()!=before.Count)
+  if(before is null||before.Count==0||before.Any(o=>o is null||o.State!=ObservationState.Known||(!o.Value.HasValue||o.Value.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)||o.CapturedAt.Offset!=TimeSpan.Zero||o.CapturedAt>now.AddMinutes(2)||o.CapturedAt<now.AddMinutes(-10))||before.Select(o=>o.ControlId+"|"+o.CheckId).Distinct(StringComparer.Ordinal).Count()!=before.Count)
    throw new PlanValidationException("Complete, current before-state evidence is required.");
  }
  List<string> BaseReasons(ReviewedPlan plan,DeviceContext context,CatalogueIdentity catalogue,DateTimeOffset now)
@@ -109,6 +114,7 @@ public sealed class PlanService(OperationRegistry registry,TimeProvider clock)
  public PlanValidation Validate(ReviewedPlan plan,DeviceContext context,CatalogueIdentity catalogue,IReadOnlyDictionary<Guid,string> before,DateTimeOffset now)
  {
   var reasons=BaseReasons(plan,context,catalogue,now);
+  if(reasons.Count!=0)return new(false,reasons.AsReadOnly());
   foreach(var action in plan.Actions)
    if(!before.TryGetValue(action.Id,out var digest)||digest!=action.BeforeDigest)reasons.Add("The observed before state has changed.");
   return new(reasons.Count==0,reasons.AsReadOnly());
@@ -116,6 +122,7 @@ public sealed class PlanService(OperationRegistry registry,TimeProvider clock)
  public PlanValidation ValidateAction(ReviewedPlan plan,PlannedAction action,DeviceContext context,CatalogueIdentity catalogue,IReadOnlyList<ProbeObservation> before,DateTimeOffset now)
  {
   var reasons=BaseReasons(plan,context,catalogue,now);
+  if(reasons.Count!=0)return new(false,reasons.AsReadOnly());
   if(!plan.Actions.Any(a=>a.Id==action.Id&&CanonicalJson.Digest(a)==CanonicalJson.Digest(action)))reasons.Add("The requested action is not the reviewed action.");
   try{ValidateBefore(before,now);if(ObservationFingerprint.Of(before)!=action.BeforeDigest)reasons.Add("The target changed after review.");}
   catch(PlanValidationException e){reasons.Add(e.Message);}

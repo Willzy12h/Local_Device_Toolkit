@@ -17,7 +17,7 @@ public sealed class DeploymentInputWindow : Window
  readonly Func<DeploymentParameters, bool, CancellationToken, Task<string>>? reconcile;
  readonly ComboBox profiles = new() { MinWidth = 320, DisplayMemberPath = "Display", MaxDropDownHeight = 240 };
  readonly TextBox source = new() { MaxLength = 2048, MinWidth = 300 };
- readonly TextBox metadata = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MinHeight = 180 };
+ readonly TextBox metadata = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MinHeight = 180, MaxHeight=360 };
  readonly TextBlock status = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 10) };
  readonly Button accept = new() { Content = "Use selected profile and media", Padding = new Thickness(10), Margin = new Thickness(4), IsEnabled = false };
  bool busy;
@@ -25,11 +25,11 @@ public sealed class DeploymentInputWindow : Window
  public DeploymentInputWindow(ApprovedProfileStore cache, Func<DeploymentProfile, string, CancellationToken, Task<DeploymentProfile>> approveImport, string? controlId = null, Func<DeploymentParameters, bool, CancellationToken, Task<string>>? reconcile = null)
  {
   this.cache = cache; this.approveImport = approveImport; this.controlId = controlId; this.reconcile = reconcile;
-  Title = "Select deployment profile and local media"; Width = 880; Height = 780; MinWidth = 650; MinHeight = 560; FontSize = 14; WindowStartupLocation = WindowStartupLocation.CenterOwner;
-  var panel = new DockPanel { Margin = new Thickness(24) }; Content = panel;
+  Title = "Select deployment profile and local media"; Width = 880; Height = 780; MinWidth = 650; MinHeight = 480; FontSize = 14; WindowStartupLocation = WindowStartupLocation.CenterOwner;
+  var panel = new DockPanel { Margin = new Thickness(24) }; Content = new ScrollViewer{Content=panel,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};
   var top = new StackPanel(); DockPanel.SetDock(top, Dock.Top); panel.Children.Add(top);
   top.Children.Add(new TextBlock { Text = "Deployment inputs", FontSize = 24 });
-  top.Children.Add(new TextBlock { Text = "Choose a cached profile and the complete matching local installer folder. Machine MSI and the reviewed per-machine Microsoft OneDrive setup EXE are supported on Windows 11 x64. The independent administrator worker must find the exact approved profile in its protected store before any deployment can run.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 10) });
+  top.Children.Add(new TextBlock { Text = "Choose a cached profile and the complete matching local installer folder. Supported profiles are machine MSI, per-machine OneDrive, local Office Deployment Tool media and original-user MSIX/Appx packages or bundles. Profiles require separate administrator approval. MSIX installation and reconciliation stay in the original engineer account; machine actions use the protected worker.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 10) });
   Label(top, "Cached profile selection (the user cache does not authorize installation)", profiles);
   var tools = new WrapPanel(); top.Children.Add(tools); Button(tools, "Reload cached profiles", () => ReloadAsync(null)); Button(tools, "Import profile JSON for administrator approval", ImportAsync); Button(tools, "Profile JSON requirements", ShowSchemaAsync);
   Label(top, "Local media folder (all and only the manifest files)", source);
@@ -106,7 +106,7 @@ public sealed class DeploymentInputWindow : Window
  async Task ReconcileAsync(bool resolve)
  {
   if (reconcile is null || SelectedProfile is null) throw new InvalidOperationException("Select a cached profile to reconcile.");
-  var parameters = new DeploymentParameters(SelectedProfile.Id, ValidateDirectory());
+  var parameters = new DeploymentParameters(SelectedProfile.Id, Directory.Exists(source.Text)?ValidateDirectory():Path.GetTempPath());
   if (resolve && MessageBox.Show(this,
       "Confirm you have independently reviewed vendor completion and verified that the installer and all detached child processes have finished. This requests administrator review to resolve the deployment replay guard only. It does not install, restart, or replay software and does not change the original run outcome. Continue?",
       "Resolve reviewed deployment completion", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
@@ -119,12 +119,14 @@ public sealed class DeploymentInputWindow : Window
   var text = new StringBuilder();
   text.AppendLine($"Content ID: {profile.Id}\nControl: {profile.ControlId}\nProduct: {profile.ProductName}\nProduct identity / MSI ProductCode: {profile.ProductIdentity}\nVersion: {profile.Version}\nPublisher: {profile.Publisher}\nFormat: {profile.Format}\nScope: {profile.Scope}\nArchitecture: {profile.Architecture}\nEntry point: {profile.EntryPoint}\nTimeout: {profile.Timeout}\n\nComplete approved file manifest:");
   foreach (var file in profile.Files) text.AppendLine($"{file.RelativePath}\n  SHA-256: {file.Sha256}\n  Signing certificate SHA-256: {file.SignerCertificateSha256 ?? "No certificate pin for this dependency"}");
+  if(profile.Msix is not null)text.AppendLine("MSIX identity: "+JsonSerializer.Serialize(profile.Msix));
+  if(profile.Office is not null)text.AppendLine("Office product, channel, language and licensing/EULA authorization: "+JsonSerializer.Serialize(profile.Office));
   text.AppendLine("\nFile hashes, signer trust and installer metadata are independently checked against actual media. Inventory does not prove licensing or sign-in. No command line or installer argument overrides are accepted."); return text.ToString();
  }
  Task ShowSchemaAsync()
  {
-  var text = "Provide a proposed deployment profile JSON using the exact fields below (camelCase, no extra/duplicate fields, <=256 KiB). Enter an empty id to compute its content SHA-256; a supplied id must match the complete profile with id empty. All files in the source folder must appear once in files; relative paths must be safe. Use actual vendor-reviewed metadata and independently obtained hashes/certificate pins. The toolkit does not generate an approved profile from arbitrary installer input.\n\n" +
-   "{\n  \"id\": \"\",\n  \"controlId\": \"APP-WIN-001\",\n  \"format\": \"MachineMsi\",\n  \"productIdentity\": \"{EXACT-MSI-PRODUCT-CODE-GUID}\",\n  \"version\": \"1.2.3\",\n  \"productName\": \"Vendor product name\",\n  \"publisher\": \"Vendor publisher\",\n  \"scope\": \"Machine\",\n  \"architecture\": \"x64\",\n  \"entryPoint\": \"setup.msi\",\n  \"files\": [{\"relativePath\":\"setup.msi\",\"sha256\":\"64 hex characters\",\"signerCertificateSha256\":\"64 hex characters\"}],\n  \"timeout\": \"00:20:00\"\n}\n\nOneDriveMachineExe is the only EXE format. It requires control APP-WIN-005, productIdentity Microsoft.OneDrive, publisher Microsoft Corporation, and one pinned signed setup.exe. Timeout must be greater than zero and at most one hour. Profile import requests administrator review and writes configuration only; installation is a separate action.";
+  var text = "Provide a proposed deployment profile JSON using the exact fields below (camelCase, no extra/duplicate fields, <=256 KiB). Enter an empty id to compute its content SHA-256; a supplied id must match the complete profile with id empty. All files in the source folder must appear once in files; relative paths must be safe. Use actual vendor-reviewed metadata and independently obtained hashes/certificate pins. Use tools/New-DeploymentProfile.ps1 to create a draft from supported local MSI or OneDrive media, or supply the reviewed format-specific JSON. A draft is not approval.\n\n" +
+   "{\n  \"id\": \"\",\n  \"controlId\": \"APP-WIN-001\",\n  \"format\": \"MachineMsi\",\n  \"productIdentity\": \"{EXACT-MSI-PRODUCT-CODE-GUID}\",\n  \"version\": \"1.2.3\",\n  \"productName\": \"Vendor product name\",\n  \"publisher\": \"Vendor publisher\",\n  \"scope\": \"Machine\",\n  \"architecture\": \"x64\",\n  \"entryPoint\": \"setup.msi\",\n  \"files\": [{\"relativePath\":\"setup.msi\",\"sha256\":\"64 hex characters\",\"signerCertificateSha256\":\"64 hex characters\"}],\n  \"timeout\": \"00:20:00\"\n}\n\nOfficeOdt requires Microsoft Office Deployment Tool, exact target Office version, full offline Office media and office={productId:O365BusinessRetail or O365ProPlusRetail,channel:MonthlyEnterprise,language:en-gb,licenseAuthorized:true}. No activation or license keys are supplied. CurrentUserMsix uses scope CurrentUser and msix={name,publisher,familyName}; family must derive from the exact publisher/name, with signed package dependencies. Both optional fields must be null for other formats. OneDriveMachineExe is the only standalone vendor EXE format. It requires control APP-WIN-005, productIdentity Microsoft.OneDrive, publisher Microsoft Corporation, and one pinned signed setup.exe. Timeout must be greater than zero and at most one hour. Profile import requests administrator review and writes configuration only; installation is a separate action.";
   new Window { Owner = this, Title = "Required proposed profile JSON schema", Width = 760, Height = 660, WindowStartupLocation = WindowStartupLocation.CenterOwner, Content = new TextBox { Text = text, IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(20) } }.ShowDialog();
   return Task.CompletedTask;
  }
@@ -135,7 +137,7 @@ public sealed class DeploymentInputWindow : Window
    Title = "Review full proposed deployment profile"; Width = 800; Height = 680; WindowStartupLocation = WindowStartupLocation.CenterOwner;
    var panel = new DockPanel { Margin = new Thickness(20) }; Content = panel;
    var bottom = new StackPanel(); DockPanel.SetDock(bottom, Dock.Bottom); panel.Children.Add(bottom);
-   var confirmed = new CheckBox { Content = new TextBlock { Text = "I reviewed the product metadata, complete file hashes, signing certificate pins and source folder. Request administrator approval of this profile; no software is installed by import.", TextWrapping = TextWrapping.Wrap }, Margin = new Thickness(0, 10, 0, 10) }; bottom.Children.Add(confirmed);
+   var confirmed = new CheckBox { Content = new TextBlock { Text = "I reviewed client authorization, licensing, effective GPO/MDM policy, vendor guidance, product metadata, complete file hashes, signing certificate pins and source folder. Request administrator approval of this profile; no software is installed by import.", TextWrapping = TextWrapping.Wrap }, Margin = new Thickness(0, 10, 0, 10) }; bottom.Children.Add(confirmed);
    var buttons = new WrapPanel(); bottom.Children.Add(buttons); var approve = new System.Windows.Controls.Button { Content = "Request administrator approval", IsEnabled = false, Padding = new Thickness(10) }; buttons.Children.Add(approve); buttons.Children.Add(new System.Windows.Controls.Button { Content = "Cancel", IsCancel = true, Padding = new Thickness(10) });
    confirmed.Checked += (_, _) => approve.IsEnabled = true; confirmed.Unchecked += (_, _) => approve.IsEnabled = false; approve.Click += (_, _) => DialogResult = true;
    panel.Children.Add(new TextBox { Text = "Source folder: " + directory + "\n\n" + Describe(profile), IsReadOnly = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });

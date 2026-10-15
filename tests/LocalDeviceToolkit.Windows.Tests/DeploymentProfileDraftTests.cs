@@ -15,6 +15,7 @@ public sealed class DeploymentProfileDraftTests:IDisposable
  static async Task<(int Exit,string Output)> PowerShell(params string[] arguments)
  {
   var start=new ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell","v1.0","powershell.exe")){UseShellExecute=false,RedirectStandardOutput=true,RedirectStandardError=true,CreateNoWindow=true};
+  start.Environment["TOOLKIT_DRAFT_SCRIPT"]=Script;
   foreach(var argument in new[]{"-NoProfile","-NonInteractive"}.Concat(arguments))start.ArgumentList.Add(argument);
   using var process=Process.Start(start)!;var output=process.StandardOutput.ReadToEndAsync();var error=process.StandardError.ReadToEndAsync();
   using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(45));try{await process.WaitForExitAsync(timeout.Token);}catch(OperationCanceledException){process.Kill(true);throw;}
@@ -43,6 +44,117 @@ public sealed class DeploymentProfileDraftTests:IDisposable
   var source=Path.Combine(root,"source");Directory.CreateDirectory(source);var installer=Path.Combine(source,"setup.msi");var bytes=new byte[]{1,2,3,4};await File.WriteAllBytesAsync(installer,bytes);var output=Path.Combine(root,"profile.json");
   var result=await PowerShell("-File",Script,"-SourceDirectory",source,"-EntryPoint","setup.msi","-ControlId","APP-WIN-001","-Format","MachineMsi","-OutputPath",output);
   Assert.NotEqual(0,result.Exit);Assert.Contains("Authenticode",result.Output,StringComparison.OrdinalIgnoreCase);Assert.False(File.Exists(output));Assert.Equal(bytes,await File.ReadAllBytesAsync(installer));
+ }
+ [Fact] public async Task Actual_msi_metadata_reader_uses_read_only_COM_against_a_synthetic_database()
+ {
+  if(!OperatingSystem.IsWindows())return;
+  Directory.CreateDirectory(root);var harness=Path.Combine(root,"Read-MsiFixture.ps1");
+  await File.WriteAllTextAsync(harness,"""
+$ErrorActionPreference='Stop'
+Set-StrictMode -Version Latest
+$t=$null;$e=$null
+$ast=[Management.Automation.Language.Parser]::ParseFile($env:TOOLKIT_DRAFT_SCRIPT,[ref]$t,[ref]$e)
+if($e.Count){throw 'Production helper does not parse'}
+foreach($name in @('Release-ComObject','Read-MsiProperty')){
+ $definition=$ast.Find({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name},$true)
+ . ([scriptblock]::Create($definition.Extent.Text))
+}
+$path=Join-Path $PSScriptRoot 'synthetic-metadata.msi'
+$installer=$null;$database=$null;$summary=$null
+try {
+ $installer=New-Object -ComObject WindowsInstaller.Installer
+ # Creating the fixture never launches an installer or runs MSI actions.
+ $database=$installer.OpenDatabase($path,3)
+ $view=$database.OpenView('CREATE TABLE `Property` (`Property` CHAR(72) NOT NULL, `Value` CHAR(0) LOCALIZABLE PRIMARY KEY `Property`)')
+ try{$view.Execute();$view.Close()}finally{Release-ComObject $view}
+ foreach($query in @(
+  'INSERT INTO `Property` (`Property`,`Value`) VALUES (''ProductCode'',''{11111111-2222-3333-4444-555555555555}'')',
+  'INSERT INTO `Property` (`Property`,`Value`) VALUES (''ProductVersion'',''1.2.3'')',
+  'INSERT INTO `Property` (`Property`,`Value`) VALUES (''ProductName'',''Synthetic metadata fixture'')',
+  'INSERT INTO `Property` (`Property`,`Value`) VALUES (''Manufacturer'',''Synthetic publisher'')')){
+  $view=$database.OpenView($query)
+  try{$view.Execute();$view.Close()}finally{Release-ComObject $view}
+ }
+ $summary=$database.SummaryInformation(20);$summary.Property(7)='x64;1033';$summary.Persist()
+ Release-ComObject $summary;$summary=$null
+ $database.Commit();Release-ComObject $database;$database=$null
+ $before=(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+ $database=$installer.OpenDatabase($path,0)
+ if((Read-MsiProperty $database 'SELECT `Value` FROM `Property` WHERE `Property` = ''ProductVersion''') -cne '1.2.3'){throw 'Wrong version'}
+ if((Read-MsiProperty $database 'SELECT `Value` FROM `Property` WHERE `Property` = ''ProductCode''') -cne '{11111111-2222-3333-4444-555555555555}'){throw 'Wrong product code'}
+ if((Read-MsiProperty $database 'SELECT `Value` FROM `Property` WHERE `Property` = ''ProductName''') -cne 'Synthetic metadata fixture'){throw 'Wrong name'}
+ if((Read-MsiProperty $database 'SELECT `Value` FROM `Property` WHERE `Property` = ''Manufacturer''') -cne 'Synthetic publisher'){throw 'Wrong publisher'}
+ $summary=$database.SummaryInformation(0)
+ if(([string]$summary.Property(7)).Split(';')[0] -cne 'x64'){throw 'Wrong architecture'}
+ Release-ComObject $summary;$summary=$null;Release-ComObject $database;$database=$null
+ if((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -cne $before){throw 'Read-only metadata queries changed fixture bytes'}
+}finally{Release-ComObject $summary;Release-ComObject $database;Release-ComObject $installer}
+""");
+  var result=await PowerShell("-File",harness);Assert.True(result.Exit==0,result.Output);
+ }
+ [Fact] public async Task Actual_msix_metadata_reader_checks_package_bundle_and_bounded_xml()
+ {
+  if(!OperatingSystem.IsWindows())return;
+  Directory.CreateDirectory(root);var harness=Path.Combine(root,"Read-MsixFixture.ps1");
+  await File.WriteAllTextAsync(harness,"""
+$ErrorActionPreference='Stop'
+Set-StrictMode -Version Latest
+Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$t=$null;$e=$null
+$ast=[Management.Automation.Language.Parser]::ParseFile($env:TOOLKIT_DRAFT_SCRIPT,[ref]$t,[ref]$e)
+if($e.Count){throw ($e|Out-String)}
+foreach($name in @('Assert-SafeRelativePath','Get-MsixFamilyName','Read-MsixMetadata')){
+ $definition=$ast.Find({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name},$true)
+ . ([scriptblock]::Create($definition.Extent.Text))
+}
+$root=Join-Path ([IO.Path]::GetTempPath()) ('msix-draft-'+[Guid]::NewGuid().ToString('N'))
+[void][IO.Directory]::CreateDirectory($root)
+try{
+ function New-Package([string]$Leaf,[string]$Xml,[bool]$Bundle=$false){
+  $path=Join-Path $root $Leaf
+  $stream=[IO.File]::Open($path,[IO.FileMode]::CreateNew,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+  $zip=New-Object IO.Compression.ZipArchive($stream,[IO.Compression.ZipArchiveMode]::Create,$false)
+  try{
+   $name=if($Bundle){'AppxMetadata/AppxBundleManifest.xml'}else{'AppxManifest.xml'}
+   $entry=$zip.CreateEntry($name);$writer=New-Object IO.StreamWriter($entry.Open())
+   try{$writer.Write($Xml)}finally{$writer.Dispose()}
+   if($Bundle){$entry=$zip.CreateEntry('application.msix');$nested=$entry.Open();$nested.Dispose()}
+  }finally{$zip.Dispose();$stream.Dispose()}
+  return $path
+ }
+ $xml='<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"><Identity Name="Fixture.App" Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" Version="1.2.3.4" ProcessorArchitecture="x64"/></Package>'
+ $path=New-Package 'good.msix' $xml
+ $metadata=Read-MsixMetadata $path
+ if($metadata.FamilyName -cne 'Fixture.App_8wekyb3d8bbwe' -or $metadata.Version -cne '1.2.3.4'){throw 'Wrong package metadata'}
+ $bundle='<Bundle><Identity Name="Fixture.App" Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" Version="1.2.3.4"/><Packages><Package Architecture="x64" Type="application" FileName="application.msix"/></Packages></Bundle>'
+ $path=New-Package 'good.msixbundle' $bundle $true
+ if((Read-MsixMetadata $path).FamilyName -cne 'Fixture.App_8wekyb3d8bbwe'){throw 'Wrong bundle metadata'}
+ foreach($bad in @($xml.Replace('x64','arm64'),('<!DOCTYPE Package [<!ENTITY bomb "invalid">]>'+$xml),('<Package>' + ('x'*1048576) + '</Package>'))){
+  $path=New-Package ([Guid]::NewGuid().ToString('N')+'.msix') $bad
+  $rejected=$false;try{[void](Read-MsixMetadata $path)}catch{$rejected=$true}
+  if(-not $rejected){throw 'Unsafe manifest accepted'}
+ }
+ 'PASS: real synthetic ZIP package/bundle identities and Microsoft family; arm64/DTD/oversized manifest rejected; no extraction or installer execution.'
+}finally{[IO.Directory]::Delete($root,$true)}
+
+""");
+  var result=await PowerShell("-File",harness);Assert.True(result.Exit==0,result.Output);
+ }
+ [Theory]
+ [InlineData("OfficeOdt","O365BusinessRetail","16.0.18025.20104",false,"LicenseAuthorized")]
+ [InlineData("OfficeOdt","O365BusinessRetail","1.2.3.4",true,"TargetOfficeVersion")]
+ [InlineData("OfficeOdt","","16.0.18025.20104",true,"OfficeProductId")]
+ [InlineData("CurrentUserMsix","O365BusinessRetail","",false,"Office options")]
+ public async Task New_format_options_fail_closed_before_reading_media(string format,string product,string target,bool licensed,string expected)
+ {
+  if(!OperatingSystem.IsWindows())return;
+  var source=Path.Combine(root,"source");Directory.CreateDirectory(source);var output=Path.Combine(root,"profile.json");
+  var args=new List<string>{"-File",Script,"-SourceDirectory",source,"-EntryPoint",format=="OfficeOdt"?"setup.exe":"primary.msix","-ControlId","APP-WIN-001","-Format",format,"-OutputPath",output};
+  if(product.Length>0){args.Add("-OfficeProductId");args.Add(product);}
+  if(target.Length>0){args.Add("-TargetOfficeVersion");args.Add(target);}
+  if(licensed)args.Add("-LicenseAuthorized");
+  var result=await PowerShell(args.ToArray());Assert.NotEqual(0,result.Exit);Assert.Contains(expected,result.Output,StringComparison.OrdinalIgnoreCase);Assert.False(File.Exists(output));
  }
  [Fact] public async Task Existing_output_is_never_overwritten()
  {

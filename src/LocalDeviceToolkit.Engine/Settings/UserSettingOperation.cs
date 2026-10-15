@@ -34,7 +34,10 @@ public sealed class UserSettingOperation(UserSettingId setting,IUserSettingsBack
   ValidateParameters(p);ActionReadiness Result(bool ready,string reason)=>new(ready,OperationScope.CurrentUser,PrivilegeRequirement.CurrentUser,reason);
   if(!Read<SettingParameters>(p).ConfirmManagedPolicyReview)return Result(false,"Confirm the required GPO/MDM review before making this change.");
   var actor=await backend.GetActorAsync(ct);if(actor.Sid!=c.OriginalUserSid)return Result(false,"This current-user action must run as the original engineer; alternate administrator profiles are refused.");
-  var policy=await backend.InspectPolicyAsync(setting,ct);return !policy.Available||policy.ConflictObserved?Result(false,policy.Reason):Result(true,"Original engineer only. No conflict observed in the checked sources; external policy review was confirmed.");
+  var policy=await backend.InspectPolicyAsync(setting,ct);if(!policy.Available||policy.ConflictObserved)return Result(false,policy.Reason);
+  if(setting==UserSettingId.RemoveConsumerCopilot)
+  {var snapshot=await backend.ReadAsync(setting,c,ct);_=Observe(snapshot);if(Read<ConsumerCopilotState>(snapshot.Value).Packages.Length==0)return Result(false,"No change needed: the exact consumer Copilot app is already absent for the original engineer.");}
+  return Result(true,"Original engineer only. No conflict observed in the checked sources; external policy review was confirmed.");
  }
  ProbeObservation Observe(UserSettingSnapshot snapshot)
  {

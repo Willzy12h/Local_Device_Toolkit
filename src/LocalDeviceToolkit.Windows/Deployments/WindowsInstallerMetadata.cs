@@ -7,6 +7,7 @@ public sealed class WindowsInstallerMetadata:IInstallerMetadata
 {
  public void Validate(DeploymentProfile p,string path)
  {
+  if(p.Format==DeploymentFormat.CurrentUserMsix){MsixPackageMetadata.Validate(p,path);return;}
   if(!OperatingSystem.IsWindows())throw new PlatformNotSupportedException("Windows installer metadata is unavailable.");
   if(p.Format==DeploymentFormat.MachineMsi)
   {
@@ -23,6 +24,11 @@ public sealed class WindowsInstallerMetadata:IInstallerMetadata
     finally{MsiCloseHandle(view);}
    }
    finally{MsiCloseHandle(database);}
+  }
+  else if(p.Format==DeploymentFormat.OfficeOdt)
+  {
+   var info=FileVersionInfo.GetVersionInfo(path);
+   if(info.CompanyName!="Microsoft Corporation"||info.ProductName!=p.ProductName||!string.Equals(info.OriginalFilename,"setup.exe",StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("The signed binary is not the approved Microsoft Office Deployment Tool setup.exe.");
   }
   else
   {

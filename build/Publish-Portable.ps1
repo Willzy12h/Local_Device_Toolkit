@@ -23,6 +23,8 @@ try{
   if($LASTEXITCODE -ne 0){throw 'Build provenance could not be recorded.'}
  }finally{Pop-Location}
  foreach($name in @('README.md','NOTICE.md','docs','provenance','catalogue')){Copy-Item -LiteralPath (Join-Path $repository $name) -Destination $stage -Recurse}
+ [void][IO.Directory]::CreateDirectory((Join-Path $stage 'tools'))
+ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'New-DeploymentProfile.ps1') -Destination (Join-Path $stage 'tools/New-DeploymentProfile.ps1')
  $inventory=@(Get-ChildItem -LiteralPath $stage -Recurse -File | Sort-Object FullName | ForEach-Object {
   if($_.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'Package contains a reparse point.'}
   [pscustomobject]@{path=$_.FullName.Substring($stage.Length+1).Replace('\','/');bytes=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()}

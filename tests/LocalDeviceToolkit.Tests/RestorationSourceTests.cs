@@ -67,7 +67,7 @@ public sealed class RestorationSourceTests:IDisposable
   if(forgeUserTarget){var forged=new[]{Observation(new(true,42))};var userAction=action with {Before=forged,BeforeDigest=ObservationFingerprint.Of(forged)};userPlan=plan with {Actions=new[]{userAction},Digest=""};userPlan=userPlan with {Digest=CanonicalJson.Digest(userPlan)};}
   await user.SaveNewAsync(EvidenceRecord.Create(userPlan.Id,"plan",plan.Context,now,StrictJson.Value(userPlan)),default);
   await user.SaveNewAsync(EvidenceRecord.Create(userRun.Id,"run",plan.Context,userRun.FinishedAt!.Value,StrictJson.Value(userRun)),default);
-  return(user,trusted,plan,new(plan.Id,action.Id,userRun.Id,true));
+  return(user,trusted,plan,new(plan.Id,action.Id,userRun.Id,true,SettingId.LongPaths));
  }
  static async Task<PlannedAction> Plan(RecordedSettingRestorationOperation operation,RecordedSettingRestorationParameters parameters)
  {

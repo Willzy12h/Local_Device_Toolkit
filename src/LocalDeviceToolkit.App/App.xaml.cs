@@ -28,7 +28,7 @@ public partial class App:Application
    MainWindow=new MainWindow(session,store,plans,coordinator,new LocalDeviceToolkit.Engine.Reporting.ReportService(store,catalogue,context),new LocalDeviceToolkit.Engine.Reporting.ManualReviewRecorder(store,catalogue,context,identity.GetActorAsync));MainWindow.Show();
    if(smoke)
    {
-    await Dispatcher.InvokeAsync(()=>((MainWindow)MainWindow).RenderSmokePages(System.IO.Path.GetFullPath(e.Args[1])),System.Windows.Threading.DispatcherPriority.ApplicationIdle);Shutdown(0);
+    await ((MainWindow)MainWindow).RenderSmokePagesAsync(System.IO.Path.GetFullPath(e.Args[1]));Shutdown(0);
    }
   }
   catch(Exception error){if(smoke){Console.Error.WriteLine(error.Message);Shutdown(1);return;}MessageBox.Show("The toolkit could not start safely.\n\n"+error.Message,"Local Device Toolkit",MessageBoxButton.OK,MessageBoxImage.Error);Shutdown(1);}

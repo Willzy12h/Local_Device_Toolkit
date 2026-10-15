@@ -1,0 +1,29 @@
+# Windows acceptance record
+
+No real device settings or client applications have been changed by this cloud task. Do not infer vendor installation or interactive UAC acceptance from build/test/render results.
+
+## Observed automation
+
+- `049b2fd`: [Windows/Linux CI](https://github.com/Willzy12h/Local_Device_Toolkit/actions/runs/38660754520) passed 77 tests, native token/pipe/junction checks, PowerShell 5.1 parsing, self-contained packaging and five actual extracted-application WPF renders.
+- `b3802a8`: [Windows/Linux CI](https://github.com/Willzy12h/Local_Device_Toolkit/actions/runs/38665135124) passed 94 tests, including actual Windows PowerShell read-only original-user checks and UI refinements.
+- `50ab862`: native Windows-adapter tests passed; deployment engine fixture tests failed because a Linux-only absolute fixture path was not fully qualified on Windows. The fixture now uses the host's absolute path. The production path validation was preserved.
+- Current source: 169 engine and 89 adapter tests passed on Linux, zero skipped. Windows-specific test branches are not exercised by that count. Updated native CI, signer/boot/MSIX reads, metadata helper and expanded normal/compact view renders are pending the next pushed checkpoint.
+
+## Required device acceptance
+
+Use a dedicated authorized Windows 11 x64 workstation and record the exact portable ZIP SHA-256, commit, Windows build, accounts, before/after evidence IDs and outcome for each case.
+
+| Case | Status |
+| --- | --- |
+| Extracted package without SDK, spaces/Unicode path | Earlier CI passed; expanded final package rerun pending |
+| Actual UAC cancellation; no protected operation starts | Pending interactive Windows host |
+| Alternate administrator credentials preserve original user target and record actual administrator | Pending interactive Windows host |
+| Main app/worker build mismatch, stale review, changed state and replay refusal | Automated contract coverage; native interaction pending |
+| Original-user extensions, UK language preservation and exact consumer Copilot removal | Read paths/contract coverage; real mutations pending |
+| Long paths, fast startup, AC-only sleep, timezone privilege and exact restoration/absence | Contract coverage/native read paths; real mutations pending |
+| Restricted execution policy/MOTW and approved signed distribution | Pending authorized distribution/Windows host |
+| Approved MSI, OneDrive, original-user MSIX/bundles and Office offline media | Synthetic metadata/guard coverage; actual vendor media/install acceptance pending |
+| 3010/1641, detached bootstrapper, interrupted process, durable guard and reviewed resolution | Contract/process tests; representative vendor/reboot interaction pending |
+| 100%, 150%, 200% actual display DPI, high contrast, keyboard focus and Narrator | Pending physical accessibility acceptance; compact renders are not a substitute |
+
+Client RMM/EDR media, tenant sign-in, licensing rights and client-specific authorization must be supplied through the approved engineer/vendor process. The toolkit does not invent these or collect administrator passwords.

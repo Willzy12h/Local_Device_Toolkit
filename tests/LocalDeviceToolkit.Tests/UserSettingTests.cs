@@ -45,6 +45,18 @@ public sealed class UserSettingTests
   var action=new PlannedAction(Guid.NewGuid(),new("control.cfg-win-010",op.Id,parameters,new("setup","windows")),await op.InspectAsync(TestData.Context,parameters,default),before,LocalDeviceToolkit.Engine.Planning.ObservationFingerprint.Of(before));backend.Region=backend.Region with {HomeGeoId=99};
   Assert.Equal(ActionOutcome.Failed,(await op.ExecuteAsync(TestData.Context,action,default)).Outcome);Assert.Equal(0,backend.Writes);
  }
+ [Fact] public async Task An_absent_consumer_app_is_no_change_needed_and_cannot_claim_a_removal()
+ {
+  var op=new UserSettingOperation(UserSettingId.RemoveConsumerCopilot,new AbsentConsumer());var readiness=await op.InspectAsync(TestData.Context,StrictJson.Value(new SettingParameters(true)),default);
+  Assert.False(readiness.CanExecute);Assert.Contains("No change needed",readiness.Reason);
+ }
+ sealed class AbsentConsumer:IUserSettingsBackend
+ {
+  public Task<ExecutionActor> GetActorAsync(CancellationToken ct)=>Task.FromResult(TestData.Actor);
+  public Task<SettingPolicy> InspectPolicyAsync(UserSettingId setting,CancellationToken ct)=>Task.FromResult(new SettingPolicy(true,false,"fixture"));
+  public Task<UserSettingSnapshot> ReadAsync(UserSettingId setting,DeviceContext c,CancellationToken ct)=>Task.FromResult(new UserSettingSnapshot(setting,StrictJson.Value(new ConsumerCopilotState([])),"fixture package inventory",DateTimeOffset.UtcNow));
+  public Task ApplyAsync(UserSettingId setting,DeviceContext c,UserSettingSnapshot before,CancellationToken ct)=>throw new Exception("Must not write an absent package.");
+ }
  sealed class Backend:IUserSettingsBackend
  {
   public ExecutionActor Actor=TestData.Actor;public SettingPolicy Policy=new(true,false,"fixture");public int Reads;public int Writes;public bool DropOriginalLanguage;
