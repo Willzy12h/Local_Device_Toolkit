@@ -41,7 +41,8 @@ public sealed class DeviceInspectorTests
    foreach(var value in new[]{"-NoLogo","-NoProfile","-NonInteractive","-Command","[Console]::Write(('x' * 2097152))"})start.ArgumentList.Add(value);
   }
   else{start=new("/usr/bin/head");start.ArgumentList.Add("-c");start.ArgumentList.Add("2097152");start.ArgumentList.Add("/dev/zero");}
-  var result=await new DiagnosticProcessRunner().RunCommandAsync(start,TimeSpan.FromSeconds(15),default);
+  // This verifies the output cap, not PowerShell cold-start speed on a busy runner.
+  var result=await new DiagnosticProcessRunner().RunCommandAsync(start,TimeSpan.FromSeconds(45),default);
   Assert.Equal(DiagnosticEnd.OutputLimitReached,result.End);Assert.True(System.Text.Encoding.UTF8.GetByteCount(result.StandardOutput)<=1024*1024);
  }
 }
