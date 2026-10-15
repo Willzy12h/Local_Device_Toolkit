@@ -60,6 +60,36 @@ public sealed class DeploymentProfileDraftTests:IDisposable
   var result=await PowerShell("-File",Script,"-SourceDirectory",source,"-EntryPoint","setup.msi","-ControlId","APP-WIN-001","-Format","MachineMsi","-OutputPath",output);
   Assert.NotEqual(0,result.Exit);Assert.Contains("Authenticode",result.Output,StringComparison.OrdinalIgnoreCase);Assert.False(File.Exists(output));Assert.Equal(bytes,await File.ReadAllBytesAsync(installer));
  }
+ [Fact] public async Task Msi_metadata_result_excludes_automation_method_status_values()
+ {
+  if(!OperatingSystem.IsWindows())return;
+  Directory.CreateDirectory(root);var harness=Path.Combine(root,"Msi-OutputContract.ps1");
+  await File.WriteAllTextAsync(harness,"""
+$ErrorActionPreference='Stop'
+$t=$null;$e=$null
+$ast=[Management.Automation.Language.Parser]::ParseFile($env:TOOLKIT_DRAFT_SCRIPT,[ref]$t,[ref]$e)
+foreach($name in @('Release-ComObject','Read-MsiProperty')){
+ $definition=$ast.Find({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name},$true)
+ . ([scriptblock]::Create($definition.Extent.Text))
+}
+$script:fakeRecord=[pscustomobject]@{}
+$script:fakeRecord|Add-Member ScriptMethod StringData {param($field) '1.2.3'}
+$script:fakeView=[pscustomobject]@{}
+$script:fakeView|Add-Member ScriptMethod Execute {0}
+$script:fakeView|Add-Member ScriptMethod Close {0}
+$script:fakeView|Add-Member ScriptMethod Fetch {$script:fakeRecord}
+$database=[pscustomobject]@{}
+$database|Add-Member ScriptMethod OpenView {param($query) $script:fakeView}
+$actual=Read-MsiProperty $database 'fixed query'
+if($actual -isnot [string] -or $actual -cne '1.2.3'){
+ $description=[string]::Join('; ',@($actual|ForEach-Object {$_.GetType().FullName+':'+[string]$_}))
+ throw ('Expected only scalar string 1.2.3; actual count='+@($actual).Count+' ['+$description+']')
+}
+'PASS: MSI property reader returns only exact scalar metadata, ignoring Execute/Close return values.'
+
+""");
+  var result=await PowerShell("-File",harness);Assert.True(result.Exit==0,result.Output);
+ }
  [Fact] public async Task Actual_msi_metadata_reader_uses_read_only_COM_against_a_synthetic_database()
  {
   if(!OperatingSystem.IsWindows())return;
@@ -73,6 +103,12 @@ if($e.Count){throw 'Production helper does not parse'}
 foreach($name in @('Release-ComObject','Read-MsiProperty')){
  $definition=$ast.Find({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name},$true)
  . ([scriptblock]::Create($definition.Extent.Text))
+}
+function Assert-ExactMsiText($Actual,[string]$Expected,[string]$Label) {
+ if($Actual -isnot [string] -or $Actual -cne $Expected){
+  $description=[string]::Join('; ',@($Actual|ForEach-Object {if($null -eq $_){'(null)'}else{$_.GetType().FullName+':'+[string]$_}}))
+  throw ('Wrong '+$Label+'; expected scalar string '+$Expected+'; actual count='+@($Actual).Count+' ['+$description+']')
+ }
 }
 $path=Join-Path $PSScriptRoot 'synthetic-metadata.msi'
 $installer=$null;$database=$null;$summary=$null
@@ -95,10 +131,10 @@ try {
  $database.Commit();Release-ComObject $database;$database=$null
  $before=(Microsoft.PowerShell.Utility\Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
  $database=$installer.OpenDatabase($path,0)
- if((Read-MsiProperty $database 'SELECT `Value` FROM `Property` WHERE `Property` = ''ProductVersion''') -cne '1.2.3'){throw 'Wrong version'}
- if((Read-MsiProperty $database 'SELECT `Value` FROM `Property` WHERE `Property` = ''ProductCode''') -cne '{11111111-2222-3333-4444-555555555555}'){throw 'Wrong product code'}
- if((Read-MsiProperty $database 'SELECT `Value` FROM `Property` WHERE `Property` = ''ProductName''') -cne 'Synthetic metadata fixture'){throw 'Wrong name'}
- if((Read-MsiProperty $database 'SELECT `Value` FROM `Property` WHERE `Property` = ''Manufacturer''') -cne 'Synthetic publisher'){throw 'Wrong publisher'}
+ Assert-ExactMsiText (Read-MsiProperty $database 'SELECT `Value` FROM `Property` WHERE `Property` = ''ProductVersion''') '1.2.3' 'version'
+ Assert-ExactMsiText (Read-MsiProperty $database 'SELECT `Value` FROM `Property` WHERE `Property` = ''ProductCode''') '{11111111-2222-3333-4444-555555555555}' 'product code'
+ Assert-ExactMsiText (Read-MsiProperty $database 'SELECT `Value` FROM `Property` WHERE `Property` = ''ProductName''') 'Synthetic metadata fixture' 'name'
+ Assert-ExactMsiText (Read-MsiProperty $database 'SELECT `Value` FROM `Property` WHERE `Property` = ''Manufacturer''') 'Synthetic publisher' 'publisher'
  $summary=$database.SummaryInformation(0)
  if(([string]$summary.Property(7)).Split(';')[0] -cne 'x64'){throw 'Wrong architecture'}
  Release-ComObject $summary;$summary=$null;Release-ComObject $database;$database=$null

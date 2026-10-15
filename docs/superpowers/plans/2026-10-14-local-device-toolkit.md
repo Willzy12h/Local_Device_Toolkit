@@ -26,7 +26,7 @@
 - Limit IPC frames to 1 MiB, evidence records to 8 MiB, diagnostic output to 1 MiB per stream, and history pages to 100 entries.
 - Worker IPC has a 30-second connection deadline after successful UAC launch. UAC waiting never refreshes plan expiry.
 - Persist intent before mutation. Never automatically replay an ambiguous operation or use diagnostic tree-kill behaviour for an installer.
-- No application code, tests, installer payloads or launchers exist yet; commands below describe future checks, not completed validation.
+- Baseline at plan creation had no application code. Source implementation is now present; completed equivalents and actual checks are recorded in IMPLEMENTATION-STATUS.md. Third-party installer payloads are deliberately not bundled.
 
 ## Review Focus
 
@@ -90,8 +90,8 @@ Test assertions:
     Assert.Throws<CatalogueValidationException>(() => LoadMutatedReference());
 
 - [ ] Run dotnet test tests/LocalDeviceToolkit.Tests -c Release --filter FullyQualifiedName~CatalogueTests and confirm the missing loader/validation causes failure.
-- [ ] Implement the contracts and loader. Start unimplemented controls as Manual; move coverage only when adapters/tests exist. Validate source IDs, local mapping pins, unknown/duplicate fields, enums and declared operation/check IDs. Adapt upstream Core/Json/CanonicalJson.cs with its relevant tests and recorded original hashes.
-- [ ] Implement the source import command with the fixed commit, HTTPS Git authentication already supplied by the platform, destination containment and an explicit copied/adapted manifest. It must not overwrite existing files or update pins silently. Install SDK 10.0.401 from verified Microsoft release metadata only when execution begins; use /workspace/.tools/dotnet on this cloud host. Generate package lock files and use locked restores thereafter.
+- [x] Implement the contracts and loader. Start unimplemented controls as Manual; move coverage only when adapters/tests exist. Validate source IDs, local mapping pins, unknown/duplicate fields, enums and declared operation/check IDs. Adapt upstream Core/Json/CanonicalJson.cs with its relevant tests and recorded original hashes.
+- [x] Implement the source import command with the fixed commit, HTTPS Git authentication already supplied by the platform, destination containment and an explicit copied/adapted manifest. It must not overwrite existing files or update pins silently. Install SDK 10.0.401 from verified Microsoft release metadata only when execution begins; use /workspace/.tools/dotnet on this cloud host. Generate package lock files and use locked restores thereafter.
 - [ ] Rerun CatalogueTests and dotnet build src/LocalDeviceToolkit.Engine -c Release -warnaserror. Require actual nonzero test execution and no warnings.
 - [ ] Commit only the foundation, catalogue, provenance and corresponding test/build files.
 
@@ -111,7 +111,7 @@ Test assertions:
     Assert.Throws<EvidenceValidationException>(() => ParseRecordOver(8 * 1024 * 1024));
 
 - [ ] Run dotnet test tests/LocalDeviceToolkit.Tests -c Release --filter FullyQualifiedName~EvidenceStoreTests and observe failures before implementation.
-- [ ] Implement atomic non-overwriting writes, canonical digest verification, explicit UTC/schema/context validation and GUID filenames. Validate containment and reparse conditions at open time, not only string normalisation. Preserve healthy rows, distinguish unavailable directory from empty directory, and page 100 entries with a usable continuation.
+- [x] Implement atomic non-overwriting writes, canonical digest verification, explicit UTC/schema/context validation and GUID filenames. Validate containment and reparse conditions at open time, not only string normalisation. Preserve healthy rows, distinguish unavailable directory from empty directory, and page 100 entries with a usable continuation.
 - [ ] Inject file operations for deterministic access-denied/disk-full/partial-write tests. Verify a failed write does not leave a loadable successful record.
 - [ ] Rerun EvidenceStoreTests, including Unicode/spaced roots, wrong-device context and an exactly 100-entry page with more data.
 - [ ] Commit evidence storage and its tests.
@@ -134,8 +134,8 @@ Test assertions:
     Assert.Equal(ActionOutcome.OutcomeUnknown, interruptedStartedAction.Outcome);
 
 - [ ] Run dotnet test tests/LocalDeviceToolkit.Tests -c Release --filter "FullyQualifiedName~AssessmentTests|FullyQualifiedName~PlanTests|FullyQualifiedName~RunCoordinatorTests" and confirm failing cases.
-- [ ] Implement per-subcheck assessment and strict aggregation: unknown required evidence cannot produce MeetsStandard. Bind plans to exact device/user, catalogue, cloned parameters and before digests. Re-read context/prerequisites before every action; do not refresh the original ten-minute deadline.
-- [ ] Register intent/plan/run evidence schemas. Persist intent before dispatch; serialise mutations; preserve earlier results if later rows fail. A stop before dispatch is CancelledBeforeExecution; a potentially started action without verified completion is OutcomeUnknown.
+- [x] Implement per-subcheck assessment and strict aggregation: unknown required evidence cannot produce MeetsStandard. Bind plans to exact device/user, catalogue, cloned parameters and before digests. Re-read context/prerequisites before every action; do not refresh the original ten-minute deadline.
+- [x] Register intent/plan/run evidence schemas. Persist intent before dispatch; serialise mutations; preserve earlier results if later rows fail. A stop before dispatch is CancelledBeforeExecution; a potentially started action without verified completion is OutcomeUnknown.
 - [ ] Rerun tests with context/catalogue/input changes, second-action expiry, disk-full before and after dispatch, cancelled queues, and mutated or replayed plans.
 - [ ] Commit the assessment/planning/coordination implementation and tests.
 
@@ -155,7 +155,7 @@ Test assertions:
     Assert.Equal(PolicyInspectionState.Unavailable, failedPolicyInspection.State);
 
 - [ ] Run the targeted Windows tests and confirm failures. These tests must actually run on Windows; a Linux cross-build is not a substitute.
-- [ ] Implement read-only OS, identity, registry, power and application inventory. Never query Win32_Product. Use exact supported checks for the 30 mapped controls, with Partial/Manual dispositions where local proof cannot establish the requirement.
+- [x] Implement read-only OS, identity, registry, power and application inventory. Never query Win32_Product. Use exact supported checks for the 30 mapped controls, with Partial/Manual dispositions where local proof cannot establish the requirement.
 - [ ] Adapt the upstream owned-process reader only for diagnostics. Use trusted Windows executable paths, PowerShell 5.1 without profiles, pinned scripts, 1 MiB per-stream limits and explicit timeout/exit parsing. Do not read BitLocker recovery secrets or LAPS passwords.
 - [ ] Rerun Windows tests using injected APIs and synthetic PowerShell fixtures for singleton/array output, null values, access denied, unsupported cmdlets, conflicting policy and failure to load a dependency. Native read-only probe smoke checks must record actual Windows/build context.
 - [ ] Commit probes, declared coverage, scripts and tests.
@@ -176,8 +176,8 @@ Test assertions:
     Assert.Throws<ProtocolException>(() => DecodeFrameOver(1024 * 1024));
 
 - [ ] Run the targeted Windows tests and confirm failures.
-- [ ] Implement a local named pipe using explicit Windows security descriptors and remote-client refusal. Bind the UI's peer to the returned UAC process handle and both sides to OS-observed PID/creation time. Derive the original SID from the requesting process token; reject uncertain executable/peer identity. Use a 30-second post-launch connection deadline without refreshing plan expiry.
-- [ ] Implement independent worker operation/input/context validation, exact-action native review, single-use dispatch and a device-wide writer lock. Keep the OS-verified original user's DeviceContext separate from the actual ExecutionActor: an authorised alternate administrator must be recorded without replacing the target SID. Use administrator/SYSTEM-writable ProgramData staging/journals; refuse unsafe existing ACLs/reparse points. Stage embedded privileged scripts under that protection, preserving execution policy.
+- [x] Implement a local named pipe using explicit Windows security descriptors and remote-client refusal. Bind the UI's peer to the returned UAC process handle and both sides to OS-observed PID/creation time. Derive the original SID from the requesting process token; reject uncertain executable/peer identity. Use a 30-second post-launch connection deadline without refreshing plan expiry.
+- [x] Implement independent worker operation/input/context validation, exact-action native review, single-use dispatch and a device-wide writer lock. Keep the OS-verified original user's DeviceContext separate from the actual ExecutionActor: an authorised alternate administrator must be recorded without replacing the target SID. Use administrator/SYSTEM-writable ProgramData staging/journals; refuse unsafe existing ACLs/reparse points. Stage embedded privileged scripts under that protection, preserving execution policy.
 - [ ] Rerun tests for duplicate/unknown fields, replay, wrong device/SID, timeout, denied UAC, lost pipe, unavailable privilege, unsafe inherited ACLs and stale before-state. Protected reads use only registered check IDs and return capture evidence, not an Applied action outcome.
 - [ ] Commit the protocol/worker implementation. Record interactive UAC and alternate-credential cases as unrun until exercised on an authorised Windows host.
 
@@ -196,7 +196,7 @@ Test assertions:
     Assert.DoesNotContain(microsoft365CopilotPackage, removedPackages);
 
 - [ ] Run dotnet test tests/LocalDeviceToolkit.Windows.Tests -c Release --filter FullyQualifiedName~UserActionTests and confirm failures.
-- [ ] Implement show-extensions for original HKCU, UK culture/region/keyboard changes that preserve unrelated language entries, and exact current-user consumer Copilot removal where supported. Validate vendor-documented package identity; a display-name substring never selects a removal target. Capture before state and re-read postconditions.
+- [x] Implement show-extensions for original HKCU, UK culture/region/keyboard changes that preserve unrelated language entries, and exact current-user consumer Copilot removal where supported. Validate vendor-documented package identity; a display-name substring never selects a removal target. Capture before state and re-read postconditions.
 - [ ] Rerun tests with non-English usernames, missing optional components, absent packages, managed settings, user-switch mismatch and failed post-read. Package absence is No change needed at planning, not a claimed removal.
 - [ ] Commit the user actions, script pins, mapping and tests.
 
@@ -216,8 +216,8 @@ Test assertions:
         () => restoration.CreateAsync(changedRunId, actionId, CancellationToken.None));
 
 - [ ] Run the targeted MachineActionTests and RestorationTests and confirm failures.
-- [ ] Implement only documented local operations. Preserve other hibernation options, battery timeouts and unrelated power settings. Recheck the active power scheme and policy before dispatch. Use GMT Standard Time; do not force UAC if the actual account already has the required time-zone right.
-- [ ] Implement operation-specific restoration of supported recorded settings, including original absent values. Bind restoration to the same device/setting and refuse drift or invalid evidence. Do not offer general undo for removal, encryption or installers.
+- [x] Implement only documented local operations. Preserve other hibernation options, battery timeouts and unrelated power settings. Recheck the active power scheme and policy before dispatch. Use GMT Standard Time; do not force UAC if the actual account already has the required time-zone right.
+- [x] Implement operation-specific restoration of supported recorded settings, including original absent values. Bind restoration to the same device/setting and refuse drift or invalid evidence. Do not offer general undo for removal, encryption or installers.
 - [ ] Rerun the tests, including unsupported builds, registry denial, power-scheme change between review and execution, denied UAC and incomplete post-read. Actual machine mutations require a dedicated authorised acceptance host.
 - [ ] Commit machine actions, restoration, catalogue changes and tests.
 
@@ -238,9 +238,9 @@ Test assertions:
     Assert.Equal(ActionOutcome.RestartRequired, documented3010Result.Outcome);
 
 - [ ] Run dotnet test tests/LocalDeviceToolkit.Windows.Tests -c Release --filter FullyQualifiedName~PackageDeploymentTests and confirm failures.
-- [ ] Implement complete-file-set verification, protected staging and stable staged inputs. Use Windows trust APIs for signatures; preserve verification failures. Use argument arrays and supported installer templates, never a shell command or unrestricted elevation request.
-- [ ] Implement MSI, reviewed vendor EXE, current-user MSIX/bundle and Office Deployment Tool adapters with explicit prerequisites, dependencies and documented restart suppression. Match APP-WIN-001 through 008 to inventory/deployment profiles; leave items with missing profiles or vendor inputs clearly Manual. Do not bundle third-party/client installers or invent silent arguments.
-- [ ] Implement mutation supervision independently of diagnostic tree-kill logic. Test bootstrapper-child handoff, 1641/3010, process loss, stopped queues and failed evidence persistence. Before any retry, provide read-only installed-state reconciliation and require a new reviewed plan.
+- [x] Implement complete-file-set verification, protected staging and stable staged inputs. Use Windows trust APIs for signatures; preserve verification failures. Use argument arrays and supported installer templates, never a shell command or unrestricted elevation request.
+- [x] Implement MSI, reviewed vendor EXE, current-user MSIX/bundle and Office Deployment Tool adapters with explicit prerequisites, dependencies and documented restart suppression. Match APP-WIN-001 through 008 to inventory/deployment profiles; leave items with missing profiles or vendor inputs clearly Manual. Do not bundle third-party/client installers or invent silent arguments.
+- [x] Implement mutation supervision independently of diagnostic tree-kill logic. Test bootstrapper-child handoff, 1641/3010, process loss, stopped queues and failed evidence persistence. Before any retry, provide read-only installed-state reconciliation and require a new reviewed plan.
 - [ ] Rerun all package tests with synthetic executables and mocked installer/Windows APIs. Record actual vendor-package acceptance separately.
 - [ ] Commit package deployment and its fixtures/tests.
 
@@ -264,7 +264,7 @@ Test assertions:
 
 - [ ] Run the targeted App tests on Windows and confirm failures.
 - [ ] Adapt upstream App.xaml, Infrastructure/ObservableObject.cs and Commands.cs, and the native MainWindow/task/detail layout. Record every import/adaptation in provenance. Retain accessible names, visible focus, readable text statuses, native reference detail and a persistent device/user/elevation header.
-- [ ] Implement a shared DeploymentQueue bound to device/user, using a registered operation’s logical target (setting or product) and canonical parameters. Identical requests from either workspace are Already queued; different parameters for the same target require an explicit keep/replace choice. Different application products may coexist. Replacing entries invalidates approval. Workspace navigation alone does not change plan contents.
+- [x] Implement a shared DeploymentQueue bound to device/user, using a registered operation’s logical target (setting or product) and canonical parameters. Identical requests from either workspace are Already queued; different parameters for the same target require an explicit keep/replace choice. Different application products may coexist. Replacing entries invalidates approval. Workspace navigation alone does not change plan contents.
 - [ ] Wire setup stages and diagnostic groups to the full assess → select → review → execute → verify flow. Stage progress derives from current evidence, separate manual checks and declared optional exclusions. Viewing a stage cannot complete it. Diagnostics defaults to reads; Review fix adds the canonical action to the shared deployment queue. Start with no queued deployment. Disable stale-plan execution and show its reason. Protected probes require an explicit action; routine page navigation does not open UAC. Treat an already elevated parent truthfully.
 - [ ] Rerun App tests with synthetic services, partial results, long labels, smaller windows and queued operations. No fixture data appears in ordinary startup; demo/test identities must be explicit.
 - [ ] Commit the WPF interface and app tests.
@@ -284,8 +284,8 @@ Test assertions:
     Assert.Equal(0, broker.LaunchCallsForInvalidInput);
 
 - [ ] Run the targeted script and App tests and confirm failures.
-- [ ] Implement strict manifests, compiled/package-root pins, parameter types, prerequisite/privilege labels and stable operation IDs. Expose only implemented diagnostic/settings tools. Run through their existing adapters and plan rules; never add a generic elevated Script-Runner.
-- [ ] Implement PowerShell 5.1 syntax/manifest verification without executing client operations. An execution-policy block remains a visible failure; no policy bypass, automatic module installation or hidden Unblock-File step.
+- [x] Implement strict manifests, compiled/package-root pins, parameter types, prerequisite/privilege labels and stable operation IDs. Expose only implemented diagnostic/settings tools. Run through their existing adapters and plan rules; never add a generic elevated Script-Runner.
+- [x] Implement PowerShell 5.1 syntax/manifest verification without executing client operations. An execution-policy block remains a visible failure; no policy bypass, automatic module installation or hidden Unblock-File step.
 - [ ] Rerun tests for quote/control-character inputs, altered manifests, wrong hashes, missing scripts, unavailable prerequisites and typed arrays/booleans. Verify real PowerShell 5.1 parsing on Windows.
 - [ ] Commit script catalogue, UI forms and tests.
 
@@ -307,7 +307,7 @@ Test assertions:
 
 - [ ] Run the targeted report/reconciliation/App tests and confirm failures.
 - [ ] Adapt suitable upstream safe export primitives and record their provenance. Implement native read-only history/detail views, healthy entries plus corruption diagnostics, explicit other-device context, paging, copyable summaries and deliberate non-overwriting exports.
-- [ ] Implement reconciliation through read-only inspectors and operation-specific postconditions. Preserve original uncertainty/history; record what new evidence proves and what remains unknown. Reconciliation never becomes retrospective approval or automatic retry.
+- [x] Implement reconciliation through read-only inspectors and operation-specific postconditions. Preserve original uncertainty/history; record what new evidence proves and what remains unknown. Reconciliation never becomes retrospective approval or automatic retry.
 - [ ] Rerun tests for failed writes, failed post-read, mixed outcomes, corrupt history, wrong-device evidence, missing pages, non-ASCII text, spreadsheet formula inputs and HTML injection.
 - [ ] Commit reports, history/reconciliation UI and tests.
 
@@ -319,8 +319,8 @@ Test assertions:
 
 - [ ] Write package/harness checks that fail when the worker, script pin, catalogue, required runtime dependency or provenance notice is missing, when launch breaks under paths containing spaces/Unicode, or when launcher/script exit status is lost.
 - [ ] Run those checks against deliberately incomplete fixture packages and confirm failure.
-- [ ] Implement locked restore, warning-as-error builds, portable/Windows/App tests, registry/catalogue verification, self-contained publishing and non-overwriting versioned output. Run the relevant suites before packaging. Do not regenerate integrity pins merely to pass packaging.
-- [ ] Configure CI using reviewed pinned actions and minimal read-only permissions. Linux runs portable tests/cross-builds; Windows runs applicable native tests, PowerShell 5.1 parsing, WPF interaction/layout checks and extracted-package launch. Synthetic fixtures must not apply real device settings or install client applications.
+- [x] Implement locked restore, warning-as-error builds, portable/Windows/App tests, registry/catalogue verification, self-contained publishing and non-overwriting versioned output. Run the relevant suites before packaging. Do not regenerate integrity pins merely to pass packaging.
+- [x] Configure CI using reviewed pinned actions and minimal read-only permissions. Linux runs portable tests/cross-builds; Windows runs applicable native tests, PowerShell 5.1 parsing, WPF interaction/layout checks and extracted-package launch. Synthetic fixtures must not apply real device settings or install client applications.
 - [ ] Run: dotnet build LocalDeviceToolkit.sln -c Release -warnaserror -p:EnableWindowsTargeting=true; dotnet test tests/LocalDeviceToolkit.Tests -c Release. On Windows also run both Windows/App suites, the UI harness and build/Build-Portable.ps1, then Test-Portable.ps1 on the actual ZIP.
 - [ ] Check 100%, 150% and 200% rendering/focus, smaller windows, native result visibility and no default queued deployment. Distinguish automated layout simulations from physical DPI/Narrator/keyboard acceptance.
 - [ ] Record interactive UAC cancellation, alternate-administrator identity, a clean Windows machine without the SDK, real supported probes/settings and vendor-package acceptance in WINDOWS-ACCEPTANCE. Leave unrun cases explicitly pending; CI does not silently count as those tests.

@@ -103,13 +103,14 @@ function Read-MsiProperty($Database, [string] $Query) {
     $view = $null; $record = $null
     try {
         $view = $Database.OpenView($Query)
-        $view.Execute()
+        # Automation methods can return status values; only the property text belongs on the success stream.
+        [void] $view.Execute()
         $record = $view.Fetch()
         if ($null -eq $record) { throw 'Required MSI product metadata is absent.' }
         return [string] $record.StringData(1)
     }
     finally {
-        if ($null -ne $view) { $view.Close() }
+        if ($null -ne $view) { [void] $view.Close() }
         Release-ComObject $record
         Release-ComObject $view
     }
