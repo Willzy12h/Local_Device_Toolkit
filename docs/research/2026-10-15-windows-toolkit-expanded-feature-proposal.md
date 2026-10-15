@@ -1,6 +1,6 @@
 # Expanded proposal: setup, diagnosis and approved fixes
 
-**Status: proposed, not implemented.** The [written design](../superpowers/specs/2026-10-15-engineer-readiness-diagnostics-design.md) expands the earlier scope in response to the request for more features. It is ready for review before implementation planning.
+**Status: written design approved; not implemented.** The user approved the [written design](../superpowers/specs/2026-10-15-engineer-readiness-diagnostics-design.md) in chat on 15 October 2026. The [implementation plan](../superpowers/plans/2026-10-15-engineer-readiness-diagnostics.md) is awaiting review and execution-method selection.
 
 ## More useful setup checks
 

@@ -2,7 +2,7 @@
 
 Research date: 15 October 2026. Repository reviewed: `2fe1e4d`. This is a research and scope proposal, not an approved implementation specification. The new checks and repairs below are **not yet implemented**. Existing toolkit behavior is unchanged.
 
-**Expanded proposal:** the subsequent request for more features is covered by the [written readiness and diagnostics design](../superpowers/specs/2026-10-15-engineer-readiness-diagnostics-design.md) and [expanded feature summary](2026-10-15-windows-toolkit-expanded-feature-proposal.md). Their 24-check/six-action proposal replaces the initial twelve-check/two-action release recommendation below, subject to design review. This document retains the original research and its distinctions between initial and advanced work.
+**Expanded design:** the subsequent request for more features is covered by the [approved readiness and diagnostics design](../superpowers/specs/2026-10-15-engineer-readiness-diagnostics-design.md) and [expanded feature summary](2026-10-15-windows-toolkit-expanded-feature-proposal.md). Their approved 24-check/six-action scope replaces the initial twelve-check/two-action release recommendation below; implementation-plan review and execution-method selection remain pending. This document retains the original research and its distinctions between initial and advanced work.
 
 **Recommendation:** extend the shared task engine with capability-based setup checks and symptom-led diagnostics. Ship a focused first release with two individually approved diagnostic actions. Keep disruptive repairs in a separate advanced stage.
 

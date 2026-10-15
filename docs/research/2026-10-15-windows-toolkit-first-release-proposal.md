@@ -1,6 +1,6 @@
 # Proposed first release: setup readiness and quiet diagnostics
 
-**Historical scope:** the user's subsequent request for more features is addressed in the [expanded proposal](2026-10-15-windows-toolkit-expanded-feature-proposal.md) and its linked written design. Both remain proposals awaiting design review.
+**Historical scope:** the user's subsequent request for more features is addressed in the [expanded proposal](2026-10-15-windows-toolkit-expanded-feature-proposal.md) and its linked written design, now approved. Implementation-plan review and execution-method selection remain pending; the earlier scope below is retained for history.
 
 **Status:** for scope review; no new product features or repairs have been implemented. Based on the [full research](2026-10-15-windows-toolkit-recommendations.md) and [78-source evidence manifest](2026-10-15-windows-toolkit-sources.json).
 
