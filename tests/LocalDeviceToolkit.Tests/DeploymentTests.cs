@@ -10,6 +10,28 @@ public sealed class DeploymentTests
  static System.Text.Json.JsonElement Parameters=>StrictJson.Value(new DeploymentParameters(Profile.Id,System.IO.Path.GetFullPath("fixture/media")));
  static PackageDeploymentOperation Operation(Backend backend,IDeploymentPendingStore store)=>new(new[]{Profile},backend,store);
  static async Task<PlannedAction> Plan(PackageDeploymentOperation op){var before=await op.CaptureBeforeAsync(TestData.Context,Parameters,default);return new(Guid.NewGuid(),new("deployment.example",op.Id,Parameters,new("setup","applications")),await op.InspectAsync(TestData.Context,Parameters,default),before,ObservationFingerprint.Of(before));}
+ [Fact] public async Task Review_captures_full_approved_product_target_separately_from_observed_inventory()
+ {
+  using var temp=new Temp();var profile=Profile with{Version="1.2.3.4567",ProductName="Approved Example"};
+  var inventory=new DeploymentInventory(true,true,"different-product","9.8.7.6","observed fixture");var backend=new Backend{Inventory=inventory};
+  var op=new PackageDeploymentOperation(new[]{profile},backend,new FileDeploymentPendingStore(temp.Path));
+  var before=Assert.Single(await op.CaptureBeforeAsync(TestData.Context,Parameters,default));
+  var value=before.Value!.Value;
+  Assert.Equal(profile.Version,value.GetProperty("expectedVersion").GetString());
+  Assert.Equal(profile.ProductName,value.GetProperty("productName").GetString());
+  Assert.Equal(profile.ProductIdentity,value.GetProperty("productIdentity").GetString());
+  var state=StrictJson.Read<PackageDeploymentOperation.DeploymentReviewState>(System.Text.Encoding.UTF8.GetBytes(value.GetRawText()));
+  Assert.Equal(inventory,state.Inventory);Assert.Equal(profile.Id,state.ProfileId);Assert.Equal(backend.InputDigest,state.InputDigest);Assert.Equal(0,backend.Starts);
+ }
+ [Fact] public void Old_three_field_deployment_review_remains_readable_without_inventing_a_target()
+ {
+  var old=StrictJson.Value(new{ProfileId=Profile.Id,InputDigest="previous-input",Inventory=new DeploymentInventory(true,true,Profile.ProductIdentity,"1.2.3","legacy inventory")});
+  var state=StrictJson.Read<PackageDeploymentOperation.DeploymentReviewState>(System.Text.Encoding.UTF8.GetBytes(old.GetRawText()));
+  var serialized=StrictJson.Value(state);
+  Assert.Equal(Profile.Id,state.ProfileId);Assert.Equal("previous-input",state.InputDigest);Assert.Equal("1.2.3",state.Inventory.Version);
+  Assert.True(!serialized.TryGetProperty("expectedVersion",out var version)||version.ValueKind==System.Text.Json.JsonValueKind.Null);
+  Assert.True(!serialized.TryGetProperty("productIdentity",out var identity)||identity.ValueKind==System.Text.Json.JsonValueKind.Null);
+ }
  [Theory][InlineData(0,false,ActionOutcome.AppliedUnverified)][InlineData(0,true,ActionOutcome.AppliedVerified)][InlineData(3010,false,ActionOutcome.RestartRequired)][InlineData(1641,false,ActionOutcome.RestartRequired)][InlineData(1603,false,ActionOutcome.Failed)]
  public async Task Process_exit_requires_fresh_product_identity_and_version(int exit,bool installed,ActionOutcome expected)
  {using var temp=new Temp();var backend=new Backend{Exit=exit,InstalledAfter=installed};var op=Operation(backend,new FileDeploymentPendingStore(temp.Path));var result=await op.ExecuteAsync(TestData.Context,await Plan(op),default);Assert.Equal(expected,result.Outcome);Assert.Equal(1,backend.Starts);Assert.Equal(3,backend.Reads);}

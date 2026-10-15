@@ -4,7 +4,8 @@ Updated 15 October 2026. Implemented source and observed automation are separate
 
 ## Created
 
-- Native WPF Home, New device setup, Diagnostics, Deployments and Reports/history. Setup and diagnostics reference the same canonical tasks, operations and queue.
+- Native WPF Home, setup task table, diagnostic list/details, Deployments and Reports/history. Shared operations support individual selections, measured current/expected values, explicit review/confirmation and verified results.
+- Separate UK preferences, eight application rows and individual readiness checks. New dated text log per review/run includes checks, full sources and changes in the same file; already-correct values are skipped.
 - All 30 M365 Windows controls retained with pinned source commit/hash, separate local coverage, manual evidence and honest unknown results.
 - Immutable evidence, strict schemas, exact before-state, ten-minute review expiry, durable intent, deduplication across settings/restoration, and stop-on-uncertainty/replay guards.
 - Main application runs as the current engineer. A separately reviewed administrator worker handles protected actions while preserving original-user targets and recording the actual administrator.

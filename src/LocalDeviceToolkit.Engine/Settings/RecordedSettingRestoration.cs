@@ -6,6 +6,7 @@ using LocalDeviceToolkit.Engine.Planning;
 namespace LocalDeviceToolkit.Engine.Settings;
 
 public sealed record RecordedSettingRestorationParameters(Guid SourcePlanId,Guid SourceActionId,Guid SourceRunId,bool ConfirmManagedPolicyReview,SettingId? ExpectedSetting=null);
+public sealed record RecordedRestorationReviewState(SettingId Setting,JsonElement Current,JsonElement Target);
 public sealed record RecordedSettingSource(Guid SourcePlanId,Guid SourceActionId,Guid SourceRunId,DeviceContext Context,CatalogueIdentity Catalogue,SettingId Setting,OperationScope Scope,PrivilegeRequirement Privilege,SettingSnapshot Before,SettingSnapshot VerifiedAfter,ExecutionActor Actor,ActionOutcome Outcome,bool ProtectedJournal);
 /// <summary>Adapters must validate original plan/action/run/result linkage before returning a source. Presentation adapters may classify protected sources but cannot authorize a write.</summary>
 public interface IRecordedSettingSource
@@ -94,7 +95,7 @@ public sealed class RecordedSettingRestorationOperation(IRecordedSettingSource s
  {
   var definition=FixedSettingOperation.Definitions.Single(d=>d.Setting==record.Setting);
   // The source digest binds the target and original provenance to the fresh plan. UI and protected worker must derive identical source records.
-  return new(definition.ControlId,"setting.restore."+record.Setting,ObservationState.Known,current.Value.Clone(),"Recorded source SHA256 "+CanonicalJson.Digest(record)+"; current: "+current.Source,current.CapturedAt,"Exact current state and independently resolved recorded restoration target.");
+  return new(definition.ControlId,"setting.restore."+record.Setting,ObservationState.Known,StrictJson.Value(new RecordedRestorationReviewState(record.Setting,current.Value.Clone(),record.Before.Value.Clone())),"Recorded source SHA256 "+CanonicalJson.Digest(record)+"; current: "+current.Source,current.CapturedAt,"Exact current state and independently resolved recorded restoration target.");
  }
  public async Task<IReadOnlyList<ProbeObservation>> CaptureBeforeAsync(DeviceContext context,JsonElement parameters,CancellationToken ct)
  {
