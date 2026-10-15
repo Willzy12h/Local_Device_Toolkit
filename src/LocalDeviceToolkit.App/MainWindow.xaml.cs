@@ -20,6 +20,17 @@ public partial class MainWindow:Window
   SessionNotice.Text=session.Context.IsElevated?"This session is elevated. User tasks still target this Windows user.":"Running as the current Windows user. Administrator access is requested only for an approved action.";
   Closing+=(_,_)=>lifetime.Cancel();Render();
  }
+ internal void RenderSmokePages(string output)
+ {
+  if(Directory.Exists(output)||File.Exists(output))throw new IOException("Smoke output must be a new directory.");Directory.CreateDirectory(output);
+  var pages=new[]{("home",(string?)null),("setup","windows"),("diagnostics","configuration"),("deployments",(string?)null),("reports",(string?)null)};
+  foreach(var (area,stage) in pages)
+  {
+   session.Navigate(area,stage);Render();UpdateLayout();
+   var bitmap=new System.Windows.Media.Imaging.RenderTargetBitmap((int)Math.Ceiling(ActualWidth),(int)Math.Ceiling(ActualHeight),96,96,System.Windows.Media.PixelFormats.Pbgra32);bitmap.Render(this);
+   var encoder=new System.Windows.Media.Imaging.PngBitmapEncoder();encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));using var file=new FileStream(Path.Combine(output,area+".png"),FileMode.CreateNew,FileAccess.Write,FileShare.None);encoder.Save(file);
+  }
+ }
  void Navigate_Click(object sender,RoutedEventArgs e){if(sender is Button { Tag:string area }){session.Navigate(area);Search.Text="";Render();}}
  void Queue_Click(object sender,RoutedEventArgs e){session.Navigate("deployments");Render();}
  void Render()
@@ -53,10 +64,20 @@ public partial class MainWindow:Window
  void Search_Changed(object sender,TextChangedEventArgs e){if(session is not null)RefreshTasks();}
  void RefreshTasks()
  {
+  var all=session.Tasks();
+  StageProgress.Text=all.Count==0?"":$"{all.Count} tasks • {all.Count(t=>t.Status=="Meets standard")} meet local checks • {all.Count(t=>t.Status=="Needs attention")} need attention • {all.Count(t=>t.Status=="Manual verification")} need manual verification • {all.Count(t=>t.Status=="Not checked")} not checked";
   var selected=(TaskList.SelectedItem as TaskStatus)?.Definition.Id;
   TaskList.ItemsSource=session.Tasks(Search.Text);TaskList.SelectedItem=TaskList.Items.Cast<TaskStatus>().FirstOrDefault(t=>t.Definition.Id==selected)??TaskList.Items.Cast<TaskStatus>().FirstOrDefault();ShowTask();
  }
  void Task_Changed(object sender,SelectionChangedEventArgs e){if(session is not null)ShowTask();}
+ void Reference_Click(object sender,RoutedEventArgs e)
+ {
+  if(TaskList.SelectedItem is not TaskStatus task)return;
+  var files=LocalDeviceToolkit.Engine.Catalogue.CatalogueLoader.ShippedFiles();using var document=StrictJson.Parse(files["reference.json"]);
+  var controls=document.RootElement.GetProperty("controls").EnumerateArray().Where(c=>task.Definition.ControlIds.Contains(c.GetProperty("id").GetString()!)).ToArray();
+  var content=new TextBox {Text=System.Text.Json.JsonSerializer.Serialize(new { source=document.RootElement.GetProperty("source"),controls },new System.Text.Json.JsonSerializerOptions {WriteIndented=true}),IsReadOnly=true,TextWrapping=TextWrapping.Wrap,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,Margin=new Thickness(20)};
+  new Window {Title="Original M365 control reference • read only",Owner=this,Width=800,Height=680,MinWidth=500,MinHeight=400,Content=content,WindowStartupLocation=WindowStartupLocation.CenterOwner}.ShowDialog();
+ }
  void ShowTask()
  {
   var selected=TaskList.SelectedItem as TaskStatus;CheckSelected.IsEnabled=selected is not null&&!isBusy;CheckStage.IsEnabled=!isBusy;

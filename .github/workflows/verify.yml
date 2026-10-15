@@ -1,0 +1,84 @@
+name: Verify native toolkit
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore LocalDeviceToolkit.sln --locked-mode
+      - run: dotnet build LocalDeviceToolkit.sln -c Release --no-restore -warnaserror
+      - run: dotnet test LocalDeviceToolkit.sln -c Release --no-restore -warnaserror --logger trx --results-directory TestResults
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: portable-test-results
+          path: TestResults
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore LocalDeviceToolkit.sln --locked-mode
+      - run: dotnet build LocalDeviceToolkit.sln -c Release --no-restore -warnaserror
+      - run: dotnet test LocalDeviceToolkit.sln -c Release --no-restore -warnaserror --logger trx --results-directory TestResults
+      - name: Parse scripts using Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          if ($PSVersionTable.PSVersion.Major -ne 5) { throw 'Expected Windows PowerShell 5.1.' }
+          Get-ChildItem build,scripts -Recurse -Filter *.ps1 | ForEach-Object {
+            $tokens=$null; $errors=$null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName,[ref]$tokens,[ref]$errors)
+            if (@($errors).Count) { throw ($errors -join '; ') }
+          }
+          ./build/Verify-ScriptRegistry.ps1
+      - name: Build portable ZIP
+        shell: powershell
+        run: ./build/Publish-Portable.ps1 -OutputDirectory "$env:GITHUB_WORKSPACE/dist/LocalDeviceToolkit-win-x64"
+      - name: Extract and render the actual packaged application
+        shell: powershell
+        run: |
+          $archive=Join-Path $env:GITHUB_WORKSPACE 'dist/LocalDeviceToolkit-win-x64.zip'
+          $extract=Join-Path $env:RUNNER_TEMP 'Extracted toolkit – native test'
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          [IO.Compression.ZipFile]::ExtractToDirectory($archive,$extract)
+          $runtime=Get-Content (Join-Path $extract 'LocalDeviceToolkit.App.runtimeconfig.json') -Raw | ConvertFrom-Json
+          if ($runtime.runtimeOptions.PSObject.Properties.Name -contains 'framework' -or $runtime.runtimeOptions.PSObject.Properties.Name -contains 'frameworks') { throw 'Application is framework-dependent.' }
+          if (-not (Test-Path (Join-Path $extract 'coreclr.dll'))) { throw 'Bundled runtime is missing.' }
+          $render=Join-Path $env:GITHUB_WORKSPACE 'dist/native-renders'
+          $start=New-Object Diagnostics.ProcessStartInfo
+          $start.FileName=Join-Path $extract 'LocalDeviceToolkit.App.exe'
+          $start.UseShellExecute=$false
+          $start.Arguments='--smoke-output "'+$render+'"'
+          $start.EnvironmentVariables.Remove('DOTNET_ROOT')
+          $start.EnvironmentVariables.Remove('DOTNET_ROOT_X64')
+          $start.EnvironmentVariables['PATH']=($env:PATH -split ';' | Where-Object {$_ -notmatch '(?i)dotnet'}) -join ';'
+          $app=[Diagnostics.Process]::Start($start)
+          if (-not $app.WaitForExit(60000)) { $app.Kill(); throw 'Read-only native render timed out.' }
+          if ($app.ExitCode -ne 0) { throw "Packaged application failed: $($app.ExitCode)" }
+          foreach ($page in @('home','setup','diagnostics','deployments','reports')) {
+            $image=Get-Item (Join-Path $render ($page+'.png'))
+            if ($image.Length -lt 1024) { throw "Native render is empty: $page" }
+          }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: windows-package-and-native-evidence
+          path: |
+            dist/*.zip
+            dist/*.sha256
+            dist/native-renders/*.png
+            TestResults

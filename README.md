@@ -6,6 +6,7 @@ A native Windows WPF toolkit for engineers to assess the current device, review 
 
 The selected direction is a new WPF application adapted from the relevant parts of [M365 Buildstandards](https://github.com/Willzy12h/M365-Buildstandards). It will run as the current Windows user and request UAC elevation only for operations that require it.
 
+- [Local engineer usage and building](docs/LOCAL-USAGE.md)
 - [Created work and outstanding implementation](docs/IMPLEMENTATION-STATUS.md)
 - [Reviewed design proposal](docs/superpowers/specs/2026-10-14-local-device-toolkit-design.md)
 - [Implementation plan](docs/superpowers/plans/2026-10-14-local-device-toolkit.md)
