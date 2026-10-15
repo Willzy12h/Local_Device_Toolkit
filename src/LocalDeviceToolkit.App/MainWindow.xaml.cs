@@ -147,7 +147,7 @@ public partial class MainWindow:Window
   ProtectedRead.IsEnabled=false;
   if(selected is not null&&!isBusy)
   {
-   try{WorkerRequestValidator.Validate(new(1,WorkerMode.CaptureProtected,session.Context,new(selected.Definition.ControlIds,session.Origin),null,null),session.Catalogue,session.Workflows);ProtectedRead.IsEnabled=true;}
+   try{WorkerRequestValidator.Validate(new(2,WorkerMode.CaptureProtected,session.Context,new(selected.Definition.ControlIds,session.Origin,selected.Definition.CheckIds,[selected.Definition.Id]),null,null),session.Catalogue,session.Workflows);ProtectedRead.IsEnabled=true;}
    catch(LocalDeviceToolkit.Engine.Execution.PlanValidationException){}
   }
   ReviewFix.IsEnabled=selected?.NeedsInputs==true&&!isBusy;
@@ -229,12 +229,12 @@ public partial class MainWindow:Window
   var origin=session.Origin;
   await RunUiAsync(async()=>
   {
-   var request=new WorkerRequest(1,WorkerMode.CaptureProtected,session.Context,new(task.Definition.ControlIds,origin),null,null);
+   var request=new WorkerRequest(2,WorkerMode.CaptureProtected,session.Context,new(task.Definition.ControlIds,origin,task.Definition.CheckIds,[task.Definition.Id]),null,null);
    WorkerRequestValidator.Validate(request,session.Catalogue,session.Workflows);
    var broker=new UacWorkerBroker(Path.Combine(AppContext.BaseDirectory,"worker","LocalDeviceToolkit.Worker.exe"));
    var response=await broker.RequestAsync(request,lifetime.Token);
    if(!response.Success||response.Capture is null)throw new InvalidOperationException(response.Message);
-   await session.AcceptProtectedCaptureAsync(response.Capture,origin,lifetime.Token);RefreshTasks();StatusLine.Text="Protected evidence saved. Original engineer and executing administrator are recorded separately.";
+   await session.AcceptProtectedCaptureAsync(response.Capture,origin,lifetime.Token,request.Capture);RefreshTasks();StatusLine.Text="Protected evidence saved. Original engineer and executing administrator are recorded separately.";
   });
  }
  async void ReviewFix_Click(object sender,RoutedEventArgs e)
@@ -255,7 +255,7 @@ public partial class MainWindow:Window
  async Task<DeploymentProfile> ApproveProfileAsync(DeploymentProfile profile,string directory,CancellationToken ct)
  {
   var broker=new UacWorkerBroker(Path.Combine(AppContext.BaseDirectory,"worker","LocalDeviceToolkit.Worker.exe"));
-  var response=await broker.RequestAsync(new(1,WorkerMode.ApproveDeploymentProfile,session.Context,null,null,null,DeploymentApproval:new(profile,directory)),ct);
+  var response=await broker.RequestAsync(new(2,WorkerMode.ApproveDeploymentProfile,session.Context,null,null,null,DeploymentApproval:new(profile,directory)),ct);
   if(!response.Success||response.ApprovedProfile is null)throw new InvalidOperationException(response.Message);
   return response.ApprovedProfile;
  }
@@ -270,7 +270,7 @@ public partial class MainWindow:Window
    return "Original-user read-only reconciliation; no installer was launched.\n"+System.Text.Json.JsonSerializer.Serialize(new{observed,ResolutionReceipt=receipt},new System.Text.Json.JsonSerializerOptions(StrictJson.Options){WriteIndented=true});
   }
   var broker=new UacWorkerBroker(Path.Combine(AppContext.BaseDirectory,"worker","LocalDeviceToolkit.Worker.exe"));
-  var response=await broker.RequestAsync(new(1,resolve?WorkerMode.ResolveDeployment:WorkerMode.ReconcileDeployment,session.Context,null,null,null,DeploymentReconcile:parameters,DeploymentResolutionReview:resolve?new(true):null),ct);
+  var response=await broker.RequestAsync(new(2,resolve?WorkerMode.ResolveDeployment:WorkerMode.ReconcileDeployment,session.Context,null,null,null,DeploymentReconcile:parameters,DeploymentResolutionReview:resolve?new(true):null),ct);
   if(!response.Success||response.DeploymentStatus is null)throw new InvalidOperationException(response.Message);
   if(response.DeploymentResolution is not null)await evidence.SaveNewAsync(response.DeploymentResolution,ct);
   return response.Message+"\nObserved by: "+response.Actor.UserName+" ("+response.Actor.Sid+")\n"+System.Text.Json.JsonSerializer.Serialize(new{response.DeploymentStatus,ResolutionReceipt=response.DeploymentResolution},new System.Text.Json.JsonSerializerOptions(StrictJson.Options){WriteIndented=true});

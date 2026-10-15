@@ -13,7 +13,9 @@ public sealed class WindowsDeviceInspector(IExecutionContextProvider contexts,IE
   var context=await contexts.GetCurrentAsync(ct);var actor=await actors.GetActorAsync(ct);
   if(request.ControlIds.Count==0||request.ControlIds.Count>100)throw new ArgumentException("Select a bounded set of controls.");
   var selected=request.ControlIds.Distinct(StringComparer.Ordinal).Select(id=>catalogue.Controls.SingleOrDefault(c=>c.Id==id)??throw new CatalogueValidationException("Unknown control: "+id)).ToArray();
-  var checks=selected.SelectMany(c=>c.CheckIds).Distinct(StringComparer.Ordinal).ToArray();
+  var allowed=selected.SelectMany(c=>c.CheckIds).Distinct(StringComparer.Ordinal).ToArray();
+  var checks=request.CheckIds?.ToArray()??allowed;
+  if(checks.Length>128||checks.Distinct(StringComparer.Ordinal).Count()!=checks.Length||checks.Any(id=>!allowed.Contains(id,StringComparer.Ordinal)))throw new CatalogueValidationException("The requested checks do not belong to the selected controls.");
   IReadOnlyList<WindowsFact> facts=[];
   if(checks.Length>0)
   {
@@ -26,7 +28,7 @@ public sealed class WindowsDeviceInspector(IExecutionContextProvider contexts,IE
   foreach(var control in selected)
   {
    if(control.CheckIds.Length==0){observations.Add(new(control.Id,"manual",ObservationState.Manual,null,"Build standard",now,control.ManualInstructions));continue;}
-   foreach(var check in control.CheckIds)
+   foreach(var check in control.CheckIds.Where(id=>checks.Contains(id,StringComparer.Ordinal)))
    {
     var matches=facts.Where(f=>f.CheckId==check).ToArray();
     if(matches.Length!=1||matches[0].CapturedAt.Offset!=TimeSpan.Zero||matches[0].CapturedAt>now.AddMinutes(2)||matches[0].CapturedAt<now.AddMinutes(-10)||(matches[0].State==ObservationState.Known&&(!matches[0].Value.HasValue||!ProbeValues.Accepts(check,matches[0].Value!.Value))))

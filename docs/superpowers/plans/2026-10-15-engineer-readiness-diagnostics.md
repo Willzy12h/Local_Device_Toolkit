@@ -8,7 +8,7 @@
 
 **Tech Stack:** .NET SDK 10.0.401, C# 12, WPF, Windows APIs, Windows PowerShell 5.1-compatible registered scripts, xUnit; no new package dependencies.
 
-**Spec:** [Approved engineer readiness and diagnostics design](../specs/2026-10-15-engineer-readiness-diagnostics-design.md). The user approved this written design in chat. This implementation plan and its execution method are awaiting review. Source baseline: `863b5f1`; application baseline: `2fe1e4d`.
+**Spec:** [Approved engineer readiness and diagnostics design](../specs/2026-10-15-engineer-readiness-diagnostics-design.md). The user approved this written design in chat. The user approved this implementation plan and selected Native execution in chat. Source baseline: `863b5f1`; application baseline: `2fe1e4d`.
 
 ## Global Constraints
 
@@ -72,11 +72,11 @@ Each task ends with a scoped commit after its targeted checks pass. Stage only t
 
 **Interfaces:** Define `CheckSelection(string TaskId, JsonElement Parameters)`; replace the transport-only request with `CaptureRequest(int SchemaVersion, string TaskId, IReadOnlyList<string> CheckIds, JsonElement Parameters, WorkflowOrigin Origin)`. Define `CheckCoverage(string CheckId, string TargetDigest, bool Complete, int ReturnedCount, bool HasMore, string? NextCursor, IReadOnlyList<string> Limitations)` and `CapturedChecks(DeviceCapture Capture, CaptureRequest Request, IReadOnlyList<CheckCoverage> Coverage)`. `IDeviceInspector.CaptureAsync(CaptureRequest, CancellationToken)` returns `Task<CapturedChecks>`. `WorkbenchSession.CaptureAtOriginAsync(IReadOnlyList<CheckSelection>, WorkflowOrigin, CancellationToken)` returns `Task<IReadOnlyList<CapturedChecks>>`, issuing one task request at a time. `CaptureEvidenceV2.Create(CapturedChecks)` returns an `EvidenceRecord` of kind `capture.v2`; the envelope stays version 1, its strictly validated payload is the exact-request version 2.
 
-- [ ] Write `Only_selected_readiness_check_reaches_source`, `Subset_does_not_complete_composite_control`, `Request_rejects_foreign_check_and_duplicate_ids`, `Target_and_original_user_are_bound`, `Legacy_capture_reads_without_rewrite` and `Mixed_worker_versions_are_refused`. Core assertions: `Assert.Equal(new[]{"secureboot.enabled"}, recordedCheckIds); Assert.Equal(FindingStatus.Unknown, composite.Status); Assert.Equal(originalBytes, reloadedRawBytes);`. Use the existing TestData context and recording facts fake; define that fake inside `ExactCaptureTests.cs`.
-- [ ] Run `toolkit_engine_test 'FullyQualifiedName~ExactCaptureTests|FullyQualifiedName~HistoricalCaptureTests|FullyQualifiedName~WorkerProtocolTests'` and `toolkit_windows_test 'FullyQualifiedName~DeviceInspectorTests'`; observe the broad-capture regression before changing it.
-- [ ] Resolve checks from the selected task, validate against its declared checks and origin, reject request tampering and return exact coverage. Use worker request/response version 2 in all modes/call sites; reject version 1 transport while retaining old evidence validators. Do not change historical `DeviceCapture` serialization or infer complete provenance for old broad captures. Store each bounded capture once and adapt current review/report readers to the wrapper.
-- [ ] Rerun those commands plus existing WorkbenchTests and ReviewRunTests. Include protected single-check capture and failed evidence-save cases.
-- [ ] Commit: `fix: capture only explicitly selected checks`.
+- [x] Write `Only_selected_readiness_check_reaches_source`, `Subset_does_not_complete_composite_control`, `Request_rejects_foreign_check_and_duplicate_ids`, `Target_and_original_user_are_bound`, `Legacy_capture_reads_without_rewrite` and `Mixed_worker_versions_are_refused`. Core assertions: `Assert.Equal(new[]{"secureboot.enabled"}, recordedCheckIds); Assert.Equal(FindingStatus.Unknown, composite.Status); Assert.Equal(originalBytes, reloadedRawBytes);`. Use the existing TestData context and recording facts fake; define that fake inside `ExactCaptureTests.cs`.
+- [x] Run `toolkit_engine_test 'FullyQualifiedName~ExactCaptureTests|FullyQualifiedName~HistoricalCaptureTests|FullyQualifiedName~WorkerProtocolTests'` and `toolkit_windows_test 'FullyQualifiedName~DeviceInspectorTests'`; observe the broad-capture regression before changing it.
+- [x] Resolve checks from the selected task, validate against its declared checks and origin, reject request tampering and return exact coverage. Use worker request/response version 2 in all modes/call sites; reject version 1 transport while retaining old evidence validators. Do not change historical `DeviceCapture` serialization or infer complete provenance for old broad captures. Store each bounded capture once and adapt current review/report readers to the wrapper.
+- [x] Rerun those commands plus existing WorkbenchTests and ReviewRunTests. Include protected single-check capture and failed evidence-save cases.
+- [x] Commit: `fix: capture only explicitly selected checks`.
 
 ## Task 2: Local probe catalogue, inputs and reference profiles
 
@@ -287,4 +287,4 @@ Self-review completed: paths resolve or are explicitly planned new files; shared
 
 **Execution recommendation:** Native execution in this session, with one fresh independent whole-branch reviewer at the end. The tasks repeatedly touch the same capture/worker/plan interfaces, so keeping their implementation context together reduces integration overhead. Subagent-driven execution remains available for an independent review after every task at greater context cost.
 
-**Pending:** user review of this implementation plan and execution-method selection. No product code or new device action was implemented while writing it.
+**Execution:** Native selected by the user. Implementation is in progress; verification evidence is tracked in the ignored plan ledger and will be summarized here at completion.

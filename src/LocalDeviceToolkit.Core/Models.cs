@@ -11,7 +11,7 @@ public sealed record ExecutionActor(string Sid, string UserName, bool IsElevated
 public sealed record CatalogueIdentity(string Version, string SourceCommit, string SourceSha256, string LocalSha256);
 public sealed record WorkflowOrigin(string WorkflowId, string StageId);
 public sealed record ProbeObservation(string ControlId, string CheckId, ObservationState State, JsonElement? Value, string Source, DateTimeOffset CapturedAt, string Reason);
-public sealed record CaptureRequest(IReadOnlyList<string> ControlIds, WorkflowOrigin Origin);
+public sealed record CaptureRequest(IReadOnlyList<string> ControlIds, WorkflowOrigin Origin, IReadOnlyList<string>? CheckIds=null, IReadOnlyList<string>? TaskIds=null);
 public sealed record DeviceCapture(Guid Id, DeviceContext Context, CatalogueIdentity Catalogue, WorkflowOrigin Origin, ExecutionActor CapturedBy, DateTimeOffset CapturedAt, IReadOnlyList<ProbeObservation> Observations);
 public sealed record Finding(string ControlId, FindingStatus Status, string Reason, IReadOnlyList<ProbeObservation> Observations);
 public sealed record ActionRequest(string TaskId, string OperationId, JsonElement Parameters, WorkflowOrigin Origin);

@@ -77,7 +77,7 @@ public partial class App:Application
   }
   if(!Review(request.OriginalContext,actor,details,button))
   {
-   await WorkerFrames.WriteAsync(pipe,new WorkerResponse(1,false,"Administrator cancelled the protected review. No action started.",actor,null,null),default);return;
+   await WorkerFrames.WriteAsync(pipe,new WorkerResponse(2,false,"Administrator cancelled the protected review. No action started.",actor,null,null),default);return;
   }
   bool ParentStillMatches(){try{return NativePeer.Observe(parentPid)==parent;}catch{return false;}}
   if(!ParentStillMatches())throw new IOException("The initiating process is no longer available.");
@@ -89,20 +89,21 @@ public partial class App:Application
    var inspector=new WindowsDeviceInspector(new OriginalContext(request.OriginalContext),nativeIdentity,source,catalogue,TimeProvider.System);
    var capture=await inspector.CaptureAsync(request.Capture!,default);
    await journal.SaveNewAsync(EvidenceRecord.Capture(capture),default);
-   response=new(1,true,"Protected evidence saved. Review unavailable checks separately.",actor,capture,null);
+   await journal.SaveNewAsync(EvidenceRecord.Create(Guid.NewGuid(),"capture-selection.v2",capture.Context,capture.CapturedAt,StrictJson.Value(new CaptureSelectionEvidence(2,capture.Id,request.Capture!.TaskIds!,request.Capture.CheckIds!))),default);
+   response=new(2,true,"Protected evidence saved. Review unavailable checks separately.",actor,capture,null);
   }
   else if(request.Mode==WorkerMode.ApproveDeploymentProfile)
   {
    var input=request.DeploymentApproval!;var check=await new WindowsDeploymentBackend().CheckInputsAsync(input.Profile,input.SourceDirectory,default);if(!check.Accepted)throw new PlanValidationException(check.Reason);
    var approved=ApprovedProfileStore.WithContentId(input.Profile);approved=await profileStore.SaveOrLoadIdenticalAsync(approved,default);
-   response=new(1,true,"Approved exact profile saved; no software was installed.",actor,null,null,approved);
+   response=new(2,true,"Approved exact profile saved; no software was installed.",actor,null,null,approved);
   }
   else if(request.Mode is WorkerMode.ReconcileDeployment or WorkerMode.ResolveDeployment)
   {
    var input=StrictJson.Value(request.DeploymentReconcile!);var operation=packages.Resolve(input);EvidenceRecord? resolution=null;
    if(request.Mode==WorkerMode.ResolveDeployment){var id=await operation.ResolveReviewedAsync(request.OriginalContext,input,request.DeploymentResolutionReview!,journal,default);resolution=await journal.LoadAsync(id,default);}
    var status=await operation.ReconcileAsync(request.OriginalContext,input,default);
-   response=new(1,true,request.Mode==WorkerMode.ResolveDeployment?"Reviewed completion recorded; inspect the receipt. No installer was launched.":"Read-only deployment state collected. No installer was launched.",actor,null,null,DeploymentStatus:status,DeploymentResolution:resolution);
+   response=new(2,true,request.Mode==WorkerMode.ResolveDeployment?"Reviewed completion recorded; inspect the receipt. No installer was launched.":"Read-only deployment state collected. No installer was launched.",actor,null,null,DeploymentStatus:status,DeploymentResolution:resolution);
   }
   else
   {
@@ -113,7 +114,7 @@ public partial class App:Application
     try{var saved=await journal.LoadAsync(ProtectedJournalIds.Result(request.Plan.Id,request.ActionId!.Value),default);var receipt=StrictJson.Read<ResultRecord>(StrictJson.Bytes(saved.Data));var input=request.Plan.Actions.Single(a=>a.Id==request.ActionId).Request.Parameters;await packages.Resolve(input).AcknowledgeRecordedRunAsync(request.OriginalContext,input,receipt.RunId,journal,default);}
     catch(Exception error) when(error is IOException or PlanValidationException or EvidenceValidationException or UnauthorizedAccessException){result=result with{Reason=result.Reason+" Pending guard retained; use read-only reconciliation before any further deployment."};}
    }
-   response=new(1,true,"Protected action finished; inspect its verified outcome and journal.",actor,null,result);
+   response=new(2,true,"Protected action finished; inspect its verified outcome and journal.",actor,null,result);
   }
   await WorkerFrames.WriteAsync(pipe,response,default);
  }

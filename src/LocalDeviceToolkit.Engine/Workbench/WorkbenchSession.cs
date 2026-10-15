@@ -40,9 +40,9 @@ public sealed class WorkbenchSession
   var findings=new List<Finding>();DateTimeOffset? at=null;
   foreach(var control in task.ControlIds)
   {
-   var capture=captures.LastOrDefault(c=>c.Observations.Any(o=>o.ControlId==control));
+   var capture=captures.LastOrDefault(c=>c.Observations.Any(o=>o.ControlId==control&&(task.CheckIds.Length==0||task.CheckIds.Contains(o.CheckId,StringComparer.Ordinal))));
    if(capture is null)return new(task,"Not checked","Run a check to collect local evidence.",null);
-   findings.Add(AssessmentService.Assess(Catalogue with { Controls=Catalogue.Controls.Where(c=>c.Id==control).ToArray() },capture).Single());
+   findings.Add(AssessmentService.Assess(Catalogue with { Controls=Catalogue.Controls.Where(c=>c.Id==control).Select(c=>c with {CheckIds=c.CheckIds.Where(id=>task.CheckIds.Contains(id,StringComparer.Ordinal)).ToArray()}).ToArray() },capture).Single());
    at=at is null||capture.CapturedAt<at?capture.CapturedAt:at;
   }
   var priority=new[]{FindingStatus.DoesNotMeetStandard,FindingStatus.RequiresElevation,FindingStatus.Unknown,FindingStatus.ManualVerification,FindingStatus.NotApplicable,FindingStatus.MeetsStandard};
@@ -50,11 +50,14 @@ public sealed class WorkbenchSession
   var label=worst.Status switch {FindingStatus.DoesNotMeetStandard=>"Needs attention",FindingStatus.RequiresElevation=>"Needs administrator read",FindingStatus.ManualVerification=>"Manual verification",FindingStatus.MeetsStandard=>"Meets standard",FindingStatus.NotApplicable=>"Not applicable",_=>"Unknown"};
   return new(task,label,worst.Reason,at);
  }
- public IReadOnlyList<ProbeObservation> LatestObservations(TaskDefinition task)=>task.ControlIds.SelectMany(control=>captures.LastOrDefault(c=>c.Observations.Any(o=>o.ControlId==control))?.Observations.Where(o=>o.ControlId==control)??[]).ToArray();
- public async Task AcceptProtectedCaptureAsync(DeviceCapture capture,WorkflowOrigin origin,CancellationToken ct)
+ public IReadOnlyList<ProbeObservation> LatestObservations(TaskDefinition task)=>task.ControlIds.SelectMany(control=>captures.LastOrDefault(c=>c.Observations.Any(o=>o.ControlId==control&&(task.CheckIds.Length==0||task.CheckIds.Contains(o.CheckId,StringComparer.Ordinal))))?.Observations.Where(o=>o.ControlId==control&&(task.CheckIds.Length==0||task.CheckIds.Contains(o.CheckId,StringComparer.Ordinal)))??[]).ToArray();
+ public async Task AcceptProtectedCaptureAsync(DeviceCapture capture,WorkflowOrigin origin,CancellationToken ct,CaptureRequest? selection=null)
  {
   if(capture.Context!=Context||capture.Catalogue!=Catalogue.Identity||capture.Origin!=origin||!capture.CapturedBy.IsElevated)throw new EvidenceValidationException("Protected evidence does not match the original engineer, device, catalogue, workspace or elevated actor.");
-  await evidence.SaveNewAsync(EvidenceRecord.Capture(capture),ct);captures.Add(capture);if(captures.Count>100)captures.RemoveAt(0);
+  if(selection is not null&&(selection.CheckIds is null||selection.TaskIds is null||selection.Origin!=origin||!capture.Observations.Select(o=>o.CheckId).Order(StringComparer.Ordinal).SequenceEqual(selection.CheckIds.Order(StringComparer.Ordinal))))throw new EvidenceValidationException("Protected evidence does not match the selected checks.");
+  await evidence.SaveNewAsync(EvidenceRecord.Capture(capture),ct);
+  if(selection is not null)await evidence.SaveNewAsync(EvidenceRecord.Create(Guid.NewGuid(),"capture-selection.v2",Context,capture.CapturedAt,StrictJson.Value(new CaptureSelectionEvidence(2,capture.Id,selection.TaskIds!,selection.CheckIds!))),ct);
+  captures.Add(capture);if(captures.Count>100)captures.RemoveAt(0);
  }
  public Task<DeviceCapture> CaptureAsync(IReadOnlyList<string> taskIds,CancellationToken ct)=>CaptureAtOriginAsync(taskIds,Origin,ct);
  public async Task<DeviceCapture> CaptureAtOriginAsync(IReadOnlyList<string> taskIds,WorkflowOrigin origin,CancellationToken ct)
@@ -64,9 +67,11 @@ public sealed class WorkbenchSession
   if(!await gate.WaitAsync(0,ct))throw new InvalidOperationException("A check is already running.");
   try
   {
-   var capture=await inspector.CaptureAsync(new(selected.SelectMany(t=>t.ControlIds).Distinct(StringComparer.Ordinal).ToArray(),origin),ct);
+   var request=new CaptureRequest(selected.SelectMany(t=>t.ControlIds).Distinct(StringComparer.Ordinal).ToArray(),origin,selected.SelectMany(t=>t.CheckIds).Distinct(StringComparer.Ordinal).ToArray(),selected.Select(t=>t.Id).ToArray());
+   var capture=await inspector.CaptureAsync(request,ct);
    if(capture.Context!=Context||capture.Catalogue!=Catalogue.Identity||capture.Origin!=origin)throw new EvidenceValidationException("The check returned evidence for a different device, user, catalogue or workspace.");
    await evidence.SaveNewAsync(EvidenceRecord.Capture(capture),ct);
+   await evidence.SaveNewAsync(EvidenceRecord.Create(Guid.NewGuid(),"capture-selection.v2",Context,capture.CapturedAt,StrictJson.Value(new CaptureSelectionEvidence(2,capture.Id,request.TaskIds!,request.CheckIds!))),ct);
    captures.Add(capture);if(captures.Count>100)captures.RemoveAt(0);return capture;
   }
   finally{gate.Release();}

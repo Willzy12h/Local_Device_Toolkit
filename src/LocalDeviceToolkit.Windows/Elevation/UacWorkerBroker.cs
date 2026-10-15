@@ -31,7 +31,7 @@ public sealed class UacWorkerBroker(string workerPath)
   request=request with {ToolkitBuild=ToolkitBuildIdentity.Current};
   await WorkerFrames.WriteAsync(pipe,request,ct);
   var response=await WorkerFrames.ReadAsync<WorkerResponse>(pipe,ct);
-  if(response.SchemaVersion!=1||response.Actor!=peer.Actor||response.Capture is not null&&response.Capture.CapturedBy!=peer.Actor||response.Result?.Actor is not null&&response.Result.Actor!=peer.Actor)throw new InvalidDataException("Worker response identity did not match the OS-observed process.");
+  if(response.SchemaVersion!=2||response.Actor!=peer.Actor||response.Capture is not null&&response.Capture.CapturedBy!=peer.Actor||response.Result?.Actor is not null&&response.Result.Actor!=peer.Actor)throw new InvalidDataException("Worker response identity did not match the OS-observed process.");
   return response;
  }
 }

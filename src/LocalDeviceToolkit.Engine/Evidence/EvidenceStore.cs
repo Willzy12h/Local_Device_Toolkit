@@ -30,6 +30,10 @@ public sealed class EvidenceSchemaRegistry
  readonly Dictionary<string,Action<EvidenceRecord>> validators=new(StringComparer.Ordinal);
  public EvidenceSchemaRegistry()
  {
+  Register<CaptureSelectionEvidence>("capture-selection.v2",(selection,record)=>
+  {
+   if(selection.SchemaVersion!=2||selection.CaptureId==Guid.Empty||selection.TaskIds is null||selection.CheckIds is null||selection.TaskIds.Count is <1 or >100||selection.CheckIds.Count>128||selection.TaskIds.Any(string.IsNullOrWhiteSpace)||selection.CheckIds.Any(string.IsNullOrWhiteSpace)||selection.TaskIds.Distinct(StringComparer.Ordinal).Count()!=selection.TaskIds.Count||selection.CheckIds.Distinct(StringComparer.Ordinal).Count()!=selection.CheckIds.Count)throw new EvidenceValidationException("Invalid exact capture selection.");
+  });
   Register<DeviceCapture>("capture",(capture,record)=>
   {
    if(capture.Id!=record.Id||capture.Context!=record.Context||capture.CapturedAt!=record.RecordedAt||capture.CapturedBy is null||capture.Catalogue is null||capture.Origin is null||capture.Observations is null)
