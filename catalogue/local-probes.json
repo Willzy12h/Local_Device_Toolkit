@@ -1,0 +1,242 @@
+[
+  {
+    "id": "local.os.support",
+    "title": "Windows release and support",
+    "scope": "Machine",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": false,
+    "disclosure": "Read local evidence only. No settings are changed.",
+    "inputSchema": "none",
+    "scenario": "setup"
+  },
+  {
+    "id": "local.identity.context",
+    "title": "Local work-account context",
+    "scope": "CurrentUser",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": false,
+    "disclosure": "Read local evidence only. No settings are changed.",
+    "inputSchema": "none",
+    "scenario": "setup"
+  },
+  {
+    "id": "local.restart.reasons",
+    "title": "Restart reasons",
+    "scope": "Machine",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": false,
+    "disclosure": "Read local evidence only. No settings are changed.",
+    "inputSchema": "none",
+    "scenario": "setup"
+  },
+  {
+    "id": "local.update.history",
+    "title": "Update history",
+    "scope": "Machine",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": false,
+    "disclosure": "Read local evidence only. No settings are changed.",
+    "inputSchema": "history",
+    "scenario": "setup"
+  },
+  {
+    "id": "local.recovery.winre",
+    "title": "Windows recovery",
+    "scope": "Machine",
+    "privilege": "Administrator",
+    "mayUseNetwork": false,
+    "disclosure": "Read local evidence only. No settings are changed.",
+    "inputSchema": "none",
+    "scenario": "setup"
+  },
+  {
+    "id": "local.bitlocker.state",
+    "title": "Drive protection",
+    "scope": "Machine",
+    "privilege": "Administrator",
+    "mayUseNetwork": false,
+    "disclosure": "Read local evidence only. No settings are changed.",
+    "inputSchema": "volume",
+    "scenario": "setup"
+  },
+  {
+    "id": "local.storage.capacity",
+    "title": "Free space",
+    "scope": "Machine",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": false,
+    "disclosure": "Read local evidence only. No settings are changed.",
+    "inputSchema": "volume",
+    "scenario": "setup"
+  },
+  {
+    "id": "local.storage.health",
+    "title": "Disk-health evidence",
+    "scope": "Machine",
+    "privilege": "Administrator",
+    "mayUseNetwork": false,
+    "disclosure": "Read local evidence only. No settings are changed.",
+    "inputSchema": "volume",
+    "scenario": "hardware"
+  },
+  {
+    "id": "local.hardware.identity",
+    "title": "Manufacturer and firmware identity",
+    "scope": "Machine",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": false,
+    "disclosure": "Read local evidence only. No settings are changed.",
+    "inputSchema": "none",
+    "scenario": "hardware"
+  },
+  {
+    "id": "local.hardware.problems",
+    "title": "Present device problems",
+    "scope": "Machine",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": false,
+    "disclosure": "Read local evidence only. No settings are changed.",
+    "inputSchema": "none",
+    "scenario": "hardware"
+  },
+  {
+    "id": "local.power.capabilities",
+    "title": "Sleep capabilities",
+    "scope": "Machine",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": false,
+    "disclosure": "Read local evidence only. No settings are changed.",
+    "inputSchema": "none",
+    "scenario": "power"
+  },
+  {
+    "id": "local.battery.capacity",
+    "title": "Battery capacity",
+    "scope": "Machine",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": false,
+    "disclosure": "Generates a short local battery XML report in a private temporary folder; persists only capacity fields and removes raw output.",
+    "inputSchema": "none",
+    "scenario": "power"
+  },
+  {
+    "id": "local.defender.protection",
+    "title": "Defender protection",
+    "scope": "Machine",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": false,
+    "disclosure": "Read local evidence only. No settings are changed.",
+    "inputSchema": "none",
+    "scenario": "security"
+  },
+  {
+    "id": "local.defender.signatures",
+    "title": "Defender signatures",
+    "scope": "Machine",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": false,
+    "disclosure": "Read local evidence only. No settings are changed.",
+    "inputSchema": "none",
+    "scenario": "security"
+  },
+  {
+    "id": "local.network.adapter",
+    "title": "Adapter and route",
+    "scope": "Machine",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": false,
+    "disclosure": "Read local evidence only. No settings are changed.",
+    "inputSchema": "adapter",
+    "scenario": "network"
+  },
+  {
+    "id": "local.network.dns",
+    "title": "DNS lookup",
+    "scope": "Machine",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": true,
+    "disclosure": "Makes a network request to the explicitly selected target; review VPN, resolver and shared-printer context. No settings are changed.",
+    "inputSchema": "dns",
+    "scenario": "network"
+  },
+  {
+    "id": "local.network.tcp",
+    "title": "TCP connection",
+    "scope": "Machine",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": true,
+    "disclosure": "Makes a network request to the explicitly selected target; review VPN, resolver and shared-printer context. No settings are changed.",
+    "inputSchema": "tcp",
+    "scenario": "network"
+  },
+  {
+    "id": "local.proxy.user",
+    "title": "User proxy configuration",
+    "scope": "CurrentUser",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": false,
+    "disclosure": "Read local evidence only. No settings are changed.",
+    "inputSchema": "none",
+    "scenario": "network"
+  },
+  {
+    "id": "local.proxy.winhttp",
+    "title": "System WinHTTP proxy",
+    "scope": "Machine",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": false,
+    "disclosure": "Read local evidence only. No settings are changed.",
+    "inputSchema": "none",
+    "scenario": "network"
+  },
+  {
+    "id": "local.time.status",
+    "title": "Windows time status",
+    "scope": "Machine",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": false,
+    "disclosure": "Read local evidence only. No settings are changed.",
+    "inputSchema": "none",
+    "scenario": "network"
+  },
+  {
+    "id": "local.print.spooler",
+    "title": "Print Spooler state",
+    "scope": "Machine",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": false,
+    "disclosure": "Read local evidence only. No settings are changed.",
+    "inputSchema": "none",
+    "scenario": "printing"
+  },
+  {
+    "id": "local.print.queue",
+    "title": "Selected printer queue",
+    "scope": "CurrentUser",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": true,
+    "disclosure": "Makes a network request to the explicitly selected target; review VPN, resolver and shared-printer context. No settings are changed.",
+    "inputSchema": "printer",
+    "scenario": "printing"
+  },
+  {
+    "id": "local.events.incident",
+    "title": "Incident events",
+    "scope": "Machine",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": false,
+    "disclosure": "Reads selected local incident events, up to seven days and 200 records per explicit page. Coverage gaps remain visible.",
+    "inputSchema": "incident",
+    "scenario": "diagnostics"
+  },
+  {
+    "id": "local.app.verification",
+    "title": "Selected application verification",
+    "scope": "CurrentUser",
+    "privilege": "CurrentUser",
+    "mayUseNetwork": false,
+    "disclosure": "Read local evidence only. No settings are changed.",
+    "inputSchema": "profile",
+    "scenario": "applications"
+  }
+]

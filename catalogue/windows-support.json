@@ -1,0 +1,231 @@
+{
+  "retrievedOn": "2026-10-15",
+  "source": "https://learn.microsoft.com/en-us/windows/release-health/windows11-release-information",
+  "releases": [
+    {
+      "edition": "Core",
+      "release": "26H2",
+      "endsOn": "2028-10-10"
+    },
+    {
+      "edition": "CoreSingleLanguage",
+      "release": "26H2",
+      "endsOn": "2028-10-10"
+    },
+    {
+      "edition": "Professional",
+      "release": "26H2",
+      "endsOn": "2028-10-10"
+    },
+    {
+      "edition": "ProfessionalEducation",
+      "release": "26H2",
+      "endsOn": "2028-10-10"
+    },
+    {
+      "edition": "ProfessionalWorkstation",
+      "release": "26H2",
+      "endsOn": "2028-10-10"
+    },
+    {
+      "edition": "Enterprise",
+      "release": "26H2",
+      "endsOn": "2029-10-09"
+    },
+    {
+      "edition": "Education",
+      "release": "26H2",
+      "endsOn": "2029-10-09"
+    },
+    {
+      "edition": "IoTEnterprise",
+      "release": "26H2",
+      "endsOn": "2029-10-09"
+    },
+    {
+      "edition": "EnterpriseMultiSession",
+      "release": "26H2",
+      "endsOn": "2029-10-09"
+    },
+    {
+      "edition": "Core",
+      "release": "26H1",
+      "endsOn": "2028-03-14"
+    },
+    {
+      "edition": "CoreSingleLanguage",
+      "release": "26H1",
+      "endsOn": "2028-03-14"
+    },
+    {
+      "edition": "Professional",
+      "release": "26H1",
+      "endsOn": "2028-03-14"
+    },
+    {
+      "edition": "ProfessionalEducation",
+      "release": "26H1",
+      "endsOn": "2028-03-14"
+    },
+    {
+      "edition": "ProfessionalWorkstation",
+      "release": "26H1",
+      "endsOn": "2028-03-14"
+    },
+    {
+      "edition": "Enterprise",
+      "release": "26H1",
+      "endsOn": "2029-03-13"
+    },
+    {
+      "edition": "Education",
+      "release": "26H1",
+      "endsOn": "2029-03-13"
+    },
+    {
+      "edition": "IoTEnterprise",
+      "release": "26H1",
+      "endsOn": "2029-03-13"
+    },
+    {
+      "edition": "EnterpriseMultiSession",
+      "release": "26H1",
+      "endsOn": "2029-03-13"
+    },
+    {
+      "edition": "Core",
+      "release": "25H2",
+      "endsOn": "2027-10-12"
+    },
+    {
+      "edition": "CoreSingleLanguage",
+      "release": "25H2",
+      "endsOn": "2027-10-12"
+    },
+    {
+      "edition": "Professional",
+      "release": "25H2",
+      "endsOn": "2027-10-12"
+    },
+    {
+      "edition": "ProfessionalEducation",
+      "release": "25H2",
+      "endsOn": "2027-10-12"
+    },
+    {
+      "edition": "ProfessionalWorkstation",
+      "release": "25H2",
+      "endsOn": "2027-10-12"
+    },
+    {
+      "edition": "Enterprise",
+      "release": "25H2",
+      "endsOn": "2028-10-10"
+    },
+    {
+      "edition": "Education",
+      "release": "25H2",
+      "endsOn": "2028-10-10"
+    },
+    {
+      "edition": "IoTEnterprise",
+      "release": "25H2",
+      "endsOn": "2028-10-10"
+    },
+    {
+      "edition": "EnterpriseMultiSession",
+      "release": "25H2",
+      "endsOn": "2028-10-10"
+    },
+    {
+      "edition": "Core",
+      "release": "24H2",
+      "endsOn": "2026-10-13"
+    },
+    {
+      "edition": "CoreSingleLanguage",
+      "release": "24H2",
+      "endsOn": "2026-10-13"
+    },
+    {
+      "edition": "Professional",
+      "release": "24H2",
+      "endsOn": "2026-10-13"
+    },
+    {
+      "edition": "ProfessionalEducation",
+      "release": "24H2",
+      "endsOn": "2026-10-13"
+    },
+    {
+      "edition": "ProfessionalWorkstation",
+      "release": "24H2",
+      "endsOn": "2026-10-13"
+    },
+    {
+      "edition": "Enterprise",
+      "release": "24H2",
+      "endsOn": "2027-10-12"
+    },
+    {
+      "edition": "Education",
+      "release": "24H2",
+      "endsOn": "2027-10-12"
+    },
+    {
+      "edition": "IoTEnterprise",
+      "release": "24H2",
+      "endsOn": "2027-10-12"
+    },
+    {
+      "edition": "EnterpriseMultiSession",
+      "release": "24H2",
+      "endsOn": "2027-10-12"
+    },
+    {
+      "edition": "Core",
+      "release": "23H2",
+      "endsOn": "2025-11-11"
+    },
+    {
+      "edition": "CoreSingleLanguage",
+      "release": "23H2",
+      "endsOn": "2025-11-11"
+    },
+    {
+      "edition": "Professional",
+      "release": "23H2",
+      "endsOn": "2025-11-11"
+    },
+    {
+      "edition": "ProfessionalEducation",
+      "release": "23H2",
+      "endsOn": "2025-11-11"
+    },
+    {
+      "edition": "ProfessionalWorkstation",
+      "release": "23H2",
+      "endsOn": "2025-11-11"
+    },
+    {
+      "edition": "Enterprise",
+      "release": "23H2",
+      "endsOn": "2026-11-10"
+    },
+    {
+      "edition": "Education",
+      "release": "23H2",
+      "endsOn": "2026-11-10"
+    },
+    {
+      "edition": "IoTEnterprise",
+      "release": "23H2",
+      "endsOn": "2026-11-10"
+    },
+    {
+      "edition": "EnterpriseMultiSession",
+      "release": "23H2",
+      "endsOn": "2026-11-10"
+    }
+  ]
+}
