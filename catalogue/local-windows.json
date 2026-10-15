@@ -85,7 +85,9 @@
     "checkIds": [
       "paths.enabled"
     ],
-    "operationIds": [],
+    "operationIds": [
+      "settings.long-paths"
+    ],
     "manualInstructions": "Confirm applications support long paths; the local Windows setting cannot change application compatibility. A restart may be required."
   },
   {
@@ -137,7 +139,9 @@
     "checkIds": [
       "extensions.visible"
     ],
-    "operationIds": [],
+    "operationIds": [
+      "settings.show-file-extensions"
+    ],
     "manualInstructions": "Verify file extensions in a newly opened Explorer window for the current engineer."
   },
   {
@@ -208,7 +212,9 @@
     "checkIds": [
       "faststartup.enabled"
     ],
-    "operationIds": [],
+    "operationIds": [
+      "settings.disable-fast-startup"
+    ],
     "manualInstructions": "Confirm fast startup is disabled locally. Restart and managed policy behaviour require device acceptance."
   },
   {
@@ -219,7 +225,9 @@
     "checkIds": [
       "power.acsleep.seconds"
     ],
-    "operationIds": [],
+    "operationIds": [
+      "settings.no-ac-sleep"
+    ],
     "manualInstructions": "Check active power plan AC sleep is Never. Battery sleep and display timeout are not changed."
   },
   {

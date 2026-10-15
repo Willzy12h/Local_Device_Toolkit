@@ -1,8 +1,8 @@
 # Local Device Toolkit
 
-A planned native Windows WPF toolkit for engineers to assess the current device, review local changes and application deployments, and verify their results.
+A native Windows WPF toolkit for engineers to assess the current device, review local changes and application deployments, and verify their results.
 
-**Current status: implementation in progress. The shared catalogue/workflow foundation and its portable tests exist. The native application, Windows actions and packaged solution are still being implemented.**
+**Implementation in progress. The WPF workspaces, shared checks/queue, evidence store, elevation worker and initial local settings are implemented. Packaging, remaining settings, application deployment and reports are being completed. Native Windows acceptance is pending.**
 
 The selected direction is a new WPF application adapted from the relevant parts of [M365 Buildstandards](https://github.com/Willzy12h/M365-Buildstandards). It will run as the current Windows user and request UAC elevation only for operations that require it.
 

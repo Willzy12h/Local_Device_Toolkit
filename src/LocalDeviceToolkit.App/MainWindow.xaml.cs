@@ -11,10 +11,10 @@ using TaskStatus=LocalDeviceToolkit.Engine.Workbench.TaskStatus;
 namespace LocalDeviceToolkit.App;
 public partial class MainWindow:Window
 {
- readonly WorkbenchSession session;readonly IEvidenceStore evidence;readonly CancellationTokenSource lifetime=new();bool rendering,isBusy;
- public MainWindow(WorkbenchSession session,IEvidenceStore evidence)
+ readonly LocalDeviceToolkit.Engine.Planning.PlanService plans;readonly LocalDeviceToolkit.Engine.Execution.RunCoordinator coordinator;readonly WorkbenchSession session;readonly IEvidenceStore evidence;readonly CancellationTokenSource lifetime=new();bool rendering,isBusy;
+ public MainWindow(WorkbenchSession session,IEvidenceStore evidence,LocalDeviceToolkit.Engine.Planning.PlanService plans,LocalDeviceToolkit.Engine.Execution.RunCoordinator coordinator)
  {
-  InitializeComponent();this.session=session;this.evidence=evidence;
+  InitializeComponent();this.session=session;this.evidence=evidence;this.plans=plans;this.coordinator=coordinator;
   DeviceHeader.Text=$"{session.Context.ComputerName}  •  {session.Context.OriginalUserName}  •  Windows {session.Context.OsVersion} ({session.Context.Architecture})";
   StandardHeader.Text=$"Build standard {session.Catalogue.Identity.Version}  •  30 controls";
   SessionNotice.Text=session.Context.IsElevated?"This session is elevated. User tasks still target this Windows user.":"Running as the current Windows user. Administrator access is requested only for an approved action.";
@@ -44,7 +44,7 @@ public partial class MainWindow:Window
    {
     var flow=session.Workflows.Workflows.Single(w=>w.Id==session.Area);Stages.ItemsSource=flow.Stages;Stages.SelectedItem=flow.Stages.Single(s=>s.Id==session.StageId);
    }
-   RefreshTasks();QueueShortcut.Content=$"Deployment queue ({session.Queue.Requests.Count})";
+   UpdateQueueButtons();RefreshTasks();QueueShortcut.Content=$"Deployment queue ({session.Queue.Requests.Count})";
    QueueList.ItemsSource=session.Queue.Requests.Select(r=>$"{session.Workflows.ResolveTask(r.TaskId).Title}\n{r.OperationId} • {r.Origin.WorkflowId} / {r.Origin.StageId}").DefaultIfEmpty("No changes queued. Select a supported task and review its fix to add a change.").ToArray();
   }
   finally{rendering=false;}
@@ -92,7 +92,25 @@ public partial class MainWindow:Window
    await session.AcceptProtectedCaptureAsync(response.Capture,origin,lifetime.Token);RefreshTasks();StatusLine.Text="Protected evidence saved. Original engineer and executing administrator are recorded separately.";
   });
  }
- void ReviewFix_Click(object sender,RoutedEventArgs e){StatusLine.Text="Select a supported action and review its exact parameters before adding it to the queue.";}
+ void ReviewFix_Click(object sender,RoutedEventArgs e)
+ {
+  if(TaskList.SelectedItem is not TaskStatus task||task.Definition.OperationId is null||isBusy)return;
+  var form=new ActionInputWindow(task.Definition,session.Context) {Owner=this};if(form.ShowDialog()!=true)return;
+  var request=new ActionRequest(task.Definition.Id,task.Definition.OperationId,StrictJson.Value(form.Parameters),session.Origin);
+  var added=session.Queue.Add(request);StatusLine.Text=added switch {LocalDeviceToolkit.Engine.Execution.QueueAddResult.AlreadyQueued=>"This identical change is already in the shared queue.",LocalDeviceToolkit.Engine.Execution.QueueAddResult.Added=>"Added to the shared queue. Review the complete plan before execution.",_=>"A different change already targets this setting; remove it explicitly before adding this request."};Render();
+ }
+ void UpdateQueueButtons(){ReviewQueue.IsEnabled=RemoveQueued.IsEnabled=ClearQueue.IsEnabled=!isBusy&&session.Queue.Requests.Count>0;}
+ void RemoveQueued_Click(object sender,RoutedEventArgs e){if(isBusy)return;var index=QueueList.SelectedIndex;var requests=session.Queue.Requests;if(index>=0&&index<requests.Count)session.Queue.Remove(requests[index]);Render();}
+ void ClearQueue_Click(object sender,RoutedEventArgs e){if(isBusy)return;session.Queue.Clear();Render();}
+ async void ReviewQueue_Click(object sender,RoutedEventArgs e)=>await RunUiAsync(async()=>
+ {
+  var revision=session.Queue.Revision;var plan=await plans.CreateAsync(session.Context,session.Catalogue,session.Queue.Requests,lifetime.Token);
+  var review=new PlanReviewWindow(plan) {Owner=this};if(review.ShowDialog()!=true){StatusLine.Text="Plan review cancelled. No queued action was started.";return;}
+  if(session.Queue.Revision!=revision)throw new InvalidOperationException("The queue changed after review. Review a fresh plan.");
+  var run=await coordinator.ExecuteAsync(plan,lifetime.Token);
+  RunResults.Text=$"Run {run.Id:D} • Evidence complete: {run.EvidenceComplete}\nOriginal engineer: {run.Context.OriginalUserName}\n"+string.Join("\n\n",run.Results.Select(r=>$"{r.Outcome} • {r.Reason}\nExecuting account: {r.Actor?.UserName??"Not confirmed / not started"}\n{string.Join("; ",r.After.Select(o=>o.CheckId+" = "+o.Value?.GetRawText()))}"));
+  session.Queue.Clear();Render();StatusLine.Text="Run recorded. Review each outcome; recheck the affected controls before handover. Uncertain operations are never replayed automatically.";
+ });
  async void History_Click(object sender,RoutedEventArgs e)=>await RunUiAsync(async()=>
  {
   var page=await evidence.ReadHistoryAsync(null,lifetime.Token);
@@ -114,10 +132,10 @@ public partial class MainWindow:Window
  });
  async Task RunUiAsync(Func<Task> action)
  {
-  if(isBusy)return;isBusy=true;Busy.Visibility=Visibility.Visible;ShowTask();
+  if(isBusy)return;isBusy=true;Busy.Visibility=Visibility.Visible;UpdateQueueButtons();ShowTask();
   try{await action();}
   catch(OperationCanceledException){StatusLine.Text="The check was cancelled. No successful result was inferred.";}
   catch(Exception error){StatusLine.Text="The request did not complete: "+error.Message;MessageBox.Show(this,error.Message,"Request did not complete",MessageBoxButton.OK,MessageBoxImage.Warning);}
-  finally{isBusy=false;Busy.Visibility=Visibility.Collapsed;ShowTask();}
+  finally{isBusy=false;Busy.Visibility=Visibility.Collapsed;UpdateQueueButtons();ShowTask();}
  }
 }

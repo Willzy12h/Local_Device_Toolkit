@@ -86,7 +86,7 @@
     "checkIds": [
       "paths.enabled"
     ],
-    "operationId": null
+    "operationId": "settings.long-paths"
   },
   {
     "id": "control.cfg-win-008",
@@ -138,7 +138,7 @@
     "checkIds": [
       "extensions.visible"
     ],
-    "operationId": null
+    "operationId": "settings.show-file-extensions"
   },
   {
     "id": "control.cfg-win-013",
@@ -209,7 +209,7 @@
     "checkIds": [
       "faststartup.enabled"
     ],
-    "operationId": null
+    "operationId": "settings.disable-fast-startup"
   },
   {
     "id": "windows.power-ac-sleep",
@@ -220,7 +220,7 @@
     "checkIds": [
       "power.acsleep.seconds"
     ],
-    "operationId": null
+    "operationId": "settings.no-ac-sleep"
   },
   {
     "id": "control.cfg-win-021",

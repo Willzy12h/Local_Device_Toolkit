@@ -20,7 +20,9 @@ public partial class App:Application
    var inspector=new WindowsDeviceInspector(identity,identity,source,catalogue,TimeProvider.System);
    var operations=LocalDeviceToolkit.Windows.WindowsOperations.Create(workflows);
    var session=new WorkbenchSession(context,catalogue,workflows,inspector,store,operations);
-   MainWindow=new MainWindow(session,store);MainWindow.Show();
+   var plans=new PlanService(operations,TimeProvider.System);
+   var coordinator=new LocalDeviceToolkit.Engine.Execution.RunCoordinator(plans,operations,identity,catalogue,store,new LocalDeviceToolkit.Windows.Elevation.WindowsActionDispatcher(operations,identity,System.IO.Path.Combine(AppContext.BaseDirectory,"worker","LocalDeviceToolkit.Worker.exe")),TimeProvider.System);
+   MainWindow=new MainWindow(session,store,plans,coordinator);MainWindow.Show();
   }
   catch(Exception error){MessageBox.Show("The toolkit could not start safely.\n\n"+error.Message,"Local Device Toolkit",MessageBoxButton.OK,MessageBoxImage.Error);Shutdown(1);}
  }
