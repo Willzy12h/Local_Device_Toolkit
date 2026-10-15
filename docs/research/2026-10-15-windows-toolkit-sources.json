@@ -1,0 +1,1275 @@
+{
+  "research_date": "2026-10-15",
+  "repository_reviewed_commit": "2fe1e4de7d00484cbf433cb38c268951e1221c18",
+  "purpose": "Documentation-backed feature recommendations; no new collectors or repairs implemented or exercised.",
+  "method": "Official Microsoft and OEM article bodies fetched over inherited HTTPS proxy with TLS verification. Search results used for discovery, not as evidence. Bounded excerpts checked against normalized fetched text; full web articles not redistributed.",
+  "limitations": [
+    "Publication metadata and displayed update dates are distinct and can conflict.",
+    "Source hashes identify captured extracted text, not publisher authenticity or future immutability.",
+    "Windows command examples require availability, privilege, locale and side-effect validation on supported Windows 11 x64 devices.",
+    "Product support and vendor tooling must be refreshed; no fixed release number or vendor CLI version is inferred from this report."
+  ],
+  "source_count": 78,
+  "sources": [
+    {
+      "id": "S01",
+      "url": "https://learn.microsoft.com/en-us/windows/release-health/windows11-release-information",
+      "title": "Windows 11 - release information | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-10-13",
+        "ms_date": "2026-10-13T00:00:00Z",
+        "updated_at": "2026-10-13T21:41:00Z"
+      },
+      "extracted_text_sha256": "ee12d840abe1f5d9427d81ca815fe7f8af9d337814c491d1c0b263cd3d84f5cb",
+      "checked_excerpt": "Feature updates are released in the second half of the calendar year and come with 24 months of support for Home, Pro,",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S02",
+      "url": "https://learn.microsoft.com/en-us/lifecycle/products/windows-11-home-and-pro",
+      "title": "Windows 11 Home and Pro - Microsoft Lifecycle | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": null,
+        "ms_date": "2024-09-18T00:00:00Z",
+        "updated_at": "2026-09-29T19:33:00Z"
+      },
+      "extracted_text_sha256": "3f991916fec32bb6b4a22f7f471884ff52bf078d00be8022b78efd6f49292f47",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S03",
+      "url": "https://learn.microsoft.com/en-us/lifecycle/products/windows-11-enterprise-and-education",
+      "title": "Windows 11 Enterprise and Education - Microsoft Lifecycle | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": null,
+        "ms_date": "2024-09-18T00:00:00Z",
+        "updated_at": "2026-10-06T20:45:00Z"
+      },
+      "extracted_text_sha256": "69d118f558a1d297785c8e5f750c9e37511b9969cbae2e18cd6bb7cacf643b1a",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S04",
+      "url": "https://learn.microsoft.com/en-us/windows/deployment/update/waas-restart",
+      "title": "Manage device restarts after updates | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2025-09-30",
+        "ms_date": "2025-09-26T00:00:00Z",
+        "updated_at": "2025-10-02T15:02:00Z"
+      },
+      "extracted_text_sha256": "ca91da81fe0effd68c92948266780059d20a7023046690ff0a76ea2985941823",
+      "checked_excerpt": "Any settings configured through the registry might conflict with any existing configuration that uses any of the other methods.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S05",
+      "url": "https://learn.microsoft.com/en-us/windows/deployment/update/safeguard-holds",
+      "title": "Safeguard holds for Windows | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2025-08-15",
+        "ms_date": "2025-08-15T00:00:00Z",
+        "updated_at": "2025-10-02T15:02:00Z"
+      },
+      "extracted_text_sha256": "0a2648f0257c462d137e1fb972b912e590125519316df5e69ab70782633d69d3",
+      "checked_excerpt": "Safeguard holds only affect devices that use the Windows Update service for updates.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S06",
+      "url": "https://learn.microsoft.com/en-us/autopilot/device-preparation/overview",
+      "title": "Overview of Windows Autopilot device preparation | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-08-27",
+        "ms_date": "2026-08-07T00:00:00Z",
+        "updated_at": "2026-08-27T17:37:00Z"
+      },
+      "extracted_text_sha256": "fd6ede123e6f89ef7e46af77892f8a662bcd8a7332a7bf043173b14a4251284c",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S07",
+      "url": "https://learn.microsoft.com/en-us/autopilot/device-preparation/compare",
+      "title": "Compare Windows Autopilot device preparation and Windows Autopilot | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-08-27",
+        "ms_date": "2026-08-07T00:00:00Z",
+        "updated_at": "2026-08-27T17:37:00Z"
+      },
+      "extracted_text_sha256": "ea248953ade8e8e00be9f707a6dce6924720b43b3cf4a3cc7a7e5604ac53b8b6",
+      "checked_excerpt": "Join types supported Microsoft Entra join. Microsoft Entra join. Microsoft Entra hybrid join.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S08",
+      "url": "https://learn.microsoft.com/en-us/autopilot/device-preparation/requirements",
+      "title": "Windows Autopilot device preparation requirements | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2025-06-11",
+        "ms_date": "2025-06-11T00:00:00Z",
+        "updated_at": "2026-06-22T22:36:00Z"
+      },
+      "extracted_text_sha256": "ec6ddb3be3e7751ddab78d92efd4580b929d6832611589af1abd9397348fa771",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S09",
+      "url": "https://learn.microsoft.com/en-us/windows/package-manager/winget/",
+      "title": "Use WinGet to install and manage applications | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-07-19",
+        "ms_date": "2026-07-19T00:00:00Z",
+        "updated_at": "2026-07-21T05:03:00Z"
+      },
+      "extracted_text_sha256": "dcf937e7f910338aacd6aad05a7ac9fe270da4c87abc99a2d41036dc7760101d",
+      "checked_excerpt": "WinGet will not be available until you have logged into Windows as a user for the first time, triggering Microsoft Store to",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S10",
+      "url": "https://learn.microsoft.com/en-us/windows/package-manager/winget/install",
+      "title": "`install` Command | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-07-19",
+        "ms_date": "2026-07-19T00:00:00Z",
+        "updated_at": "2026-07-21T05:03:00Z"
+      },
+      "extracted_text_sha256": "1306f0145b7ff04cbd72515f2565951b1312c18b1b0a228be0c8ba46999f0bd4",
+      "checked_excerpt": "Enables you to specify an exact version to install. If not specified, latest will install the highest versioned application.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S11",
+      "url": "https://learn.microsoft.com/en-us/windows/package-manager/winget/download",
+      "title": "`download` Command | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-07-19",
+        "ms_date": "2026-07-19T00:00:00Z",
+        "updated_at": "2026-07-21T05:03:00Z"
+      },
+      "extracted_text_sha256": "d6895f74283be169f950a43390a393dfd1d8be92f7b0ad3fb0e3e4f4581e4b59",
+      "checked_excerpt": "The Microsoft Entra ID account used for authentication to generate and retrieve a Microsoft Store packaged app license file must be a",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S12",
+      "url": "https://learn.microsoft.com/en-us/intune/app-management/deployment/win32",
+      "title": "Win32 App Management in Microsoft Intune - Microsoft Intune | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-04-14",
+        "ms_date": "2026-02-06T00:00:00Z",
+        "updated_at": "2026-07-01T22:34:00Z"
+      },
+      "extracted_text_sha256": "0674b01d16d1abddebe757e741a0afd76b39ed8b8762885eff996818a6a5c3bc",
+      "checked_excerpt": "If you mix the installation of Win32 apps and line-of-business apps during Windows Autopilot enrollment, the app installation might fail as they",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S13",
+      "url": "https://learn.microsoft.com/en-us/windows/msix/app-installer/install-update-app-installer",
+      "title": "Install and update the App Installer - MSIX | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2023-12-20",
+        "ms_date": "2023-12-20T00:00:00Z",
+        "updated_at": "2025-06-10T18:04:00Z"
+      },
+      "extracted_text_sha256": "12f0352d63d13e71df16fd2bd7542c929ce0b03bb765f1f6fb6d1664b31ff640",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S14",
+      "url": "https://learn.microsoft.com/en-us/windows/security/operating-system-security/data-protection/bitlocker/",
+      "title": "BitLocker Overview | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-08-24",
+        "ms_date": "2026-08-24T00:00:00Z",
+        "updated_at": "2026-10-08T11:38:00Z"
+      },
+      "extracted_text_sha256": "13c4c2506ba2e004fd74c80faa052ffc205cb2f77b8707970805e64ea7ca4b14",
+      "checked_excerpt": "Starting in Windows 11, version 24H2, the prerequisites of DMA and HSTI/Modern Standby are removed.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S15",
+      "url": "https://learn.microsoft.com/en-us/windows/security/operating-system-security/data-protection/bitlocker/recovery-overview",
+      "title": "BitLocker recovery overview | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2025-07-29",
+        "ms_date": "2025-07-29T00:00:00Z",
+        "updated_at": "2026-10-08T11:38:00Z"
+      },
+      "extracted_text_sha256": "88bcbeed3423c27c09e8bc2dfddda02c2e22df10dfb6008f05b1d095d18ab93f",
+      "checked_excerpt": "Having access to the recovery password allows the holder to unlock a BitLocker-protected volume and access all of its data. Therefore, it's",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S16",
+      "url": "https://learn.microsoft.com/en-us/windows/security/operating-system-security/data-protection/bitlocker/faq",
+      "title": "BitLocker FAQ | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-10-08",
+        "ms_date": "2026-06-01T00:00:00Z",
+        "updated_at": "2026-10-08T11:38:00Z"
+      },
+      "extracted_text_sha256": "5942954c48cf6afee47a8e7bdcb26d1e33f1f3df6a90b7751b320673c99c4ff9",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S17",
+      "url": "https://learn.microsoft.com/en-us/windows/security/operating-system-security/data-protection/bitlocker/operations-guide",
+      "title": "BitLocker operations guide | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2025-07-29",
+        "ms_date": "2025-07-29T00:00:00Z",
+        "updated_at": "2026-10-08T11:38:00Z"
+      },
+      "extracted_text_sha256": "1c3411f3551ec1792ebc25278a300078eb9c80a55cd42a6dbdedec9e6bee7eff",
+      "checked_excerpt": "Disabling BitLocker decrypts and removes any associated protectors from the volumes. Decryption should occur when protection is no longer required, and not",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S18",
+      "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/distinguishing-fast-startup-from-wake-from-hibernation",
+      "title": "Distinguishing Fast Startup from Wake-from-Hibernation - Windows drivers | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2025-02-21",
+        "ms_date": "2025-02-21T00:00:00Z",
+        "updated_at": "2025-03-25T19:52:00Z"
+      },
+      "extracted_text_sha256": "638dab77bff0d0b22023e7f5c87366f23f2306d8f4980d591a82328bcfbaf477",
+      "checked_excerpt": "In contrast, a fast startup simply loads the hibernation file (Hiberfil.sys) into memory. A fast startup tends to take significantly less time",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S19",
+      "url": "https://learn.microsoft.com/en-us/windows-hardware/customize/power-settings/sleep-settings",
+      "title": "Sleep settings overview | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2020-04-10",
+        "ms_date": "2020-03-31T00:00:00Z",
+        "updated_at": "2020-04-10T19:09:00Z"
+      },
+      "extracted_text_sha256": "4528fa152cc3546e329a3dbee04802ebaae7a361299b5aca80f9717922e8f028",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S20",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation",
+      "title": "Maximum Path Length Limitation - Win32 apps | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2024-07-16",
+        "ms_date": "2024-07-15T00:00:00Z",
+        "updated_at": "2025-04-15T10:05:00Z"
+      },
+      "extracted_text_sha256": "a4e8b2817d9646227f6c0866dd8f5c757721daf348dc4d5ac887806d7bcf2e32",
+      "checked_excerpt": "To enable the new long path behavior per application, two conditions must be met. A registry value must be set, and the",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S21",
+      "url": "https://learn.microsoft.com/en-us/copilot/manage",
+      "title": "Manage Microsoft Copilot Chat | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-10-12",
+        "ms_date": "2026-10-12T00:00:00Z",
+        "updated_at": "2026-10-12T23:36:00Z"
+      },
+      "extracted_text_sha256": "34872fffe0888f69da79131180d6937aeab1dbaab03ff62ff355f4c13bac8987",
+      "checked_excerpt": "However, users can still access Microsoft Copilot Chat through other available entry points unless administrators separately restrict access.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S22",
+      "url": "https://learn.microsoft.com/en-us/windows/client-management/manage-windows-copilot",
+      "title": "Updated Windows and Microsoft Copilot Chat experience | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-08-18",
+        "ms_date": "2025-11-20T00:00:00Z",
+        "updated_at": "2026-08-18T18:32:00Z"
+      },
+      "extracted_text_sha256": "8842c2588c50480dfb0e50d738c4f2f685f29733cf0211d6d8b9cecf6ab32246",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S23",
+      "url": "https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-windowsai",
+      "title": "WindowsAI Policy CSP | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-09-23",
+        "ms_date": "2026-09-10T00:00:00Z",
+        "updated_at": "2026-09-23T17:34:00Z"
+      },
+      "extracted_text_sha256": "8b7f4aebe1f7429f78ae74e59b094450af545bc43c03ff4e7141a18098ebfc4c",
+      "checked_excerpt": "It will apply to devices/users that meet the below conditions: Microsoft 365 Copilot and Microsoft Copilot are both installed; the Microsoft Copilot",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S24",
+      "url": "https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/powercfg-command-line-options",
+      "title": "Powercfg command-line options | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2021-12-15",
+        "ms_date": "2017-10-27T00:00:00Z",
+        "updated_at": "2021-12-15T11:54:00Z"
+      },
+      "extracted_text_sha256": "95e46ca112b5e7a7c7df446bb06bd51068745ed2dc1aeec0d0f94d9cfdb93672",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S25",
+      "url": "https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/modern-standby-sleepstudy",
+      "title": "Modern standby SleepStudy | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2022-06-21",
+        "ms_date": "2021-10-05T00:00:00Z",
+        "updated_at": "2025-01-13T11:02:00Z"
+      },
+      "extracted_text_sha256": "bb9be7f5d000e95a7cfd328315be2092ec7357c0af56be914713b9a1f5589bea",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S26",
+      "url": "https://learn.microsoft.com/en-us/troubleshoot/windows-client/setup-upgrade-and-drivers/updates-not-install-with-fast-startup",
+      "title": "Updates may not install with Fast Startup in Windows 10 - Windows Client | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-02-12",
+        "ms_date": "2026-02-12T00:00:00Z",
+        "updated_at": "2026-09-21T22:05:00Z"
+      },
+      "extracted_text_sha256": "cd8abb05c10b523e673c8804d123ba4464755dc5fd0e1624b29d53b48e29f965",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S27",
+      "url": "https://learn.microsoft.com/en-us/autopilot/windows-autopilot-reset",
+      "title": "Windows Autopilot Reset | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2025-08-13",
+        "ms_date": "2025-08-13T00:00:00Z",
+        "updated_at": "2026-06-22T22:36:00Z"
+      },
+      "extracted_text_sha256": "492ab3d4de06f2a75fa989139898be424c62ef5077eb6bce055fc2b8046a0af4",
+      "checked_excerpt": "Maintains the device's identity connection to Microsoft Entra ID. Maintains the device's management connection to Intune.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S28",
+      "url": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/reagentc-command-line-options?view=windows-11",
+      "title": "REAgentC command-line options | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2022-08-18",
+        "ms_date": "2021-10-08T00:00:00Z",
+        "updated_at": "2022-08-18T10:54:00Z"
+      },
+      "extracted_text_sha256": "6ce3f2538cd039a4933a2117cc276bce3fe78665f84eb3bafe58e114e0bd6eb2",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S29",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/devices/troubleshoot-device-dsregcmd",
+      "title": "Troubleshoot devices by using the dsregcmd command - Microsoft Entra ID | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2025-06-27",
+        "ms_date": "2025-06-27T00:00:00Z",
+        "updated_at": "2026-06-15T17:40:00Z"
+      },
+      "extracted_text_sha256": "d7942ac5f63e8153a55c6e0a573df7dab7f7537b70ab606f783e0b0c4e597457",
+      "checked_excerpt": "The presence of MDM URLs doesn't guarantee that the device is managed by an MDM. The information is displayed if the tenant",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S30",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-powersetrequest",
+      "title": "PowerSetRequest function (winbase.h) - Win32 apps | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2022-07-27",
+        "ms_date": "2018-12-05T00:00:00Z",
+        "updated_at": "2025-07-01T18:41:00Z"
+      },
+      "extracted_text_sha256": "95e028dc9a3828489ea27a5913b8bb3e64bc36dc594779cf3272ef101aa2f758",
+      "checked_excerpt": "Call PowerSetRequest immediately before the scenario that requires the request. Call PowerClearRequest to decrement the reference count for the request as soon",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S31",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-setthreadexecutionstate",
+      "title": "SetThreadExecutionState function (winbase.h) - Win32 apps | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2021-10-13",
+        "ms_date": "2018-12-05T00:00:00Z",
+        "updated_at": "2025-07-01T18:41:00Z"
+      },
+      "extracted_text_sha256": "ab117d122e1d1114bac858f1e805934e3b39b4bce901f76c69bf6664ac1be00c",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S32",
+      "url": "https://learn.microsoft.com/en-us/windows/msix/app-installer/auto-update-and-repair--overview",
+      "title": "Auto-update and repair apps - MSIX | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-04-15",
+        "ms_date": "2026-04-10T00:00:00Z",
+        "updated_at": "2026-04-20T05:02:00Z"
+      },
+      "extracted_text_sha256": "284b380750d1224dad13c897e947c85cc5eb1487f5a5973ba7c7feab2c0f9872",
+      "checked_excerpt": "Get-AppxPackageAutoUpdateSettings Returns the currently set auto-update and repair settings for a specific or all configured Windows apps.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S33",
+      "url": "https://learn.microsoft.com/en-us/windows/msix/app-installer/installing-windows10-apps-web",
+      "title": "Installing Windows apps from a web page - MSIX | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:25:51.695326+00:00",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-04-20",
+        "ms_date": "2026-04-17T00:00:00Z",
+        "updated_at": "2026-04-20T05:02:00Z"
+      },
+      "extracted_text_sha256": "0b0ac5db7a0142fd6c4916342e35a5a30dba90bb46d4ada92d0f576aafc680b1",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S34",
+      "url": "https://learn.microsoft.com/en-us/troubleshoot/windows-client/performance/event-id-41-restart",
+      "title": "Event ID 41 The system has rebooted without cleanly shutting down first - Windows Client | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-02-12",
+        "metadata_values": [
+          "2026-02-12T00:00:00Z",
+          "2026-02-19T02:04:00Z"
+        ]
+      },
+      "extracted_text_sha256": "ac15e8c38c0a58bf81ed49152f1119bdec92cf9989704f67e532c9fbffedca8c",
+      "checked_excerpt": "By itself, Event ID 41 might not contain sufficient information to explicitly define what occurred. Typically, you've to also consider what was",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S35",
+      "url": "https://learn.microsoft.com/en-us/troubleshoot/windows-client/application-management/event-10016-logged-when-accessing-dcom",
+      "title": "Event ID 10016 is logged in Windows - Windows Client | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-05-19",
+        "metadata_values": [
+          "2026-02-12T00:00:00Z",
+          "2026-05-19T22:07:00Z"
+        ]
+      },
+      "extracted_text_sha256": "3c2d577683c72bf159786b3dda0b72ca70275cca35cc38c4f72c389afa9396d4",
+      "checked_excerpt": "These 10016 events are recorded when Microsoft components try to access DCOM components without the required permissions. In this case, this behavior",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S36",
+      "url": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/repair-a-windows-image?view=windows-11",
+      "title": "Repair a Windows Image | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": "2021-12-15",
+        "metadata_values": [
+          "2017-05-02T00:00:00Z",
+          "2021-12-15T11:54:00Z"
+        ]
+      },
+      "extracted_text_sha256": "4e15a44ce91c0c648378585682ec5b33726799dd806814085a729cbb599eb173",
+      "checked_excerpt": "Scan the image to check for corruption. This operation will take several minutes. For example, at a command prompt, type the following",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S37",
+      "url": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/configure-a-windows-repair-source?view=windows-11",
+      "title": "Configure a Windows Repair Source | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": "2021-12-15",
+        "metadata_values": [
+          "2021-10-12T00:00:00Z",
+          "2021-12-15T11:54:00Z"
+        ]
+      },
+      "extracted_text_sha256": "022a7025fe5d88bc130efad795f81b494209a5151f83c2e984da0c90cc0c0987",
+      "checked_excerpt": "Windows Update is the default repair source, but you can configure Group policy to specify one or more network locations that have",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S38",
+      "url": "https://learn.microsoft.com/en-us/windows/deployment/update/windows-update-logs",
+      "title": "Windows Update log files | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-02-11",
+        "metadata_values": [
+          "2026-02-11T00:00:00Z",
+          "2026-02-13T04:16:00Z"
+        ]
+      },
+      "extracted_text_sha256": "04c5020429cf49d2ef5af2c2e2a497e72d9e7d664691db5c74b35b75299e9fe1",
+      "checked_excerpt": "To merge and convert Windows Update trace files (.etl files) into a single readable WindowsUpdate.log file, see Get-WindowsUpdateLog.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S39",
+      "url": "https://learn.microsoft.com/en-us/troubleshoot/windows-client/networking/troubleshoot-dns-client-resolution-issues",
+      "title": "Troubleshoot DNS Client Name Resolution Issues - Windows Client | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-02-12",
+        "metadata_values": [
+          "2026-02-12T00:00:00Z",
+          "2026-02-19T02:04:00Z"
+        ]
+      },
+      "extracted_text_sha256": "982e86410f50d54c9279462faa369aaeb3ead11fe1cf203fb3e29a1cceb35c1c",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S40",
+      "url": "https://learn.microsoft.com/en-us/powershell/module/dnsclient/resolve-dnsname?view=windowsserver2025-ps",
+      "title": "Resolve-DnsName (DnsClient) | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": null,
+        "metadata_values": [
+          "2019-05-20T00:00:00Z",
+          "2025-05-14T22:44:00Z"
+        ]
+      },
+      "extracted_text_sha256": "d27ed8528e29751805e9b1779e4e13924e88858266a9cc0a453fa93bfe9c7c2b",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S41",
+      "url": "https://learn.microsoft.com/en-us/powershell/module/dnsclient/clear-dnsclientcache?view=windowsserver2025-ps",
+      "title": "Clear-DnsClientCache (DnsClient) | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": null,
+        "metadata_values": [
+          "2016-12-20T00:00:00Z",
+          "2025-05-14T22:44:00Z"
+        ]
+      },
+      "extracted_text_sha256": "561669725ea30ca28fd8575e927629420dd5926deaf720ef69f485251e1788ba",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S42",
+      "url": "https://learn.microsoft.com/en-us/powershell/module/nettcpip/test-netconnection?view=windowsserver2025-ps",
+      "title": "Test-NetConnection (NetTCPIP) | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": null,
+        "metadata_values": [
+          "2016-12-20T00:00:00Z",
+          "2025-05-14T22:44:00Z"
+        ]
+      },
+      "extracted_text_sha256": "1dca1ccb3b623e3a504689aca625af05a10eba6814a1d1a349db197f916ad786",
+      "checked_excerpt": "It supports ping test, TCP test, route tracing, and route selection diagnostics.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S43",
+      "url": "https://learn.microsoft.com/en-us/powershell/module/storage/repair-volume?view=windowsserver2025-ps",
+      "title": "Repair-Volume (Storage) | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": null,
+        "metadata_values": [
+          "2025-05-14T22:44:00Z"
+        ]
+      },
+      "extracted_text_sha256": "99077406d888498713c8eb9d641369093e439652b8e945bb61b48381729e709d",
+      "checked_excerpt": "Scan: Scans the volume without attempting to repair it; all detected corruptions are added to the $corrupt system file (equivalent to chkdsk",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S44",
+      "url": "https://learn.microsoft.com/en-us/windows/client-management/mdm-collect-logs",
+      "title": "Collect MDM logs | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": "2025-08-04",
+        "metadata_values": [
+          "2025-08-04T00:00:00Z",
+          "2025-08-04T17:52:00Z"
+        ]
+      },
+      "extracted_text_sha256": "5eca816e68c85ac09ffea96d4ce27693341829202b0d76bc83bfe21342faed20",
+      "checked_excerpt": "MDMDiagHtmlReport.html: Summary snapshot of MDM configurations and policies. Includes, management url, MDM server device ID, certificates, policies.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S45",
+      "url": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/gpresult",
+      "title": "gpresult | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": "2024-11-01",
+        "metadata_values": [
+          "2023-09-28T00:00:00Z",
+          "2025-10-22T17:33:00Z"
+        ]
+      },
+      "extracted_text_sha256": "828ec3e2fb1113be55002fe77472c7bbc8ebe8d5013a50ba23f80cddc6dcdc32",
+      "checked_excerpt": "Displays the Resultant Set of Policy (RSoP) information for a remote user and computer. To use RSoP reporting for remotely targeted computers",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S46",
+      "url": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/gpupdate",
+      "title": "gpupdate | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": "2023-02-03",
+        "metadata_values": [
+          "2017-10-16T00:00:00Z",
+          "2025-10-22T17:33:00Z"
+        ]
+      },
+      "extracted_text_sha256": "fa95da1e0c75ad600e053fc9656a1aea02c5abcc247ddcb8c45b1a8fe47b71b8",
+      "checked_excerpt": "Reapplies all policy settings. By default, only policy settings that have changed are applied.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S47",
+      "url": "https://learn.microsoft.com/en-us/troubleshoot/windows-server/printing/print-spooler-service-not-running",
+      "title": "Printing issues caused by Print Spooler service not running - Windows Server | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-02-12",
+        "metadata_values": [
+          "2026-02-12T00:00:00Z",
+          "2026-02-19T02:04:00Z"
+        ]
+      },
+      "extracted_text_sha256": "afe7ba3191492219aff50b9a2735463012f22e3e468cc7a5a32ac864e6e92d9c",
+      "checked_excerpt": "Ensure that no Group Policy settings disable or stop the Print Spooler service. Disabling the Print Spooler service can be part of",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S48",
+      "url": "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.diagnostics/get-winevent?view=powershell-7.6",
+      "title": "Get-WinEvent (Microsoft.PowerShell.Diagnostics) - PowerShell | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": null,
+        "metadata_values": [
+          "2026-08-12T00:00:00Z",
+          "2026-08-12T22:13:00Z"
+        ]
+      },
+      "extracted_text_sha256": "bbf3edddc10631098dc605ad312c436404abc7fe1489e3d7c5118725d2d411c1",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S49",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/wer/windows-error-reporting",
+      "title": "Windows Error Reporting - Win32 apps | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": "2020-08-17",
+        "metadata_values": [
+          "2018-05-31T00:00:00Z",
+          "2025-03-11T21:41:00Z"
+        ]
+      },
+      "extracted_text_sha256": "d7f8b66dc98c768b3f9e54c7850d9245225256125948777d5fb0058a2b909761",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S50",
+      "url": "https://support.microsoft.com/en-us/windows/experience/performance-optimization/tips-to-improve-pc-performance-in-windows",
+      "title": "Tips to improve PC performance in Windows | Microsoft Support",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": null,
+        "metadata_values": [
+          "02/04/2026",
+          "2026-09-28 08:36 PM"
+        ]
+      },
+      "extracted_text_sha256": "f5b4b564dd386d68b54b4ea50179792fda824c9a3e0c39ccb40bfc498af6fa18",
+      "checked_excerpt": "Apps that run at startup can slow boot time and increase background usage. Disable apps you do not need to start automatically.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S51",
+      "url": "https://support.microsoft.com/en-us/windows/experience/backup-recovery/using-system-file-checker-in-windows",
+      "title": "Using System File Checker in Windows | Microsoft Support",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": null,
+        "metadata_values": [
+          "02/10/2026",
+          "2026-09-28 08:36 PM"
+        ]
+      },
+      "extracted_text_sha256": "7bd778b7077e87c14b78f27ea4d96695044220223a258b8f00b0d5930c4e1c44",
+      "checked_excerpt": "Type DISM.exe /Online /Cleanup-image /Restorehealth (note the space before each \"/\"), and then press Enter.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S52",
+      "url": "https://support.microsoft.com/en-us/windows/experience/connectivity-networking/fix-wi-fi-connection-issues-in-windows",
+      "title": "Fix Wi-Fi connection issues in Windows | Microsoft Support",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": null,
+        "metadata_values": [
+          "03/02/2026",
+          "2026-09-28 08:36 PM"
+        ]
+      },
+      "extracted_text_sha256": "5a52da29d2825cec79fb9ae104e1c43f8241185470eff9d9a6df0eaef78028cd",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S53",
+      "url": "https://support.microsoft.com/en-us/windows/deployment/updates-lifecycle/troubleshoot-problems-updating-windows",
+      "title": "Troubleshoot problems updating Windows | Microsoft Support",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": null,
+        "metadata_values": [
+          "09/24/2026",
+          "2026-09-28 08:36 PM"
+        ]
+      },
+      "extracted_text_sha256": "50c0e8cf632fc942f5da8f280178834cf8700c9844c2e142b5c6934d786b6dcb",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S54",
+      "url": "https://support.microsoft.com/en-us/windows/hardware/printer/fix-printer-connection-and-printing-problems-in-windows",
+      "title": "Fix printer connection and printing problems in Windows | Microsoft Support",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": null,
+        "metadata_values": [
+          "08/06/2026",
+          "2026-09-28 08:36 PM"
+        ]
+      },
+      "extracted_text_sha256": "340dcf17769f0682dc88aa30b7bc3f92f130de2d05f4cb7d56a388e234147de5",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S55",
+      "url": "https://support.microsoft.com/en-us/windows/experience/storage-filemanagement/free-up-drive-space-in-windows",
+      "title": "Free up drive space in Windows | Microsoft Support",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": null,
+        "metadata_values": [
+          "02/06/2026",
+          "2026-09-28 08:36 PM"
+        ]
+      },
+      "extracted_text_sha256": "6da31ec89d1b0a8c2bfd7c8151f056b09906eba2db25cdc3b97d82bca0751768",
+      "checked_excerpt": "If your PC is running out of storage space, you may notice slower performance or trouble installing Windows updates. Freeing up space",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S56",
+      "url": "https://learn.microsoft.com/en-us/windows/security/operating-system-security/network-security/vpn/vpn-guide",
+      "title": "Windows VPN technical guide | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": "2025-01-27",
+        "metadata_values": [
+          "2025-01-27T00:00:00Z",
+          "2026-10-08T11:38:00Z"
+        ]
+      },
+      "extracted_text_sha256": "910e2d6f7ccc4e9a95fe11cd5a75d81ed73ea3b68a14855c3867c7f03f0c1a23",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S57",
+      "url": "https://learn.microsoft.com/en-us/troubleshoot/windows-server/networking/troubleshoot-always-on-vpn",
+      "title": "Troubleshoot Always On VPN - Windows Server | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-02-12",
+        "metadata_values": [
+          "2026-02-12T00:00:00Z",
+          "2026-02-19T02:04:00Z"
+        ]
+      },
+      "extracted_text_sha256": "b8bab5144117131f5f2822b0be206bf904f74bb769721b9e37864a20d790cd14",
+      "checked_excerpt": "When you're troubleshooting Always On VPN, look for events labeled RasClient. All error messages return the error code at the end of",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S58",
+      "url": "https://learn.microsoft.com/en-us/previous-versions/windows/desktop/racwmiprov/win32-reliabilityrecords",
+      "title": "Win32\\_ReliabilityRecords class | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": "2018-05-31",
+        "metadata_values": [
+          "2018-05-31T00:00:00Z",
+          "2021-10-26T08:54:00Z"
+        ]
+      },
+      "extracted_text_sha256": "1826bd55bc1e3efabd5e8cdae1a0345fe019db00ffa3029f89f15c1028d2ad1f",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S59",
+      "url": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/sfc",
+      "title": "sfc | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": "2024-11-01",
+        "metadata_values": [
+          "2022-10-19T00:00:00Z",
+          "2026-02-16T18:34:00Z"
+        ]
+      },
+      "extracted_text_sha256": "e2ff0899894b721cf35d65d57e59b23d4c846a3ac2e75430a4c17079e5677cf4",
+      "checked_excerpt": "Scans the integrity of all protected system files and repairs files with problems when possible.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S60",
+      "url": "https://learn.microsoft.com/en-us/powershell/module/storage/get-storagereliabilitycounter?view=windowsserver2025-ps",
+      "title": "Get-StorageReliabilityCounter (Storage) | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": null,
+        "metadata_values": [
+          "2016-12-20T00:00:00Z",
+          "2025-05-14T22:44:00Z"
+        ]
+      },
+      "extracted_text_sha256": "5f9e5008469582863959b884aa42a60bd64e2eac1b73deaca1f4bd57508f6943",
+      "checked_excerpt": "These counters include information about such things as the device temperature, errors, wear, and length of time the device has been in",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S61",
+      "url": "https://learn.microsoft.com/en-us/windows-hardware/test/wpt/windows-performance-recorder",
+      "title": "Windows Performance Recorder | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": "2022-04-21",
+        "metadata_values": [
+          "2017-05-05T00:00:00Z",
+          "2022-04-21T18:16:00Z"
+        ]
+      },
+      "extracted_text_sha256": "f7b2a3acbe4c8f38280dbeaa4e44b90daa64115d80aea0fc1ad6e9afc7f44a9e",
+      "checked_excerpt": "Included in the Windows Assessment and Deployment Kit (Windows ADK), Windows Performance Recorder (WPR) is a performance recording tool that is based",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S62",
+      "url": "https://learn.microsoft.com/en-us/powershell/module/netadapter/get-netadapter?view=windowsserver2025-ps",
+      "title": "Get-NetAdapter (NetAdapter) | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": null,
+        "metadata_values": [
+          "2016-12-20T00:00:00Z",
+          "2025-05-14T22:44:00Z"
+        ]
+      },
+      "extracted_text_sha256": "79176bcf1702bf64cec8a085b85c65e014e77c1143854c2aa3049dc8251ab6f9",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S63",
+      "url": "https://learn.microsoft.com/en-us/powershell/module/vpnclient/get-vpnconnection?view=windowsserver2025-ps",
+      "title": "Get-VpnConnection (VpnClient) | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": null,
+        "metadata_values": [
+          "2016-12-20T00:00:00Z",
+          "2025-05-14T22:44:00Z"
+        ]
+      },
+      "extracted_text_sha256": "76f5f68582d5d971d770e2d787e2df7e1ada72fee7f56740f39fdca62b4e8109",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S64",
+      "url": "https://learn.microsoft.com/en-us/powershell/module/printmanagement/get-printer?view=windowsserver2025-ps",
+      "title": "Get-Printer (PrintManagement) | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": null,
+        "metadata_values": [
+          "2021-09-20T00:00:00Z",
+          "2025-05-14T22:44:00Z"
+        ]
+      },
+      "extracted_text_sha256": "80625b172defa83a84365cfe7257ca03739b57a1c022a03681f78124f0169a94",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S65",
+      "url": "https://learn.microsoft.com/en-us/powershell/module/printmanagement/get-printjob?view=windowsserver2025-ps",
+      "title": "Get-PrintJob (PrintManagement) | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": null,
+        "metadata_values": [
+          "2021-09-20T00:00:00Z",
+          "2025-05-14T22:44:00Z"
+        ]
+      },
+      "extracted_text_sha256": "bad88de9304b9d291ef5be8d7a1fe68e6cdfb57d9ad7d78601e46862730b2407",
+      "checked_excerpt": "The Get-PrintJob cmdlet retrieves the current print jobs in the specified printer.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S66",
+      "url": "https://learn.microsoft.com/en-us/windows-server/networking/windows-time-service/windows-time-service-tools-and-settings",
+      "title": "Windows Time Service Tools and Settings | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": "2025-09-18",
+        "metadata_values": [
+          "2025-09-18T00:00:00Z",
+          "2026-02-16T18:34:00Z"
+        ]
+      },
+      "extracted_text_sha256": "c63bf8103aba9b0529678757df37f2ce5077c36486b0474117c90db8ea73df15",
+      "checked_excerpt": "By default, a computer that's joined to a domain synchronizes time through a domain hierarchy of time sources. However, sometimes a computer",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S67",
+      "url": "https://learn.microsoft.com/en-us/powershell/module/defender/update-mpsignature?view=windowsserver2025-ps",
+      "title": "Update-MpSignature (Defender) | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": null,
+        "metadata_values": [
+          "2016-12-20T00:00:00Z",
+          "2025-05-14T22:44:00Z"
+        ]
+      },
+      "extracted_text_sha256": "33927da6ddfb990818619c0f1e9a1f0d658b9a47b00bcedf2d36d1729dc57e0c",
+      "checked_excerpt": "By default, the cmdlet uses the sources configured through SignatureFallbackOrder. If no signature fallback order is configured, the cmdlet uses the default",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S68",
+      "url": "https://learn.microsoft.com/en-us/powershell/module/defender/get-mpcomputerstatus?view=windowsserver2025-ps",
+      "title": "Get-MpComputerStatus (Defender) | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": null,
+        "metadata_values": [
+          "2016-12-20T00:00:00Z",
+          "2025-05-14T22:44:00Z"
+        ]
+      },
+      "extracted_text_sha256": "d12ac18cd039677ee4cc3e7c692cb9fc5a7ac38357c1e3134faff08030ec1399",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S69",
+      "url": "https://learn.microsoft.com/en-us/defender-endpoint/manage-protection-updates-microsoft-defender-antivirus",
+      "title": "Manage how and where Microsoft Defender Antivirus receives updates - Microsoft Defender for Endpoint | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15",
+      "dates_as_published": {
+        "displayed_last_updated": "2026-08-13",
+        "metadata_values": [
+          "2026-08-12T00:00:00Z",
+          "2026-08-25T22:40:00Z"
+        ]
+      },
+      "extracted_text_sha256": "1715c07263c6cde79bd9b1fb81800a67cf5dbb48c3f73b2bbc1140c67ad4a3c2",
+      "checked_excerpt": "This article describes how to specify from where updates should be downloaded (specifying the update download source order is also known as",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "S70",
+      "url": "https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-storage",
+      "title": "Storage Policy CSP | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:22:42.941990+00:00",
+      "dates_as_published": {
+        "description": "Learn more about the Storage Area in Policy CSP.",
+        "ms.date": "2025-03-12T00:00:00Z",
+        "updated_at": "2025-03-12T22:44:00Z"
+      },
+      "extracted_text_sha256": "8c5aa3ef21d8586b1f0b5b2f8ce0c1e18936176d10848d3be2c47fc8811cd085",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S71",
+      "url": "https://learn.microsoft.com/en-us/windows/apps/develop/launch/launch-settings",
+      "title": "Launch Windows Settings - Windows apps | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:22:42.897807+00:00",
+      "dates_as_published": {
+        "description": "Learn how to launch Windows Settings from your Windows apps using the ms-settings URI scheme.",
+        "ms.date": "2026-09-26T00:00:00Z",
+        "updated_at": "2026-10-14T17:33:00Z"
+      },
+      "extracted_text_sha256": "d1bb1af8d1bb9aaf2fcb5ac365007181ab711c758efcdcf18a775806c28010ce",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S72",
+      "url": "https://www.dell.com/support/kbdoc/en-us/000177325/dell-command-update",
+      "title": "Dell Command | Update | Dell US",
+      "retrieved_at_utc": "2026-10-15T10:22:43.496766+00:00",
+      "dates_as_published": {
+        "DESCRIPTION": "Download Dell Command Update and read release notes and specifications."
+      },
+      "extracted_text_sha256": "050b5d30f3d21c07a03cf7af0b62559a469912441a1eb08a8c430629f82bdac3",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S73",
+      "url": "https://ftp.ext.hp.com/pub/caps-softpaq/cmit/HPIA.html",
+      "title": "HP Image Assistant | HP Client Management Solutions",
+      "retrieved_at_utc": "2026-10-15T10:22:43.250722+00:00",
+      "dates_as_published": {
+        "description": "HP Image Assistant download and quick start guide"
+      },
+      "extracted_text_sha256": "cb1fb9162720f3d19d8286c86dc85b2d03afe368b2d8a69834a8047813cecc0e",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S74",
+      "url": "https://support.lenovo.com/us/en/solutions/ht037099",
+      "title": "Download Lenovo Tools for Administrators - Lenovo Support US",
+      "retrieved_at_utc": "2026-10-15T10:22:43.608018+00:00",
+      "dates_as_published": {
+        "Description": "Download tools: Thin Installer, Update Retriever, System Update, Lenovo Dock Manager."
+      },
+      "extracted_text_sha256": "d0a50a336d3a792bac10dfdfc8da4796fc42146abfff8d16a95f365d83b07888",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S75",
+      "url": "https://learn.microsoft.com/en-us/windows/security/operating-system-security/device-management/windows-security-configuration-framework/windows-security-baselines",
+      "title": "Security baselines guide | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:22:43.459049+00:00",
+      "dates_as_published": {
+        "description": "Learn how to use security baselines in your organization.",
+        "ms.date": "2025-08-18T00:00:00Z",
+        "updated_at": "2025-08-18T20:43:00Z"
+      },
+      "extracted_text_sha256": "d814938967462b1d718c15da7e61f1ffc4edc724781b69b8da34357391cffbdd",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S76",
+      "url": "https://learn.microsoft.com/en-us/windows/configuration/windows-spotlight/",
+      "title": "Configure Windows spotlight | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:22:43.551608+00:00",
+      "dates_as_published": {
+        "description": "Learn how to configure Windows spotlight using Group Policy and mobile device management (MDM) settings.",
+        "ms.date": "2026-02-20T00:00:00Z",
+        "updated_at": "2026-02-19T18:45:00Z"
+      },
+      "extracted_text_sha256": "97f5b41fc3d53c3c8fef83216342d287ebe0ca2df059137b340f0c089efbfc34",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S77",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/win32-systemenclosure",
+      "title": "Win32_SystemEnclosure class - Win32 apps | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:24:45.606493+00:00",
+      "dates_as_published": {
+        "description": "Represents the properties that are associated with a physical system enclosure.",
+        "ms.date": "2018-05-31T00:00:00Z",
+        "updated_at": "2023-11-09T23:21:00Z"
+      },
+      "extracted_text_sha256": "6c1cc6c11f49f454c075f3c4750399a28f0c300d9a13c6a39c2b1531cf5cee02",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    },
+    {
+      "id": "S78",
+      "url": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/export-or-import-default-application-associations?view=windows-11",
+      "title": "Export or Import Default Application Associations | Microsoft Learn",
+      "retrieved_at_utc": "2026-10-15T10:24:45.471383+00:00",
+      "dates_as_published": {
+        "description": "Export or Import Default Application Associations",
+        "ms.date": "2018-11-14T00:00:00Z",
+        "updated_at": "2021-08-26T10:54:00Z"
+      },
+      "extracted_text_sha256": "91ae2a3472843ac7e5428bf257df23bd53e7f5053ed2992c59d3bf91b9be8b05",
+      "checked_excerpt": null,
+      "excerpt_verified_in_fetched_text": false
+    }
+  ],
+  "reference_aliases": {
+    "release": "S01",
+    "homepro": "S02",
+    "enterprise": "S03",
+    "updates": "S04",
+    "safeguard": "S05",
+    "autoprep": "S06",
+    "autocompare": "S07",
+    "autoreq": "S08",
+    "winget": "S09",
+    "wingetinstall": "S10",
+    "wingetdownload": "S11",
+    "win32": "S12",
+    "msix": "S13",
+    "bitlocker": "S14",
+    "bitrecovery": "S15",
+    "bitfaq": "S16",
+    "bitops": "S17",
+    "faststartup": "S18",
+    "power": "S19",
+    "longpath": "S20",
+    "copilot": "S21",
+    "copilotwindows": "S22",
+    "copilotpolicy": "S23",
+    "powercfg": "S24",
+    "modernstandby": "S25",
+    "restartfull": "S26",
+    "autoreset": "S27",
+    "winre": "S28",
+    "dsreg": "S29",
+    "powerrequest": "S30",
+    "executionstate": "S31",
+    "appinstallerupdate": "S32",
+    "msixsideload": "S33",
+    "event41": "S34",
+    "dcom10016": "S35",
+    "dsregcmd": "S29",
+    "dism": "S36",
+    "dismsource": "S37",
+    "update": "S38",
+    "dns": "S39",
+    "resolve": "S40",
+    "flush": "S41",
+    "nettest": "S42",
+    "repairvolume": "S43",
+    "mdm": "S44",
+    "gpresult": "S45",
+    "gpupdate": "S46",
+    "printing": "S47",
+    "getevent": "S48",
+    "wer": "S49",
+    "perf": "S50",
+    "sfc": "S51",
+    "networksupport": "S52",
+    "updatesupport": "S53",
+    "printsupport": "S54",
+    "free": "S55",
+    "vpn": "S56",
+    "vpntroubleshoot": "S57",
+    "reliability": "S58",
+    "sfccommand": "S59",
+    "storagereliability": "S60",
+    "performancewpr": "S61",
+    "netadapter": "S62",
+    "vpnconnection": "S63",
+    "getprinter": "S64",
+    "printjob": "S65",
+    "w32time": "S66",
+    "mpsignature": "S67",
+    "mpstatus": "S68",
+    "defenderupdates": "S69",
+    "storage-policy": "S70",
+    "settings": "S71",
+    "oem-dell": "S72",
+    "oem-hp": "S73",
+    "oem-lenovo": "S74",
+    "baseline": "S75",
+    "spotlight": "S76",
+    "chassis": "S77",
+    "defaultapps": "S78"
+  },
+  "unavailable_candidates_not_used_as_evidence": [
+    {
+      "url": "https://learn.microsoft.com/en-us/autopilot/windows-autopilot-reset-local",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows-hardware/customize/power-settings/sleep-settings-sleep-after",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "url": "https://docs.lenovocdrt.com/guides/su/su_dg/",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "url": "https://docs.lenovocdrt.com/guides/su/",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/configuration/power/",
+      "error": "HTTP Error 404: Not Found"
+    }
+  ]
+}
