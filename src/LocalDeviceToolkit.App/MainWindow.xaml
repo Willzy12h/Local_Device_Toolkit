@@ -12,7 +12,8 @@
   <Border DockPanel.Dock="Left" Width="195" Padding="14,24" BorderThickness="0,0,1,0" BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}">
    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel><TextBlock Text="WORKSPACES" FontWeight="SemiBold" Margin="10,0,0,16"/><ToggleButton x:Name="NavHome" Style="{StaticResource NavigationButton}" Content="_Home" Tag="home" Click="Navigate_Click"/><ToggleButton x:Name="NavSetup" Style="{StaticResource NavigationButton}" Content="New device _setup" Tag="setup" Click="Navigate_Click"/><ToggleButton x:Name="NavDiagnostics" Style="{StaticResource NavigationButton}" Content="_Diagnostics" Tag="diagnostics" Click="Navigate_Click"/><ToggleButton x:Name="NavDeployments" Style="{StaticResource NavigationButton}" Content="Deplo_yments" Tag="deployments" Click="Navigate_Click"/><ToggleButton x:Name="NavReports" Style="{StaticResource NavigationButton}" Content="_Reports &amp; history" Tag="reports" Click="Navigate_Click"/><Separator Margin="0,16"/><TextBlock Text="Checks collect evidence. Changes require a reviewed plan." Margin="10,0"/><TextBlock x:Name="SessionNotice" Margin="10,20,0,0"/></StackPanel></ScrollViewer>
   </Border>
-  <Grid Margin="24">
+  <ScrollViewer x:Name="WorkspaceViewport" Margin="24" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+  <Grid MinHeight="560" Height="{Binding ViewportHeight, ElementName=WorkspaceViewport}">
    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
    <StackPanel><TextBlock x:Name="PageTitle" Text="Your device workspace" FontSize="28" FontWeight="SemiBold"/><TextBlock x:Name="PageDescription" Margin="0,8,0,18"/></StackPanel>
    <ProgressBar x:Name="Busy" Grid.Row="1" Height="4" IsIndeterminate="True" Visibility="Collapsed" Margin="0,0,0,12"/>
@@ -46,5 +47,6 @@
     <TextBlock Text="Reports export to HTML, CSV or JSON. Manual reviews stay distinct from automatic checks; stale or unavailable evidence cannot prove current compliance." Margin="0,12"/>
    </StackPanel></ScrollViewer>
   </Grid>
+  </ScrollViewer>
  </DockPanel>
 </Window>

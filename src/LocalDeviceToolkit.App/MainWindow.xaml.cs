@@ -37,9 +37,20 @@ public partial class MainWindow:Window
    var encoder=new System.Windows.Media.Imaging.PngBitmapEncoder();encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));using var file=new FileStream(path,FileMode.CreateNew,FileAccess.Write,FileShare.None);encoder.Save(file);
   }
   var pages=new[]{("home",(string?)null),("setup","windows"),("diagnostics","configuration"),("deployments",(string?)null),("reports",(string?)null)};
-  foreach(var (area,stage) in pages){session.Navigate(area,stage);Render();await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle);Save(this,Path.Combine(output,area+".png"));}
+  foreach(var (area,stage) in pages){NavigateWorkspace(area,stage);await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle);Save(this,Path.Combine(output,area+".png"));}
   Width=900;Height=520;
-  foreach(var (area,stage) in pages.Where(p=>p.Item1!="home")){session.Navigate(area,stage);Render();await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle);Save(this,Path.Combine(output,area+"-compact.png"));}
+  foreach(var (area,stage) in pages.Where(p=>p.Item1!="home"))
+  {
+   NavigateWorkspace(area,stage);await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle);UpdateLayout();
+   if(WorkspaceViewport.VerticalOffset>0)throw new InvalidOperationException("Workspace navigation did not restore the page heading.");
+   if(area is "setup" or "diagnostics")
+   {
+    if(TaskList.ActualHeight<180)throw new InvalidOperationException("Compact workflow leaves no usable task-list height.");
+    WorkspaceViewport.ScrollToEnd();await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle);UpdateLayout();
+    if(WorkspaceViewport.ScrollableHeight>0&&WorkspaceViewport.VerticalOffset<=0)throw new InvalidOperationException("Compact workspace content cannot be reached by scrolling.");
+   }
+   Save(this,Path.Combine(output,area+"-compact.png"));
+  }
   Window[] dialogs=[new ReportsWindow(reportService,session,manualReviews),new DeploymentInputWindow(new ApprovedProfileStore(ApprovedProfileStore.UserCacheRoot),(_,_,_)=>throw new InvalidOperationException("Smoke rendering cannot approve media.")),new RestorationInputWindow(evidence),new ManualReviewWindow(session.Catalogue),new ActionInputWindow(session.Workflows.ResolveTask("control.cfg-win-011"),session.Context)];
   string[] names=["saved-reports","deployment-inputs","recorded-restoration","manual-review","setting-inputs"];
   for(var index=0;index<dialogs.Length;index++)
@@ -48,10 +59,14 @@ public partial class MainWindow:Window
    await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle);Save(window,Path.Combine(output,names[index]+".png"));window.Height=Math.Max(window.MinHeight,Math.Min(520,window.Height));await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle);Save(window,Path.Combine(output,names[index]+"-compact.png"));window.Close();
   }
  }
- void Navigate_Click(object sender,RoutedEventArgs e){if(sender is FrameworkElement { Tag:string area }){session.Navigate(area);Search.Text="";Render();}}
- void OpenApplications_Click(object sender,RoutedEventArgs e){session.Navigate("setup","applications");Render();}
- void OpenWindowsSettings_Click(object sender,RoutedEventArgs e){session.Navigate("setup","windows");Render();}
- void Queue_Click(object sender,RoutedEventArgs e){session.Navigate("deployments");Render();}
+ void NavigateWorkspace(string area,string? stage=null)
+ {
+  session.Navigate(area,stage);Search.Text="";Render();WorkspaceViewport.ScrollToTop();
+ }
+ void Navigate_Click(object sender,RoutedEventArgs e){if(sender is FrameworkElement { Tag:string area })NavigateWorkspace(area);}
+ void OpenApplications_Click(object sender,RoutedEventArgs e)=>NavigateWorkspace("setup","applications");
+ void OpenWindowsSettings_Click(object sender,RoutedEventArgs e)=>NavigateWorkspace("setup","windows");
+ void Queue_Click(object sender,RoutedEventArgs e)=>NavigateWorkspace("deployments");
  void Render()
  {
   rendering=true;
@@ -80,7 +95,7 @@ public partial class MainWindow:Window
   }
   finally{rendering=false;}
  }
- void Stage_Changed(object sender,SelectionChangedEventArgs e){if(rendering||session is null)return;if(Stages.SelectedItem is WorkflowStage stage){session.Navigate(session.Area,stage.Id);RefreshTasks();}}
+ void Stage_Changed(object sender,SelectionChangedEventArgs e){if(rendering||session is null)return;if(Stages.SelectedItem is WorkflowStage stage){session.Navigate(session.Area,stage.Id);RefreshTasks();WorkspaceViewport.ScrollToTop();}}
  void Search_Changed(object sender,TextChangedEventArgs e){if(session is not null)RefreshTasks();}
  void RefreshTasks()
  {
