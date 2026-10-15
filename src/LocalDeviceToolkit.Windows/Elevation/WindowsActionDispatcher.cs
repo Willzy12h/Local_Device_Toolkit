@@ -7,7 +7,7 @@ public sealed class WindowsActionDispatcher(OperationRegistry operations,IExecut
 {
  public async Task<ActionResult> DispatchAsync(ReviewedPlan plan,PlannedAction action,CancellationToken ct)
  {
-  if(action.Readiness.Scope!=OperationScope.Machine)return await new LocalActionDispatcher(operations,identity).DispatchAsync(plan,action,ct);
+  if(action.Readiness.Privilege!=PrivilegeRequirement.Administrator)return await new LocalActionDispatcher(operations,identity).DispatchAsync(plan,action,ct);
   var operation=operations.Find(action.Request.OperationId);var context=await identity.GetCurrentAsync(ct);
   var readiness=await operation.InspectAsync(context,action.Request.Parameters,ct);var before=await operation.CaptureBeforeAsync(context,action.Request.Parameters,ct);
   var valid=new PlanService(operations,TimeProvider.System).ValidateAction(plan,action,context,plan.Catalogue,before,DateTimeOffset.UtcNow);

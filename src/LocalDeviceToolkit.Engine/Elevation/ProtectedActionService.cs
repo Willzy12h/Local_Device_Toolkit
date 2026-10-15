@@ -45,7 +45,7 @@ public sealed class ProtectedActionService(OperationRegistry operations,PlanServ
   catch(Exception){result=new(action.Id,ActionOutcome.OutcomeUnknown,worker,"The protected execution outcome could not be confirmed. Reconcile before retrying.",[]);}
   try
   {
-   await journal.SaveNewAsync(EvidenceRecord.Create(Guid.NewGuid(),"result",plan.Context,clock.GetUtcNow(),StrictJson.Value(new ResultRecord(runId,plan.Id,result))),CancellationToken.None);
+   await journal.SaveNewAsync(EvidenceRecord.Create(ProtectedJournalIds.Result(plan.Id,action.Id),"result",plan.Context,clock.GetUtcNow(),StrictJson.Value(new ResultRecord(runId,plan.Id,result))),CancellationToken.None);
    var run=new RunRecord(runId,plan.Id,plan.Context,started,clock.GetUtcNow(),[result],true);
    await journal.SaveNewAsync(EvidenceRecord.Create(runId,"run",plan.Context,run.FinishedAt!.Value,StrictJson.Value(run)),CancellationToken.None);
   }

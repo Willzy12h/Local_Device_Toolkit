@@ -17,14 +17,15 @@ public partial class App:Application
    if(e.Args.Length!=0&&!smoke)throw new ArgumentException("Use no arguments for normal startup, or --smoke-output with a new directory for read-only native rendering.");
    var identity=new WindowsContextProvider();var context=await identity.GetCurrentAsync(default);
    var catalogue=CatalogueLoader.LoadShipped();var workflows=WorkflowCatalogue.LoadShipped();
-   var store=new EvidenceStore(System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"LocalDeviceToolkit","evidence"),ToolkitEvidenceSchemas.Create(),context);
+   var schemas=ToolkitEvidenceSchemas.Create();LocalDeviceToolkit.Engine.Reporting.ReportingEvidenceSchemas.Register(schemas);LocalDeviceToolkit.Engine.Deployments.DeploymentEvidenceSchemas.Register(schemas);
+   var store=new EvidenceStore(System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"LocalDeviceToolkit","evidence"),schemas,context);
    var source=new NativeFactsSource(System.IO.Path.Combine(AppContext.BaseDirectory,"scripts"));
    var inspector=new WindowsDeviceInspector(identity,identity,source,catalogue,TimeProvider.System);
-   var operations=LocalDeviceToolkit.Windows.WindowsOperations.Create(workflows);
+   var operations=LocalDeviceToolkit.Windows.WindowsOperations.Create(workflows,settingSource:store,deploymentProfiles:new LocalDeviceToolkit.Windows.Deployments.ApprovedProfileStore(LocalDeviceToolkit.Windows.Deployments.ApprovedProfileStore.UserCacheRoot),deploymentPending:new LocalDeviceToolkit.Engine.Deployments.FileDeploymentPendingStore(System.IO.Path.Combine(LocalDeviceToolkit.Windows.Deployments.ApprovedProfileStore.UserCacheRoot,"preview-pending")));
    var session=new WorkbenchSession(context,catalogue,workflows,inspector,store,operations);
    var plans=new PlanService(operations,TimeProvider.System);
    var coordinator=new LocalDeviceToolkit.Engine.Execution.RunCoordinator(plans,operations,identity,catalogue,store,new LocalDeviceToolkit.Windows.Elevation.WindowsActionDispatcher(operations,identity,System.IO.Path.Combine(AppContext.BaseDirectory,"worker","LocalDeviceToolkit.Worker.exe")),TimeProvider.System);
-   MainWindow=new MainWindow(session,store,plans,coordinator);MainWindow.Show();
+   MainWindow=new MainWindow(session,store,plans,coordinator,new LocalDeviceToolkit.Engine.Reporting.ReportService(store,catalogue,context),new LocalDeviceToolkit.Engine.Reporting.ManualReviewRecorder(store,catalogue,context,identity.GetActorAsync));MainWindow.Show();
    if(smoke)
    {
     await Dispatcher.InvokeAsync(()=>((MainWindow)MainWindow).RenderSmokePages(System.IO.Path.GetFullPath(e.Args[1])),System.Windows.Threading.DispatcherPriority.ApplicationIdle);Shutdown(0);

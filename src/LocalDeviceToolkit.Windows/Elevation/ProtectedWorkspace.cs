@@ -36,7 +36,7 @@ public sealed class ProtectedWorkspace
  }
  public string Directory(string name)
  {
-  if(name is not ("journals" or "scripts" or "staging" or "runtime"))throw new ArgumentException("Unregistered protected directory.");
+  if(name is not ("journals" or "scripts" or "staging" or "runtime" or "profiles"))throw new ArgumentException("Unregistered protected directory.");
   var path=Path.Combine(Root,name);CreateOrValidate(path);return path;
  }
  public FileStream AcquireWriter()=>new(Path.Combine(Root,"device-writer.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None);

@@ -3,15 +3,17 @@ using LocalDeviceToolkit.Engine.Execution;
 using LocalDeviceToolkit.Engine.Planning;
 using System.Text.Json;
 namespace LocalDeviceToolkit.Engine.Settings;
-public enum SettingId { ShowFileExtensions,LongPaths,DisableFastStartup,NoAcSleep }
+public enum SettingId { ShowFileExtensions,LongPaths,DisableFastStartup,NoAcSleep,UkTimeZone }
 public sealed record SettingParameters(bool ConfirmManagedPolicyReview);
 public sealed record RegistryDwordState(bool Exists,int? Value);
-public sealed record AcSleepState(Guid ActiveScheme,uint Seconds);
+public sealed record AcSleepState(Guid ActiveScheme,uint Seconds,uint DcSeconds=0);
+public sealed record TimeZoneState(string KeyName,bool DynamicDaylightTimeDisabled);
 public sealed record SettingSnapshot(SettingId Setting,JsonElement Value,string Source,DateTimeOffset CapturedAt);
 public sealed record SettingPolicy(bool Available,bool ConflictObserved,string Reason);
 public sealed record SettingDefinition(SettingId Setting,string OperationId,string ControlId,OperationScope Scope);
 public interface ISettingsBackend
 {
+ Task<PrivilegeRequirement> GetPrivilegeAsync(SettingId setting,DeviceContext context,CancellationToken ct)=>Task.FromResult(setting==SettingId.ShowFileExtensions?PrivilegeRequirement.CurrentUser:PrivilegeRequirement.Administrator);
  Task<ExecutionActor> GetActorAsync(CancellationToken ct);
  Task<SettingPolicy> InspectPolicyAsync(SettingId setting,CancellationToken ct);
  Task<SettingSnapshot> ReadAsync(SettingId setting,DeviceContext context,CancellationToken ct);
@@ -19,7 +21,7 @@ public interface ISettingsBackend
 }
 public sealed class FixedSettingOperation(SettingDefinition definition,ISettingsBackend backend):ILocalOperation
 {
- public static IReadOnlyList<SettingDefinition> Definitions {get;}=Array.AsReadOnly(new SettingDefinition[]{new(SettingId.ShowFileExtensions,"settings.show-file-extensions","CFG-WIN-012",OperationScope.CurrentUser),new(SettingId.LongPaths,"settings.long-paths","CFG-WIN-007",OperationScope.Machine),new(SettingId.DisableFastStartup,"settings.disable-fast-startup","CFG-WIN-019",OperationScope.Machine),new(SettingId.NoAcSleep,"settings.no-ac-sleep","CFG-WIN-020",OperationScope.Machine)});
+ public static IReadOnlyList<SettingDefinition> Definitions {get;}=Array.AsReadOnly(new SettingDefinition[]{new(SettingId.ShowFileExtensions,"settings.show-file-extensions","CFG-WIN-012",OperationScope.CurrentUser),new(SettingId.LongPaths,"settings.long-paths","CFG-WIN-007",OperationScope.Machine),new(SettingId.DisableFastStartup,"settings.disable-fast-startup","CFG-WIN-019",OperationScope.Machine),new(SettingId.NoAcSleep,"settings.no-ac-sleep","CFG-WIN-020",OperationScope.Machine),new(SettingId.UkTimeZone,"settings.uk-timezone","CFG-WIN-011",OperationScope.Machine)});
  public string Id=>definition.OperationId;
  public void ValidateParameters(JsonElement parameters)
  {
@@ -30,7 +32,8 @@ public sealed class FixedSettingOperation(SettingDefinition definition,ISettings
  public string GetTargetKey(DeviceContext context,JsonElement parameters)=>(definition.Scope==OperationScope.CurrentUser?context.OriginalUserSid:context.DeviceId)+"/"+definition.Setting;
  public async Task<ActionReadiness> InspectAsync(DeviceContext context,JsonElement parameters,CancellationToken ct)
  {
-  ActionReadiness Result(bool ready,string reason)=>new(ready,definition.Scope,definition.Scope==OperationScope.CurrentUser?PrivilegeRequirement.CurrentUser:PrivilegeRequirement.Administrator,reason);
+  var privilege=await backend.GetPrivilegeAsync(definition.Setting,context,ct);
+  ActionReadiness Result(bool ready,string reason)=>new(ready,definition.Scope,privilege,reason);
   if(!Parameters(parameters).ConfirmManagedPolicyReview)return Result(false,"Review effective GPO/MDM policy and confirm this local change is appropriate before proceeding.");
   var actor=await backend.GetActorAsync(ct);
   if(definition.Scope==OperationScope.CurrentUser&&actor.Sid!=context.OriginalUserSid)return Result(false,"Current-user changes must execute as the original engineer, never an alternate administrator.");
@@ -49,6 +52,8 @@ public sealed class FixedSettingOperation(SettingDefinition definition,ISettings
  {
   if(snapshot.Setting==SettingId.NoAcSleep)
   {var state=StrictJson.Read<AcSleepState>(System.Text.Encoding.UTF8.GetBytes(snapshot.Value.GetRawText()),4096);if(state.ActiveScheme==Guid.Empty)throw new PlanValidationException("Power plan identity is missing.");}
+  else if(snapshot.Setting==SettingId.UkTimeZone)
+  {var state=StrictJson.Read<TimeZoneState>(System.Text.Encoding.UTF8.GetBytes(snapshot.Value.GetRawText()),4096);if(string.IsNullOrWhiteSpace(state.KeyName)||state.KeyName.Length>128)throw new PlanValidationException("Time zone identity is missing.");}
   else
   {var state=StrictJson.Read<RegistryDwordState>(System.Text.Encoding.UTF8.GetBytes(snapshot.Value.GetRawText()),4096);if(state.Exists!=state.Value.HasValue)throw new PlanValidationException("Registry setting evidence is inconsistent.");}
  }
@@ -63,7 +68,8 @@ public sealed class FixedSettingOperation(SettingDefinition definition,ISettings
   if(action.Before.Count!=1||action.Before[0].CheckId!=CheckId||ObservationFingerprint.Of(new[]{observation})!=action.BeforeDigest)return new(action.Id,ActionOutcome.Failed,null,"Not started: the setting changed after review.",[]);
   ct.ThrowIfCancellationRequested();await backend.ApplyAsync(definition.Setting,context,before,ct);
   var after=await backend.ReadAsync(definition.Setting,context,CancellationToken.None);var afterObservation=Observation(after);var actor=await backend.GetActorAsync(CancellationToken.None);
-  var desired=definition.Setting==SettingId.NoAcSleep?StrictJson.Read<AcSleepState>(System.Text.Encoding.UTF8.GetBytes(after.Value.GetRawText())) is {Seconds:0} power&&power.ActiveScheme==StrictJson.Read<AcSleepState>(System.Text.Encoding.UTF8.GetBytes(before.Value.GetRawText())).ActiveScheme:
+  var desired=definition.Setting==SettingId.NoAcSleep?StrictJson.Read<AcSleepState>(System.Text.Encoding.UTF8.GetBytes(after.Value.GetRawText())) is {Seconds:0} power&&power.ActiveScheme==StrictJson.Read<AcSleepState>(System.Text.Encoding.UTF8.GetBytes(before.Value.GetRawText())).ActiveScheme&&power.DcSeconds==StrictJson.Read<AcSleepState>(System.Text.Encoding.UTF8.GetBytes(before.Value.GetRawText())).DcSeconds:
+   definition.Setting==SettingId.UkTimeZone?StrictJson.Read<TimeZoneState>(System.Text.Encoding.UTF8.GetBytes(after.Value.GetRawText())) is {KeyName:"GMT Standard Time"} zone&&zone.DynamicDaylightTimeDisabled==StrictJson.Read<TimeZoneState>(System.Text.Encoding.UTF8.GetBytes(before.Value.GetRawText())).DynamicDaylightTimeDisabled:
    StrictJson.Read<RegistryDwordState>(System.Text.Encoding.UTF8.GetBytes(after.Value.GetRawText())) is {Exists:true,Value:int value}&&value==(definition.Setting==SettingId.LongPaths?1:0);
   return new(action.Id,desired?ActionOutcome.AppliedVerified:ActionOutcome.AppliedUnverified,actor,desired?"The exact local setting was read back with the reviewed value. Complete the control's manual and application checks.":"The desired setting was not confirmed by independent readback. Inspect before retrying.",[afterObservation]);
  }

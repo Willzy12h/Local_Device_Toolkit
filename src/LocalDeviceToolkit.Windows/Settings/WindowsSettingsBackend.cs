@@ -7,9 +7,11 @@ using Microsoft.Win32;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 namespace LocalDeviceToolkit.Windows.Settings;
-public sealed class WindowsSettingsBackend:ISettingsBackend
+public sealed class WindowsSettingsBackend(int? originalProcessId=null):ISettingRestorationBackend
 {
  readonly WindowsContextProvider identity=new();
+ public Task<PrivilegeRequirement> GetPrivilegeAsync(SettingId setting,DeviceContext context,CancellationToken ct)
+ {ct.ThrowIfCancellationRequested();return Task.FromResult(setting==SettingId.ShowFileExtensions||setting==SettingId.UkTimeZone&&TimeZonePrivilege.IsAssigned(originalProcessId??Environment.ProcessId,context.OriginalUserSid)?PrivilegeRequirement.CurrentUser:PrivilegeRequirement.Administrator);}
  public Task<ExecutionActor> GetActorAsync(CancellationToken ct)=>identity.GetActorAsync(ct);
  static (RegistryHive Hive,string Path,string Name,int Desired) RegistrySetting(SettingId setting)=>setting switch
  {
@@ -27,6 +29,7 @@ public sealed class WindowsSettingsBackend:ISettingsBackend
  public async Task<SettingSnapshot> ReadAsync(SettingId setting,DeviceContext context,CancellationToken ct)
  {
   await ValidateContext(setting,context,ct);
+  if(setting==SettingId.UkTimeZone)return new(setting,StrictJson.Value(TimeZoneSettings.Read()),"Windows dynamic time-zone API",DateTimeOffset.UtcNow);
   if(setting==SettingId.NoAcSleep)return new(setting,StrictJson.Value(PowerSettings.Read()),"Windows active power scheme / AC standby timeout",DateTimeOffset.UtcNow);
   var spec=RegistrySetting(setting);using var root=RegistryKey.OpenBaseKey(spec.Hive,RegistryView.Registry64);using var key=root.OpenSubKey(spec.Path,false);
   RegistryDwordState state;
@@ -59,6 +62,12 @@ public sealed class WindowsSettingsBackend:ISettingsBackend
     case SettingId.DisableFastStartup:
      sources.Add((RegistryHive.LocalMachine,@"SOFTWARE\Policies\Microsoft\Windows\System","HiberbootEnabled"));
      sources.Add((RegistryHive.LocalMachine,@"SOFTWARE\Microsoft\PolicyManager\current\device\ADMX_System",null));break;
+    case SettingId.UkTimeZone:
+     sources.Add((RegistryHive.LocalMachine,@"SOFTWARE\Microsoft\PolicyManager\current\device\TimeLanguageSettings",null));
+     using(var machine=RegistryKey.OpenBaseKey(RegistryHive.LocalMachine,RegistryView.Registry64))
+     using(var automatic=machine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\tzautoupdate",false))
+     {if(automatic is null||!automatic.GetValueNames().Contains("Start",StringComparer.OrdinalIgnoreCase)||automatic.GetValueKind("Start")!=RegistryValueKind.DWord||automatic.GetValue("Start") is not int start||start!=4)return Task.FromResult(new SettingPolicy(true,true,"Automatic time zone is enabled or its disabled state is not known. Review automatic location/time-zone configuration first."));}
+     break;
     case SettingId.NoAcSleep:
      sources.Add((RegistryHive.LocalMachine,@"SOFTWARE\Policies\Microsoft\Power\PowerSettings\238c9fa8-0aad-41ed-83f4-97be242c8f20\29f6c1db-86da-48c5-9fdb-f2b67b1f44da","ACSettingIndex"));
      sources.Add((RegistryHive.LocalMachine,@"SOFTWARE\Microsoft\PolicyManager\current\device\Power",null));break;
@@ -78,8 +87,9 @@ public sealed class WindowsSettingsBackend:ISettingsBackend
   await ValidateContext(setting,context,ct);var current=await ReadAsync(setting,context,ct);
   if(current.Setting!=expectedBefore.Setting||CanonicalJson.Serialize(current.Value)!=CanonicalJson.Serialize(expectedBefore.Value))throw new PlanValidationException("The exact setting changed before the write.");
   var policy=await InspectPolicyAsync(setting,ct);if(!policy.Available||policy.ConflictObserved)throw new PlanValidationException(policy.Reason);
-  if(setting!=SettingId.ShowFileExtensions&&!(await GetActorAsync(ct)).IsElevated)throw new UnauthorizedAccessException("The reviewed machine setting requires an elevated token.");
+  if(await GetPrivilegeAsync(setting,context,ct)==PrivilegeRequirement.Administrator&&!(await GetActorAsync(ct)).IsElevated)throw new UnauthorizedAccessException("The reviewed machine setting requires an elevated token.");
   ct.ThrowIfCancellationRequested();
+  if(setting==SettingId.UkTimeZone){var before=StrictJson.Read<TimeZoneState>(System.Text.Encoding.UTF8.GetBytes(expectedBefore.Value.GetRawText()));TimeZoneSettings.Set(new("GMT Standard Time",before.DynamicDaylightTimeDisabled));return;}
   if(setting==SettingId.NoAcSleep)
   {
    var state=StrictJson.Read<AcSleepState>(System.Text.Encoding.UTF8.GetBytes(expectedBefore.Value.GetRawText()));PowerSettings.SetAcNever(state.ActiveScheme);return;
@@ -87,6 +97,29 @@ public sealed class WindowsSettingsBackend:ISettingsBackend
   var spec=RegistrySetting(setting);using var root=RegistryKey.OpenBaseKey(spec.Hive,RegistryView.Registry64);using var key=root.CreateSubKey(spec.Path,true)??throw new IOException("The fixed setting key could not be opened.");
   key.SetValue(spec.Name,spec.Desired,RegistryValueKind.DWord);key.Flush();
  }
+ public async Task RestoreAsync(SettingId setting,DeviceContext context,SettingSnapshot expectedCurrent,SettingSnapshot recordedTarget,CancellationToken ct)
+ {
+  await ValidateContext(setting,context,ct);
+  if(expectedCurrent.Setting!=setting||recordedTarget.Setting!=setting)throw new PlanValidationException("Recorded setting type does not match.");
+  var current=await ReadAsync(setting,context,ct);
+  if(CanonicalJson.Serialize(current.Value)!=CanonicalJson.Serialize(expectedCurrent.Value))throw new PlanValidationException("The exact setting changed before restoration.");
+  var policy=await InspectPolicyAsync(setting,ct);if(!policy.Available||policy.ConflictObserved)throw new PlanValidationException(policy.Reason);
+  if(await GetPrivilegeAsync(setting,context,ct)==PrivilegeRequirement.Administrator&&!(await GetActorAsync(ct)).IsElevated)throw new UnauthorizedAccessException("Restoration requires an authenticated elevated token.");
+  ct.ThrowIfCancellationRequested();
+  if(setting==SettingId.UkTimeZone){TimeZoneSettings.Set(StrictJson.Read<TimeZoneState>(StrictJson.Bytes(recordedTarget.Value)));return;}
+  if(setting==SettingId.NoAcSleep)
+  {
+   var target=StrictJson.Read<AcSleepState>(StrictJson.Bytes(recordedTarget.Value));var observed=StrictJson.Read<AcSleepState>(StrictJson.Bytes(current.Value));
+   if(target.ActiveScheme!=observed.ActiveScheme||target.DcSeconds!=observed.DcSeconds)throw new PlanValidationException("The power scheme or battery setting changed; restoration is refused.");
+   PowerSettings.SetAc(target.ActiveScheme,target.Seconds);return;
+  }
+  var spec=RegistrySetting(setting);var state=StrictJson.Read<RegistryDwordState>(StrictJson.Bytes(recordedTarget.Value));
+  if(state.Exists!=state.Value.HasValue)throw new PlanValidationException("Recorded registry absence is inconsistent.");
+  using var root=RegistryKey.OpenBaseKey(spec.Hive,RegistryView.Registry64);
+  if(state.Exists){using var key=root.CreateSubKey(spec.Path,true)??throw new IOException("The fixed setting key could not be opened.");key.SetValue(spec.Name,state.Value!.Value,RegistryValueKind.DWord);key.Flush();}
+  else {using var key=root.OpenSubKey(spec.Path,true);key?.DeleteValue(spec.Name,false);key?.Flush();}
+ }
+
 }
 static class PowerSettings
 {
@@ -94,17 +127,19 @@ static class PowerSettings
  public static AcSleepState Read()
  {
   Check(PowerGetActiveScheme(IntPtr.Zero,out var pointer));
-  try{var plan=Marshal.PtrToStructure<Guid>(pointer);var sub=SleepSubgroup;var setting=StandbyIdle;Check(PowerReadACValueIndex(IntPtr.Zero,ref plan,ref sub,ref setting,out var value));return new(plan,value);}
+  try{var plan=Marshal.PtrToStructure<Guid>(pointer);var sub=SleepSubgroup;var setting=StandbyIdle;Check(PowerReadACValueIndex(IntPtr.Zero,ref plan,ref sub,ref setting,out var value));Check(PowerReadDCValueIndex(IntPtr.Zero,ref plan,ref sub,ref setting,out var dc));return new(plan,value,dc);}
   finally{LocalFree(pointer);}
  }
- public static void SetAcNever(Guid expectedPlan)
+ public static void SetAcNever(Guid expectedPlan)=>SetAc(expectedPlan,0);
+ public static void SetAc(Guid expectedPlan,uint seconds)
  {
   if(Read().ActiveScheme!=expectedPlan)throw new PlanValidationException("The active power scheme changed.");
-  var plan=expectedPlan;var sub=SleepSubgroup;var setting=StandbyIdle;Check(PowerWriteACValueIndex(IntPtr.Zero,ref plan,ref sub,ref setting,0));Check(PowerSetActiveScheme(IntPtr.Zero,ref plan));
+  var plan=expectedPlan;var sub=SleepSubgroup;var setting=StandbyIdle;Check(PowerWriteACValueIndex(IntPtr.Zero,ref plan,ref sub,ref setting,seconds));Check(PowerSetActiveScheme(IntPtr.Zero,ref plan));
  }
  static void Check(uint result){if(result!=0)throw new Win32Exception(checked((int)result));}
  [DllImport("powrprof.dll")]static extern uint PowerGetActiveScheme(IntPtr root,out IntPtr scheme);
  [DllImport("powrprof.dll")]static extern uint PowerReadACValueIndex(IntPtr root,ref Guid plan,ref Guid sub,ref Guid setting,out uint value);
+ [DllImport("powrprof.dll")]static extern uint PowerReadDCValueIndex(IntPtr root,ref Guid plan,ref Guid sub,ref Guid setting,out uint value);
  [DllImport("powrprof.dll")]static extern uint PowerWriteACValueIndex(IntPtr root,ref Guid plan,ref Guid sub,ref Guid setting,uint value);
  [DllImport("powrprof.dll")]static extern uint PowerSetActiveScheme(IntPtr root,ref Guid plan);
  [DllImport("kernel32.dll")]static extern IntPtr LocalFree(IntPtr memory);

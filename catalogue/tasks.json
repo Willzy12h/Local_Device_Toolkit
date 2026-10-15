@@ -127,7 +127,7 @@
     "checkIds": [
       "timezone.id"
     ],
-    "operationId": null
+    "operationId": "settings.uk-timezone"
   },
   {
     "id": "windows.file-extensions",
@@ -249,6 +249,19 @@
     "checkIds": [
       "apps.inventory"
     ],
-    "operationId": null
+    "operationId": "packages.install"
+  },
+  {
+    "id": "settings.restore-recorded",
+    "title": "Restore a recorded local setting",
+    "controlIds": [
+      "CFG-WIN-007",
+      "CFG-WIN-011",
+      "CFG-WIN-012",
+      "CFG-WIN-019",
+      "CFG-WIN-020"
+    ],
+    "checkIds": [],
+    "operationId": "settings.restore-recorded"
   }
 ]

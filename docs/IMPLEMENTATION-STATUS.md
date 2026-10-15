@@ -18,13 +18,13 @@ Updated 15 October 2026. This records implemented source and observed checks, no
 
 ## Checks actually run
 
-- Portable solution: **94 tests passed, zero failed/skipped** (74 engine/session/contract tests and 20 Windows-adapter tests) in the current Linux build.
+- Portable solution: **198 tests passed, zero failed/skipped** (150 engine/session/contract tests and 48 Windows-adapter tests) in the current Linux build.
 - WPF App and Worker cross-build: zero warnings/errors with warnings treated as errors.
 - Self-contained Windows app and worker published and packaged on Linux. PE x64 apphost and included .NET/Windows Desktop runtime confirmed.
 - Script hash and syntax checked with PowerShell 7.6.0 on Linux; **this is not Windows PowerShell 5.1 validation**.
 - Official SDK archive SHA-512 verified; cloud setup's existing-install/locked-restore path passed.
 
-Windows CI at commit `049b2fd` passed 77 tests, PowerShell 5.1 parsing, native token/pipe/junction checks, packaging and actual renders of all five WPF pages ([run](https://github.com/Willzy12h/Local_Device_Toolkit/actions/runs/38660754520)). The newer current-user actions and UI refinements require another native run.
+Windows CI at commit `049b2fd` passed 77 tests, PowerShell 5.1 parsing, native token/pipe/junction checks, packaging and actual renders of all five WPF pages ([run](https://github.com/Willzy12h/Local_Device_Toolkit/actions/runs/38660754520)). The current-user actions and UI refinements also passed Windows CI at `b3802a8` ([94-test run](https://github.com/Willzy12h/Local_Device_Toolkit/actions/runs/38665135124)). The newer reporting/restoration/deployment slice awaits native CI.
 
 Windows-specific tests take explicit unsupported-host branches on Linux. These counts do not prove Windows API, pipe ACL, UAC, GUI rendering or real-device mutation behaviour. CI is configured to check native process/pipe APIs, PowerShell 5.1 syntax and actual extracted-app WPF renders; results must be recorded after execution.
 
@@ -33,9 +33,9 @@ Windows-specific tests take explicit unsupported-host branches on Linux. These c
 | Area | Still required |
 | --- | --- |
 | Current-user actions | Source and dedicated tests implemented; native read-only script tests and interactive mutation acceptance pending. |
-| Machine settings | UK time zone with privilege detection; operation-specific restoration and further native verification. |
-| Deployments | Approved MSI/vendor EXE/current-user MSIX/Office profiles, full-file staging/signers, installation reconciliation and actual package inputs. Inventory alone is not deployment. |
-| Reports | Evidence-based setup handover, diagnostic ticket and deployment projections; HTML/CSV; complete history paging and uncertain-run reconciliation. JSON capture export already exists. |
+| Machine settings | Time zone with original-token privilege detection and exact recorded restoration implemented; native write acceptance pending. |
+| Deployments | Approved MSI and per-machine OneDrive profiles, complete media staging/signers, persistent replay guards and reviewed reconciliation implemented. MSIX/Office extension in progress; client-specific media/licensing remain inputs. |
+| Reports | Handover, diagnostic and deployment projections, manual reviews, HTML/CSV/JSON and bounded history paging implemented. Final native journey verification pending. |
 | UI journeys | Package input/review/result forms and final usability/accessibility/native journey checks. Workflow/task/check/queue foundations already exist. |
 | Script integration | Extend the reviewed registry for remaining fixed operations; never add arbitrary elevated script/command execution. |
 | Native acceptance | Windows CI results; interactive alternate-admin/cancelled UAC, restricted execution-policy, DPI/high-contrast/keyboard/Narrator and representative device checks. |

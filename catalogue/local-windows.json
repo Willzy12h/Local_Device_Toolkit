@@ -86,7 +86,8 @@
       "paths.enabled"
     ],
     "operationIds": [
-      "settings.long-paths"
+      "settings.long-paths",
+      "settings.restore-recorded"
     ],
     "manualInstructions": "Confirm applications support long paths; the local Windows setting cannot change application compatibility. A restart may be required."
   },
@@ -130,7 +131,10 @@
     "checkIds": [
       "timezone.id"
     ],
-    "operationIds": [],
+    "operationIds": [
+      "settings.uk-timezone",
+      "settings.restore-recorded"
+    ],
     "manualInstructions": "Verify the UK time zone and automatic time-zone management requirements. Time synchronisation is a separate check."
   },
   {
@@ -142,7 +146,8 @@
       "extensions.visible"
     ],
     "operationIds": [
-      "settings.show-file-extensions"
+      "settings.show-file-extensions",
+      "settings.restore-recorded"
     ],
     "manualInstructions": "Verify file extensions in a newly opened Explorer window for the current engineer."
   },
@@ -215,7 +220,8 @@
       "faststartup.enabled"
     ],
     "operationIds": [
-      "settings.disable-fast-startup"
+      "settings.disable-fast-startup",
+      "settings.restore-recorded"
     ],
     "manualInstructions": "Confirm fast startup is disabled locally. Restart and managed policy behaviour require device acceptance."
   },
@@ -228,7 +234,8 @@
       "power.acsleep.seconds"
     ],
     "operationIds": [
-      "settings.no-ac-sleep"
+      "settings.no-ac-sleep",
+      "settings.restore-recorded"
     ],
     "manualInstructions": "Check active power plan AC sleep is Never. Battery sleep and display timeout are not changed."
   },
@@ -253,8 +260,10 @@
     "checkIds": [
       "apps.inventory"
     ],
-    "operationIds": [],
-    "manualInstructions": "Compare installed identity, version and publisher with the approved Microsoft 365 Apps deployment profile. Installation does not prove licensing, sign-in or vendor configuration. Supply approved media and deployment parameters."
+    "operationIds": [
+      "packages.install"
+    ],
+    "manualInstructions": "Compare installed identity, version and publisher with the approved Microsoft 365 Apps deployment profile. Installation does not prove licensing, sign-in or vendor configuration. Supply approved media and deployment parameters. Approved MSI and per-machine OneDrive media can use the reviewed local deployment workflow. Office, MSIX/Store, licensing, sign-in and unknown client-agent profiles require their documented manual vendor workflow."
   },
   {
     "id": "APP-WIN-002",
@@ -264,8 +273,10 @@
     "checkIds": [
       "apps.inventory"
     ],
-    "operationIds": [],
-    "manualInstructions": "Compare installed identity, version and publisher with the approved Company Portal deployment profile. Installation does not prove licensing, sign-in or vendor configuration. Supply approved media and deployment parameters."
+    "operationIds": [
+      "packages.install"
+    ],
+    "manualInstructions": "Compare installed identity, version and publisher with the approved Company Portal deployment profile. Installation does not prove licensing, sign-in or vendor configuration. Supply approved media and deployment parameters. Approved MSI and per-machine OneDrive media can use the reviewed local deployment workflow. Office, MSIX/Store, licensing, sign-in and unknown client-agent profiles require their documented manual vendor workflow."
   },
   {
     "id": "APP-WIN-003",
@@ -275,8 +286,10 @@
     "checkIds": [
       "apps.inventory"
     ],
-    "operationIds": [],
-    "manualInstructions": "Compare installed identity, version and publisher with the approved Google Chrome deployment profile. Installation does not prove licensing, sign-in or vendor configuration. Supply approved media and deployment parameters."
+    "operationIds": [
+      "packages.install"
+    ],
+    "manualInstructions": "Compare installed identity, version and publisher with the approved Google Chrome deployment profile. Installation does not prove licensing, sign-in or vendor configuration. Supply approved media and deployment parameters. Approved MSI and per-machine OneDrive media can use the reviewed local deployment workflow. Office, MSIX/Store, licensing, sign-in and unknown client-agent profiles require their documented manual vendor workflow."
   },
   {
     "id": "APP-WIN-004",
@@ -286,8 +299,10 @@
     "checkIds": [
       "apps.inventory"
     ],
-    "operationIds": [],
-    "manualInstructions": "Compare installed identity, version and publisher with the approved Adobe Acrobat Reader deployment profile. Installation does not prove licensing, sign-in or vendor configuration. Supply approved media and deployment parameters."
+    "operationIds": [
+      "packages.install"
+    ],
+    "manualInstructions": "Compare installed identity, version and publisher with the approved Adobe Acrobat Reader deployment profile. Installation does not prove licensing, sign-in or vendor configuration. Supply approved media and deployment parameters. Approved MSI and per-machine OneDrive media can use the reviewed local deployment workflow. Office, MSIX/Store, licensing, sign-in and unknown client-agent profiles require their documented manual vendor workflow."
   },
   {
     "id": "APP-WIN-005",
@@ -297,8 +312,10 @@
     "checkIds": [
       "apps.inventory"
     ],
-    "operationIds": [],
-    "manualInstructions": "Compare installed identity, version and publisher with the approved OneDrive application deployment profile. Installation does not prove licensing, sign-in or vendor configuration. Supply approved media and deployment parameters."
+    "operationIds": [
+      "packages.install"
+    ],
+    "manualInstructions": "Compare installed identity, version and publisher with the approved OneDrive application deployment profile. Installation does not prove licensing, sign-in or vendor configuration. Supply approved media and deployment parameters. Approved MSI and per-machine OneDrive media can use the reviewed local deployment workflow. Office, MSIX/Store, licensing, sign-in and unknown client-agent profiles require their documented manual vendor workflow."
   },
   {
     "id": "APP-WIN-006",
@@ -308,8 +325,10 @@
     "checkIds": [
       "apps.inventory"
     ],
-    "operationIds": [],
-    "manualInstructions": "Compare installed identity, version and publisher with the approved Microsoft Teams deployment profile. Installation does not prove licensing, sign-in or vendor configuration. Supply approved media and deployment parameters."
+    "operationIds": [
+      "packages.install"
+    ],
+    "manualInstructions": "Compare installed identity, version and publisher with the approved Microsoft Teams deployment profile. Installation does not prove licensing, sign-in or vendor configuration. Supply approved media and deployment parameters. Approved MSI and per-machine OneDrive media can use the reviewed local deployment workflow. Office, MSIX/Store, licensing, sign-in and unknown client-agent profiles require their documented manual vendor workflow."
   },
   {
     "id": "APP-WIN-007",
@@ -319,8 +338,10 @@
     "checkIds": [
       "apps.inventory"
     ],
-    "operationIds": [],
-    "manualInstructions": "Compare installed identity, version and publisher with the approved Remote management agent deployment profile. Installation does not prove licensing, sign-in or vendor configuration. Supply approved media and deployment parameters."
+    "operationIds": [
+      "packages.install"
+    ],
+    "manualInstructions": "Compare installed identity, version and publisher with the approved Remote management agent deployment profile. Installation does not prove licensing, sign-in or vendor configuration. Supply approved media and deployment parameters. Approved MSI and per-machine OneDrive media can use the reviewed local deployment workflow. Office, MSIX/Store, licensing, sign-in and unknown client-agent profiles require their documented manual vendor workflow."
   },
   {
     "id": "APP-WIN-008",
@@ -330,7 +351,9 @@
     "checkIds": [
       "apps.inventory"
     ],
-    "operationIds": [],
-    "manualInstructions": "Compare installed identity, version and publisher with the approved ESET endpoint protection (client package) deployment profile. Installation does not prove licensing, sign-in or vendor configuration. Supply approved media and deployment parameters."
+    "operationIds": [
+      "packages.install"
+    ],
+    "manualInstructions": "Compare installed identity, version and publisher with the approved ESET endpoint protection (client package) deployment profile. Installation does not prove licensing, sign-in or vendor configuration. Supply approved media and deployment parameters. Approved MSI and per-machine OneDrive media can use the reviewed local deployment workflow. Office, MSIX/Store, licensing, sign-in and unknown client-agent profiles require their documented manual vendor workflow."
   }
 ]

@@ -1,4 +1,5 @@
 using LocalDeviceToolkit.Core;
+using LocalDeviceToolkit.Engine.Deployments;
 using LocalDeviceToolkit.Engine.Catalogue;
 using LocalDeviceToolkit.Engine.Execution;
 namespace LocalDeviceToolkit.Engine.Elevation;
@@ -8,6 +9,7 @@ public static class WorkerRequestValidator
  public static void Validate(WorkerRequest request,LocalCatalogue catalogue,WorkflowCatalogue workflows)
  {
   if(request.SchemaVersion!=1||request.OriginalContext is null)throw new PlanValidationException("Unsupported worker request.");
+  if(request.Mode!=WorkerMode.ApproveDeploymentProfile&&request.DeploymentApproval is not null||request.Mode is not (WorkerMode.ReconcileDeployment or WorkerMode.ResolveDeployment)&&request.DeploymentReconcile is not null||request.Mode!=WorkerMode.ResolveDeployment&&request.DeploymentResolutionReview is not null)throw new PlanValidationException("Deployment configuration and reconciliation cannot be mixed with another request.");
   switch(request.Mode)
   {
    case WorkerMode.CaptureProtected:
@@ -24,7 +26,17 @@ public static class WorkerRequestValidator
    case WorkerMode.ExecuteAction:
     if(request.Capture is not null||request.Plan is null||request.ActionId is null||request.Plan.Context!=request.OriginalContext||request.Plan.Actions is null||request.Plan.Actions.Count(a=>a is not null&&a.Id==request.ActionId)!=1)throw new PlanValidationException("Invalid reviewed action request.");
     break;
+   case WorkerMode.ApproveDeploymentProfile:
+    if(request.Capture is not null||request.Plan is not null||request.ActionId is not null||request.DeploymentApproval is null)throw new PlanValidationException("Profile approval is separate from installation.");
+    try{DeploymentProfiles.Validate(request.DeploymentApproval.Profile);ValidateSource(request.DeploymentApproval.SourceDirectory);}catch(ArgumentException){throw new PlanValidationException("The closed deployment profile or local media directory is invalid.");}
+    break;
+   case WorkerMode.ReconcileDeployment:
+   case WorkerMode.ResolveDeployment:
+    if(request.Mode==WorkerMode.ResolveDeployment&&request.DeploymentResolutionReview is not {ConfirmVendorCompletionAndNoPendingChildren:true})throw new PlanValidationException("Explicit vendor-completion review is required to resolve a pending deployment.");
+    if(request.Capture is not null||request.Plan is not null||request.ActionId is not null||request.DeploymentReconcile is null||string.IsNullOrWhiteSpace(request.DeploymentReconcile.ProfileId)||request.DeploymentReconcile.ProfileId.Length>128)throw new PlanValidationException("Invalid read-only deployment reconciliation request.");
+    ValidateSource(request.DeploymentReconcile.SourceDirectory);break;
    default:throw new PlanValidationException("Unregistered worker operation.");
   }
  }
+ static void ValidateSource(string source){if(string.IsNullOrWhiteSpace(source)||source.Length>2048||!Path.IsPathFullyQualified(source))throw new PlanValidationException("An absolute local media directory is required.");}
 }

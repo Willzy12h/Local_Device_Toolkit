@@ -7,13 +7,17 @@ using LocalDeviceToolkit.Engine.Evidence;
 using Microsoft.Win32;
 using LocalDeviceToolkit.Engine.Elevation;
 using LocalDeviceToolkit.Windows.Elevation;
+using LocalDeviceToolkit.Engine.Deployments;
+using LocalDeviceToolkit.Windows.Deployments;
 using TaskStatus=LocalDeviceToolkit.Engine.Workbench.TaskStatus;
 namespace LocalDeviceToolkit.App;
 public partial class MainWindow:Window
 {
+ readonly LocalDeviceToolkit.Engine.Reporting.ReportService reportService;readonly LocalDeviceToolkit.Engine.Reporting.ManualReviewRecorder manualReviews;
  readonly LocalDeviceToolkit.Engine.Planning.PlanService plans;readonly LocalDeviceToolkit.Engine.Execution.RunCoordinator coordinator;readonly WorkbenchSession session;readonly IEvidenceStore evidence;readonly CancellationTokenSource lifetime=new();bool rendering,isBusy;
- public MainWindow(WorkbenchSession session,IEvidenceStore evidence,LocalDeviceToolkit.Engine.Planning.PlanService plans,LocalDeviceToolkit.Engine.Execution.RunCoordinator coordinator)
+ public MainWindow(WorkbenchSession session,IEvidenceStore evidence,LocalDeviceToolkit.Engine.Planning.PlanService plans,LocalDeviceToolkit.Engine.Execution.RunCoordinator coordinator,LocalDeviceToolkit.Engine.Reporting.ReportService reportService,LocalDeviceToolkit.Engine.Reporting.ManualReviewRecorder manualReviews)
  {
+  this.reportService=reportService;this.manualReviews=manualReviews;
   InitializeComponent();this.session=session;this.evidence=evidence;this.plans=plans;this.coordinator=coordinator;
   var osLabel=!session.Context.IsWorkstation?"Windows Server":session.Context.OsVersion.Major==10&&session.Context.OsVersion.Build>=22000?"Windows 11":"Windows";
   DeviceHeader.Text=$"{session.Context.ComputerName}  •  {session.Context.OriginalUserName}  •  {osLabel} build {session.Context.OsVersion.Build} ({session.Context.Architecture})";
@@ -119,9 +123,29 @@ public partial class MainWindow:Window
  void ReviewFix_Click(object sender,RoutedEventArgs e)
  {
   if(TaskList.SelectedItem is not TaskStatus task||task.Definition.OperationId is null||isBusy)return;
-  var form=new ActionInputWindow(task.Definition,session.Context) {Owner=this};if(form.ShowDialog()!=true)return;
-  var request=new ActionRequest(task.Definition.Id,task.Definition.OperationId,StrictJson.Value(form.Parameters),session.Origin);
+  System.Text.Json.JsonElement parameters;
+  if(task.Definition.OperationId=="settings.restore-recorded")
+  {var restore=new RestorationInputWindow(evidence){Owner=this};if(restore.ShowDialog()!=true)return;parameters=StrictJson.Value(restore.Parameters);}
+  else if(task.Definition.OperationId=="packages.install")
+  {var deployment=new DeploymentInputWindow(new ApprovedProfileStore(ApprovedProfileStore.UserCacheRoot),ApproveProfileAsync,reconcile:ReconcileDeploymentAsync){Owner=this};if(deployment.ShowDialog()!=true)return;parameters=StrictJson.Value(deployment.Parameters);}
+  else {var form=new ActionInputWindow(task.Definition,session.Context) {Owner=this};if(form.ShowDialog()!=true)return;parameters=StrictJson.Value(form.Parameters);}
+  var request=new ActionRequest(task.Definition.Id,task.Definition.OperationId,parameters,session.Origin);
   var added=session.Queue.Add(request);StatusLine.Text=added switch {LocalDeviceToolkit.Engine.Execution.QueueAddResult.AlreadyQueued=>"This identical change is already in the shared queue.",LocalDeviceToolkit.Engine.Execution.QueueAddResult.Added=>"Added to the shared queue. Review the complete plan before execution.",_=>"A different change already targets this setting; remove it explicitly before adding this request."};Render();
+ }
+ async Task<DeploymentProfile> ApproveProfileAsync(DeploymentProfile profile,string directory,CancellationToken ct)
+ {
+  var broker=new UacWorkerBroker(Path.Combine(AppContext.BaseDirectory,"worker","LocalDeviceToolkit.Worker.exe"));
+  var response=await broker.RequestAsync(new(1,WorkerMode.ApproveDeploymentProfile,session.Context,null,null,null,DeploymentApproval:new(profile,directory)),ct);
+  if(!response.Success||response.ApprovedProfile is null)throw new InvalidOperationException(response.Message);
+  return response.ApprovedProfile;
+ }
+ async Task<string> ReconcileDeploymentAsync(DeploymentParameters parameters,bool resolve,CancellationToken ct)
+ {
+  var broker=new UacWorkerBroker(Path.Combine(AppContext.BaseDirectory,"worker","LocalDeviceToolkit.Worker.exe"));
+  var response=await broker.RequestAsync(new(1,resolve?WorkerMode.ResolveDeployment:WorkerMode.ReconcileDeployment,session.Context,null,null,null,DeploymentReconcile:parameters,DeploymentResolutionReview:resolve?new(true):null),ct);
+  if(!response.Success||response.DeploymentStatus is null)throw new InvalidOperationException(response.Message);
+  if(response.DeploymentResolution is not null)await evidence.SaveNewAsync(response.DeploymentResolution,ct);
+  return response.Message+"\nObserved by: "+response.Actor.UserName+" ("+response.Actor.Sid+")\n"+System.Text.Json.JsonSerializer.Serialize(new{response.DeploymentStatus,ResolutionReceipt=response.DeploymentResolution},new System.Text.Json.JsonSerializerOptions(StrictJson.Options){WriteIndented=true});
  }
  void UpdateQueueButtons(){ReviewQueue.IsEnabled=RemoveQueued.IsEnabled=ClearQueue.IsEnabled=!isBusy&&session.Queue.Requests.Count>0;}
  void RemoveQueued_Click(object sender,RoutedEventArgs e){if(isBusy)return;var index=QueueList.SelectedIndex;var requests=session.Queue.Requests;if(index>=0&&index<requests.Count)session.Queue.Remove(requests[index]);Render();}
@@ -135,14 +159,8 @@ public partial class MainWindow:Window
   RunResults.Text=$"Run {run.Id:D} • Evidence complete: {run.EvidenceComplete}\nOriginal engineer: {run.Context.OriginalUserName}\n"+string.Join("\n\n",run.Results.Select(r=>$"{r.Outcome} • {r.Reason}\nExecuting account: {r.Actor?.UserName??"Not confirmed / not started"}\n{string.Join("; ",r.After.Select(o=>o.CheckId+" = "+o.Value?.GetRawText()))}"));
   session.Queue.Clear();Render();StatusLine.Text="Run recorded. Review each outcome; recheck the affected controls before handover. Uncertain operations are never replayed automatically.";
  });
- async void History_Click(object sender,RoutedEventArgs e)=>await RunUiAsync(async()=>
- {
-  var page=await evidence.ReadHistoryAsync(null,lifetime.Token);
-  HistoryText.Text=string.Join("\n\n",page.Entries.OrderByDescending(r=>r.RecordedAt).Select(r=>$"{r.RecordedAt.ToLocalTime():g} • {r.Kind}\n{r.Context.ComputerName} • {r.Context.OriginalUserName}\nRecord {r.Id:D}\nSHA-256 {r.Digest}"));
-  if(page.Diagnostics.Count>0)HistoryText.Text+="\n\nHistory notices\n"+string.Join("\n",page.Diagnostics.Select(d=>$"{d.FileName}: {d.Code} — {d.Message}"));
-  if(page.NextCursor is not null)HistoryText.Text+="\n\nMore records are available in the evidence directory.";
-  StatusLine.Text=$"Loaded {page.Entries.Count} verified history records.";
- });
+ void History_Click(object sender,RoutedEventArgs e)
+ {if(isBusy)return;new ReportsWindow(reportService,session,manualReviews){Owner=this}.ShowDialog();}
  async void Export_Click(object sender,RoutedEventArgs e)=>await RunUiAsync(async()=>
  {
   var capture=session.Captures.LastOrDefault()??throw new InvalidOperationException("Run a check before exporting capture evidence.");
