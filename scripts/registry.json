@@ -18,6 +18,36 @@
       "path": "deployments/Invoke-CurrentUserMsix.ps1",
       "sha256": "6befa2bbef6be7c878e914eb2ee0ba123250315e59343102091f06ec1b3aae6b",
       "readOnly": false
+    },
+    {
+      "id": "probes.common",
+      "path": "diagnostics/Read-ProbeRequest.ps1",
+      "sha256": "198055e4b2e1253da80f070b1b2ca3e6704e1098b87da89a7fa596f24a5d3fca",
+      "readOnly": true
+    },
+    {
+      "id": "probes.readiness",
+      "path": "diagnostics/Get-ReadinessFacts.ps1",
+      "sha256": "34ffd0fa305362c2d56f4c05b701317e352ad50e50e0f4b87d4acdc879536376",
+      "readOnly": true
+    },
+    {
+      "id": "probes.hardware",
+      "path": "diagnostics/Get-HardwareFacts.ps1",
+      "sha256": "a96c3d1dc21cf15d25bb16f5c3a9d78e5b0b66046e3a047a6ffe89d109f7edb4",
+      "readOnly": true
+    },
+    {
+      "id": "probes.network",
+      "path": "diagnostics/Get-NetworkFacts.ps1",
+      "sha256": "9626df8aba21db49630ebdb4a9f5ba787ce2d06e456c3e926f7349ebd8a75bf5",
+      "readOnly": true
+    },
+    {
+      "id": "probes.services",
+      "path": "diagnostics/Get-SecurityServiceFacts.ps1",
+      "sha256": "077b42058e4425d63004de734e7a29b51fbca1825e366137a7ebcf5cd34e202f",
+      "readOnly": true
     }
   ]
 }
