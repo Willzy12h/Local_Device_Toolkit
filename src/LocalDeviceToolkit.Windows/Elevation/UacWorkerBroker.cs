@@ -28,9 +28,15 @@ public sealed class UacWorkerBroker(string workerPath)
   }
   var peer=NativePeer.Observe(NativePeer.PipeClient(pipe.SafePipeHandle));
   if(peer.Actor!=expected.Actor||!string.Equals(peer.ImagePath,expected.ImagePath,StringComparison.OrdinalIgnoreCase))throw new IOException("The connected process is not the worker launched through UAC.");
+  request=request with {ToolkitBuild=ToolkitBuildIdentity.Current};
   await WorkerFrames.WriteAsync(pipe,request,ct);
   var response=await WorkerFrames.ReadAsync<WorkerResponse>(pipe,ct);
   if(response.SchemaVersion!=1||response.Actor!=peer.Actor||response.Capture is not null&&response.Capture.CapturedBy!=peer.Actor||response.Result?.Actor is not null&&response.Result.Actor!=peer.Actor)throw new InvalidDataException("Worker response identity did not match the OS-observed process.");
   return response;
  }
+}
+
+public static class ToolkitBuildIdentity
+{
+ public static string Current=>System.Reflection.CustomAttributeExtensions.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(typeof(ToolkitBuildIdentity).Assembly)?.InformationalVersion??throw new InvalidDataException("Toolkit build identity is missing.");
 }

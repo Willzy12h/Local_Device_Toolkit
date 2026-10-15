@@ -35,6 +35,7 @@ public partial class App:Application
   if(NativePeer.PipeServer(pipe.SafePipeHandle)!=parentPid||NativePeer.Observe(parentPid)!=parent)throw new InvalidDataException("The pipe server is not the initiating process.");
   WorkerRequest request;
   using(var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(30)))request=await WorkerFrames.ReadAsync<WorkerRequest>(pipe,deadline.Token);
+  WorkerGuard.ValidateBuild(request.ToolkitBuild,ToolkitBuildIdentity.Current);
   var catalogue=CatalogueLoader.LoadShipped();var workflows=WorkflowCatalogue.LoadShipped();
   WorkerRequestValidator.Validate(request,catalogue,workflows);
   var machine=await nativeIdentity.GetCurrentAsync(default);WorkerGuard.ValidateOriginal(request.OriginalContext,machine,parent.Actor);

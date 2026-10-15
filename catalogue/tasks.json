@@ -116,7 +116,7 @@
       "region.culture",
       "keyboard.uk"
     ],
-    "operationId": null
+    "operationId": "settings.uk-region-keyboard"
   },
   {
     "id": "control.cfg-win-011",
@@ -228,8 +228,10 @@
     "controlIds": [
       "CFG-WIN-021"
     ],
-    "checkIds": [],
-    "operationId": null
+    "checkIds": [
+      "copilot.consumer.present"
+    ],
+    "operationId": "apps.remove-consumer-copilot"
   },
   {
     "id": "apps.installation",

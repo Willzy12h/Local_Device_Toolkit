@@ -16,12 +16,12 @@ public static class RegisteredScripts
    using var bytes=new MemoryStream();stream.CopyTo(bytes);return StrictJson.Read<ScriptManifest>(bytes.ToArray());
   }
  }
- public static FileStream OpenVerified(string scriptRoot,string id)
+ public static FileStream OpenVerified(string scriptRoot,string id,bool requireReadOnly=true)
  {
   var manifest=Manifest;
   if(manifest.SchemaVersion!=1||manifest.Scripts is null||manifest.Scripts.Any(p=>p is null)||manifest.Scripts.Select(p=>p.Id).Distinct(StringComparer.Ordinal).Count()!=manifest.Scripts.Length)throw new InvalidDataException("Invalid script registry.");
   var pin=manifest.Scripts.SingleOrDefault(p=>p.Id==id)??throw new InvalidDataException("Unregistered script.");
-  if(!pin.ReadOnly||Path.IsPathRooted(pin.Path)||pin.Path.Split('/').Any(p=>p is ".." or "."||p.Contains('\\'))||pin.Sha256.Length!=64)throw new InvalidDataException("Invalid read-only script registration.");
+  if((requireReadOnly&&!pin.ReadOnly)||Path.IsPathRooted(pin.Path)||pin.Path.Split('/').Any(p=>p is ".." or "."||p.Contains('\\'))||pin.Sha256.Length!=64)throw new InvalidDataException("Invalid read-only script registration.");
   var root=Path.GetFullPath(scriptRoot);var path=Path.GetFullPath(Path.Combine(root,pin.Path));
   if(!path.StartsWith(root.TrimEnd(Path.DirectorySeparatorChar)+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("Script escaped its registered root.");
   for(var directory=new DirectoryInfo(Path.GetDirectoryName(path)!);directory is not null;directory=directory.Parent)

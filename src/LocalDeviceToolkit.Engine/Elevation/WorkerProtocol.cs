@@ -3,7 +3,7 @@ using System.Buffers.Binary;
 using LocalDeviceToolkit.Engine.Execution;
 namespace LocalDeviceToolkit.Engine.Elevation;
 public enum WorkerMode { CaptureProtected,ExecuteAction }
-public sealed record WorkerRequest(int SchemaVersion,WorkerMode Mode,DeviceContext OriginalContext,CaptureRequest? Capture,ReviewedPlan? Plan,Guid? ActionId);
+public sealed record WorkerRequest(int SchemaVersion,WorkerMode Mode,DeviceContext OriginalContext,CaptureRequest? Capture,ReviewedPlan? Plan,Guid? ActionId,string? ToolkitBuild=null);
 public sealed record WorkerResponse(int SchemaVersion,bool Success,string Message,ExecutionActor Actor,DeviceCapture? Capture,ActionResult? Result);
 public static class WorkerFrames
 {
@@ -22,6 +22,7 @@ public static class WorkerFrames
 }
 public static class WorkerGuard
 {
+ public static void ValidateBuild(string? requested,string actual){if(string.IsNullOrWhiteSpace(requested)||requested.Length>256||!string.Equals(requested,actual,StringComparison.Ordinal))throw new PlanValidationException("The toolkit components belong to different builds. Extract a complete matching package before continuing.");}
  public static void ValidateOriginal(DeviceContext claimed,DeviceContext machine,ExecutionActor observedParent)
  {
   if(claimed is null||machine is null||observedParent is null||observedParent.ProcessId<=0||claimed.DeviceId!=machine.DeviceId||claimed.ComputerName!=machine.ComputerName||claimed.OsVersion!=machine.OsVersion||claimed.Architecture!=machine.Architecture||claimed.IsWorkstation!=machine.IsWorkstation||claimed.OriginalUserSid!=observedParent.Sid||!string.Equals(claimed.OriginalUserName,observedParent.UserName,StringComparison.OrdinalIgnoreCase)||claimed.IsElevated!=observedParent.IsElevated)

@@ -28,6 +28,8 @@ public sealed class WorkerProtocolTests
  {
   Assert.Throws<PlanValidationException>(()=>WorkerGuard.ValidateOriginal(TestData.Context,TestData.Context,TestData.Actor with {IsElevated=true}));
  }
+ [Theory][InlineData(null)][InlineData("older-build")]
+ public void Mixed_UI_worker_builds_are_refused(string? requested)=>Assert.Throws<PlanValidationException>(()=>WorkerGuard.ValidateBuild(requested,"current-build"));
  [Fact] public void Protected_reads_cannot_switch_to_the_alternate_admins_profile()
  {
   var request=new WorkerRequest(1,WorkerMode.CaptureProtected,TestData.Context,new(["CFG-WIN-012"],new("diagnostics","configuration")),null,null);

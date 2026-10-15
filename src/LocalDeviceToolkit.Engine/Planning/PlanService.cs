@@ -81,7 +81,7 @@ public sealed class PlanService(OperationRegistry registry,TimeProvider clock)
  }
  public static void ValidateBefore(IReadOnlyList<ProbeObservation> before,DateTimeOffset now)
  {
-  if(before.Count==0||before.Any(o=>o is null||o.State!=ObservationState.Known||!o.Value.HasValue||o.CapturedAt.Offset!=TimeSpan.Zero||o.CapturedAt>now.AddMinutes(2)||o.CapturedAt<now.AddMinutes(-10))||before.Select(o=>o.ControlId+"|"+o.CheckId).Distinct(StringComparer.Ordinal).Count()!=before.Count)
+  if(before.Count==0||before.Any(o=>o is null||o.State!=ObservationState.Known||(!o.Value.HasValue||o.Value.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)||o.CapturedAt.Offset!=TimeSpan.Zero||o.CapturedAt>now.AddMinutes(2)||o.CapturedAt<now.AddMinutes(-10))||before.Select(o=>o.ControlId+"|"+o.CheckId).Distinct(StringComparer.Ordinal).Count()!=before.Count)
    throw new PlanValidationException("Complete, current before-state evidence is required.");
  }
  List<string> BaseReasons(ReviewedPlan plan,DeviceContext context,CatalogueIdentity catalogue,DateTimeOffset now)

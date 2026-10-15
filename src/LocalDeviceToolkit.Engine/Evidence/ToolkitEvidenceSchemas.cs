@@ -28,7 +28,7 @@ public static class ToolkitEvidenceSchemas
  }
  internal static void ValidateResult(ActionResult result)
  {
-  if(result is null||result.ActionId==Guid.Empty||result.After is null||result.After.Any(o=>o is null)||string.IsNullOrWhiteSpace(result.Reason))throw new EvidenceValidationException("Incomplete action result.");
+  if(result is null||result.ActionId==Guid.Empty||result.After is null||result.After.Any(o=>o is null||o.State==ObservationState.Known&&(!o.Value.HasValue||o.Value.Value.ValueKind is System.Text.Json.JsonValueKind.Null or System.Text.Json.JsonValueKind.Undefined))||string.IsNullOrWhiteSpace(result.Reason))throw new EvidenceValidationException("Incomplete action result.");
   if(result.Outcome==ActionOutcome.AppliedVerified&&(result.Actor is null||result.After.Count==0||result.After.Any(o=>o.State!=ObservationState.Known)))throw new EvidenceValidationException("Verified success needs an observed actor and complete readback.");
   if(result.Actor is not null&&(string.IsNullOrWhiteSpace(result.Actor.Sid)||result.Actor.ProcessId<=0||result.Actor.ProcessStartedAt.Offset!=TimeSpan.Zero))throw new EvidenceValidationException("Invalid execution actor.");
  }

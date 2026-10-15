@@ -33,7 +33,7 @@ public static class AssessmentService
  {
   if(!ProbeValues.Accepts(id,value))return null;
   if(id is "secureboot.enabled" or "tpm.ready" or "bitlocker.protected" or "codeintegrity.enforced" or "antivirus.active" or "extensions.visible" or "paths.enabled" or "keyboard.uk" or "store.installed")return value.GetBoolean();
-  if(id=="faststartup.enabled")return !value.GetBoolean();
+  if(id is "faststartup.enabled" or "copilot.consumer.present")return !value.GetBoolean();
   if(id=="power.acsleep.seconds")return value.GetUInt32()==0;
   if(id=="os.version")return Version.Parse(value.GetString()!)>=new Version(10,0,26200);
   if(id=="timezone.id")return value.GetString()=="GMT Standard Time";

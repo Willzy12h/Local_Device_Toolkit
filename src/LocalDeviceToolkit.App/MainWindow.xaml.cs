@@ -15,9 +15,11 @@ public partial class MainWindow:Window
  public MainWindow(WorkbenchSession session,IEvidenceStore evidence,LocalDeviceToolkit.Engine.Planning.PlanService plans,LocalDeviceToolkit.Engine.Execution.RunCoordinator coordinator)
  {
   InitializeComponent();this.session=session;this.evidence=evidence;this.plans=plans;this.coordinator=coordinator;
-  DeviceHeader.Text=$"{session.Context.ComputerName}  •  {session.Context.OriginalUserName}  •  Windows {session.Context.OsVersion} ({session.Context.Architecture})";
+  var osLabel=!session.Context.IsWorkstation?"Windows Server":session.Context.OsVersion.Major==10&&session.Context.OsVersion.Build>=22000?"Windows 11":"Windows";
+  DeviceHeader.Text=$"{session.Context.ComputerName}  •  {session.Context.OriginalUserName}  •  {osLabel} build {session.Context.OsVersion.Build} ({session.Context.Architecture})";
   StandardHeader.Text=$"Build standard {session.Catalogue.Identity.Version}  •  30 controls";
   SessionNotice.Text=session.Context.IsElevated?"This session is elevated. User tasks still target this Windows user.":"Running as the current Windows user. Administrator access is requested only for an approved action.";
+  if(!LocalDeviceToolkit.Engine.Planning.PlanService.SupportedTarget(session.Context))SessionNotice.Text+=" Inventory only on this OS; local deployments require Windows 11 x64.";
   Closing+=(_,_)=>lifetime.Cancel();Render();
  }
  internal void RenderSmokePages(string output)
@@ -31,13 +33,14 @@ public partial class MainWindow:Window
    var encoder=new System.Windows.Media.Imaging.PngBitmapEncoder();encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));using var file=new FileStream(Path.Combine(output,area+".png"),FileMode.CreateNew,FileAccess.Write,FileShare.None);encoder.Save(file);
   }
  }
- void Navigate_Click(object sender,RoutedEventArgs e){if(sender is Button { Tag:string area }){session.Navigate(area);Search.Text="";Render();}}
+ void Navigate_Click(object sender,RoutedEventArgs e){if(sender is FrameworkElement { Tag:string area }){session.Navigate(area);Search.Text="";Render();}}
  void Queue_Click(object sender,RoutedEventArgs e){session.Navigate("deployments");Render();}
  void Render()
  {
   rendering=true;
   try
   {
+   NavHome.IsChecked=session.Area=="home";NavSetup.IsChecked=session.Area=="setup";NavDiagnostics.IsChecked=session.Area=="diagnostics";NavDeployments.IsChecked=session.Area=="deployments";NavReports.IsChecked=session.Area=="reports";
    HomePanel.Visibility=session.Area=="home"?Visibility.Visible:Visibility.Collapsed;
    WorkflowPanel.Visibility=session.StageId is not null?Visibility.Visible:Visibility.Collapsed;
    DeploymentPanel.Visibility=session.Area=="deployments"?Visibility.Visible:Visibility.Collapsed;
@@ -65,7 +68,7 @@ public partial class MainWindow:Window
  void RefreshTasks()
  {
   var all=session.Tasks();
-  StageProgress.Text=all.Count==0?"":$"{all.Count} tasks • {all.Count(t=>t.Status=="Meets standard")} meet local checks • {all.Count(t=>t.Status=="Needs attention")} need attention • {all.Count(t=>t.Status=="Manual verification")} need manual verification • {all.Count(t=>t.Status=="Not checked")} not checked";
+  StageProgress.Text=all.Count==0?"":$"{all.Count} tasks • {all.Count(t=>t.Status=="Meets standard")} meet local checks • {all.Count(t=>t.Status=="Needs attention")} need attention • {all.Count(t=>t.Status=="Manual verification")} need manual verification • {all.Count(t=>t.Status=="Unknown")} unknown • {all.Count(t=>t.Status=="Needs administrator read")} need administrator read • {all.Count(t=>t.Status=="Not checked")} not checked";
   var selected=(TaskList.SelectedItem as TaskStatus)?.Definition.Id;
   TaskList.ItemsSource=session.Tasks(Search.Text);TaskList.SelectedItem=TaskList.Items.Cast<TaskStatus>().FirstOrDefault(t=>t.Definition.Id==selected)??TaskList.Items.Cast<TaskStatus>().FirstOrDefault();ShowTask();
  }

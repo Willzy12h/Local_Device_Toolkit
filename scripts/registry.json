@@ -4,8 +4,14 @@
     {
       "id": "device.facts",
       "path": "diagnostics/Get-DeviceFacts.ps1",
-      "sha256": "8fd0b27982df7d9a90f82666aeed3fde7e0c913b58a378a7a448236d856dfea0",
+      "sha256": "ff8c9db2d14f9c0ae75de4e62d37ef6ea9ce1b3080e4b735f1c9ce7e4c02efac",
       "readOnly": true
+    },
+    {
+      "id": "settings.user",
+      "path": "settings/Invoke-UserSetting.ps1",
+      "sha256": "ae894db9e66880bd277a4a59ca3304ae4d6b6084b7dd49ba2363d9653e413c43",
+      "readOnly": false
     }
   ]
 }

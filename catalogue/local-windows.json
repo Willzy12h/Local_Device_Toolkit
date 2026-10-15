@@ -117,7 +117,9 @@
       "region.culture",
       "keyboard.uk"
     ],
-    "operationIds": [],
+    "operationIds": [
+      "settings.uk-region-keyboard"
+    ],
     "manualInstructions": "Verify UK formats and keyboard for the current engineer. Welcome-screen, default-user and other-user language settings require separate review."
   },
   {
@@ -234,10 +236,14 @@
     "id": "CFG-WIN-021",
     "name": "Remove consumer Copilot app",
     "expectedDescription": "Remove consumer Copilot app; ./Device/Vendor/MSFT/Policy/Config/WindowsAI/RemoveMicrosoftCopilotApp = 1",
-    "coverage": "Manual",
-    "checkIds": [],
-    "operationIds": [],
-    "manualInstructions": "Verify the exact consumer Microsoft.Copilot package and tenant assignment. Do not remove Microsoft 365 Copilot or other products."
+    "coverage": "Partial",
+    "checkIds": [
+      "copilot.consumer.present"
+    ],
+    "operationIds": [
+      "apps.remove-consumer-copilot"
+    ],
+    "manualInstructions": "Verify the exact consumer Microsoft.Copilot package for the current engineer. Other users, provisioning and tenant assignment require separate review. Microsoft 365/Office packages are not removed; no automatic undo is offered."
   },
   {
     "id": "APP-WIN-001",

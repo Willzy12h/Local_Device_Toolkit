@@ -42,7 +42,8 @@ public sealed class ProtectedWorkspace
  public FileStream AcquireWriter()=>new(Path.Combine(Root,"device-writer.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None);
  public string StageReadOnlyScripts()
  {
-  var root=Directory("scripts");var manifest=RegisteredScripts.Manifest;
+  var parent=Directory("scripts");var manifest=RegisteredScripts.Manifest;
+  var root=Path.Combine(parent,ScriptStageIdentity.For(manifest));CreateOrValidate(root);
   foreach(var pin in manifest.Scripts)
   {
    if(!pin.ReadOnly)continue;

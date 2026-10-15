@@ -80,6 +80,16 @@ public sealed class PlanningTests
   var capture=TestData.Capture() with { Observations=[new("CFG-WIN-012","extensions.visible",ObservationState.Known,StrictJson.Value(visible),"fixture",DateTimeOffset.UtcNow,"")] };
   Assert.Equal(expected,Assert.Single(AssessmentService.Assess(catalogue with { Controls=[control] },capture)).Status);
  }
+ [Fact] public void Json_null_is_not_complete_known_before_evidence()
+ {
+  var now=DateTimeOffset.UtcNow;Assert.Throws<PlanValidationException>(()=>PlanService.ValidateBefore([new("CFG-WIN-012","extensions.visible",ObservationState.Known,StrictJson.Value<object?>(null),"fixture",now,"")],now));
+ }
+ [Fact] public async Task A_known_label_without_a_measured_after_value_is_not_verified()
+ {
+  using var f=new PlanningFixture();var plan=await f.CreatePlan();
+  var coordinator=new RunCoordinator(f.Plans,f.Registry,f,f.Catalogue,f.Store,new UnprovedDispatcher(true),f.Clock);
+  var run=await coordinator.ExecuteAsync(plan,default);Assert.Equal(ActionOutcome.OutcomeUnknown,Assert.Single(run.Results).Outcome);Assert.Equal("false",File.ReadAllText(f.SettingPath));
+ }
  [Fact] public async Task Completed_run_keeps_before_and_after_evidence()
  {
   using var f=new PlanningFixture();var plan=await f.CreatePlan();var run=await f.Coordinator(f.Store).ExecuteAsync(plan,default);
@@ -138,7 +148,7 @@ public sealed class FailingIntentStore(IEvidenceStore inner):IEvidenceStore
  public Task<HistoryPage> ReadHistoryAsync(string? cursor,CancellationToken ct)=>inner.ReadHistoryAsync(cursor,ct);
 }
 
-public sealed class UnprovedDispatcher:IActionDispatcher
+public sealed class UnprovedDispatcher(bool knownNull=false):IActionDispatcher
 {
- public Task<ActionResult> DispatchAsync(ReviewedPlan plan,PlannedAction action,CancellationToken ct)=>Task.FromResult(new ActionResult(action.Id,ActionOutcome.AppliedVerified,null,"Claimed success without evidence.",[]));
+ public Task<ActionResult> DispatchAsync(ReviewedPlan plan,PlannedAction action,CancellationToken ct)=>Task.FromResult(knownNull?new ActionResult(action.Id,ActionOutcome.AppliedVerified,TestData.Actor,"Claimed known without a measured value.",[new("CFG-WIN-012","extensions.visible",ObservationState.Known,null,"fixture",DateTimeOffset.UtcNow,"")]):new ActionResult(action.Id,ActionOutcome.AppliedVerified,null,"Claimed success without evidence.",[]));
 }

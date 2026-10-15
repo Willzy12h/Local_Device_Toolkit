@@ -5,7 +5,7 @@ public static class ProbeValues
 {
  static readonly HashSet<string> Booleans=new(StringComparer.Ordinal)
  {
-  "secureboot.enabled","tpm.ready","bitlocker.protected","codeintegrity.enforced","antivirus.active","extensions.visible","paths.enabled","faststartup.enabled","keyboard.uk","laps.configured","onedrive.configured","onedrive.filesondemand.configured","edge.configured","store.installed","storageSense.configured",
+  "copilot.consumer.present","secureboot.enabled","tpm.ready","bitlocker.protected","codeintegrity.enforced","antivirus.active","extensions.visible","paths.enabled","faststartup.enabled","keyboard.uk","laps.configured","onedrive.configured","onedrive.filesondemand.configured","edge.configured","store.installed","storageSense.configured",
   "policy.longpaths","policy.extensions","policy.faststartup","policy.acsleep","policy.timezone","policy.region","policy.copilot"
  };
  public static bool IsRegistered(string id)=>Booleans.Contains(id)||id is "os.version" or "os.architecture" or "region.culture" or "timezone.id" or "power.acsleep.seconds" or "apps.inventory" or "antivirus.providers";

@@ -6,7 +6,7 @@ $ErrorActionPreference='Stop'
 $WarningPreference='Stop'
 [Console]::OutputEncoding=New-Object System.Text.UTF8Encoding($false)
 $request=Get-Content -LiteralPath $RequestFile -Raw | ConvertFrom-Json
-$allowed=@('os.version','os.architecture','secureboot.enabled','tpm.ready','bitlocker.protected','codeintegrity.enforced','antivirus.active','antivirus.providers','extensions.visible','paths.enabled','faststartup.enabled','keyboard.uk','region.culture','timezone.id','power.acsleep.seconds','laps.configured','onedrive.configured','onedrive.filesondemand.configured','edge.configured','store.installed','storageSense.configured','apps.inventory','policy.longpaths','policy.extensions','policy.faststartup','policy.acsleep','policy.timezone','policy.region','policy.copilot')
+$allowed=@('copilot.consumer.present','os.version','os.architecture','secureboot.enabled','tpm.ready','bitlocker.protected','codeintegrity.enforced','antivirus.active','antivirus.providers','extensions.visible','paths.enabled','faststartup.enabled','keyboard.uk','region.culture','timezone.id','power.acsleep.seconds','laps.configured','onedrive.configured','onedrive.filesondemand.configured','edge.configured','store.installed','storageSense.configured','apps.inventory','policy.longpaths','policy.extensions','policy.faststartup','policy.acsleep','policy.timezone','policy.region','policy.copilot')
 if($request.schemaVersion -ne 1 -or @($request.checkIds).Count -gt 128 -or @($request.checkIds).Count -eq 0){throw 'Invalid facts request.'}
 if(@($request.checkIds | Select-Object -Unique).Count -ne @($request.checkIds).Count){throw 'Duplicate checks.'}
 foreach($check in $request.checkIds){if($allowed -cnotcontains $check){throw 'Unregistered check.'}}
@@ -15,7 +15,7 @@ function Read-RegistryValue([Microsoft.Win32.RegistryHive]$Hive,[string]$Path,[s
  try{
   $key=$base.OpenSubKey($Path,$false)
   if($null -eq $key){throw [System.IO.FileNotFoundException]::new('The setting key is absent; its effective default was not inferred.')}
-  try{if($key.GetValueNames() -notcontains $Name){throw [System.IO.FileNotFoundException]::new('The setting value is absent; its effective default was not inferred.')};return $key.GetValue($Name,$null,[Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)}finally{$key.Dispose()}
+  try{if($key.GetValueKind($Name) -ne [Microsoft.Win32.RegistryValueKind]::DWord){throw 'The setting has an unexpected type; no coercion was performed.'};if($key.GetValueNames() -notcontains $Name){throw [System.IO.FileNotFoundException]::new('The setting value is absent; its effective default was not inferred.')};return $key.GetValue($Name,$null,[Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)}finally{$key.Dispose()}
  }finally{$base.Dispose()}
 }
 function Has-RegistryValue([Microsoft.Win32.RegistryHive]$Hive,[string]$Path,[string]$Name){
@@ -69,6 +69,7 @@ foreach($check in $request.checkIds){
  $state='Known';$value=$null;$reason='Observed locally; cloud assignment, licensing and escrow require separate verification.'
  try{
   switch -CaseSensitive ($check){
+   'copilot.consumer.present' { $packages=@(Get-AppxPackage -Name Microsoft.Copilot);foreach($p in $packages){if($p.Name -cne 'Microsoft.Copilot' -or $p.PackageFamilyName -cne 'Microsoft.Copilot_8wekyb3d8bbwe' -or $p.PublisherId -cne '8wekyb3d8bbwe'){throw 'Ambiguous consumer package identity.'}};$value=($packages.Count -gt 0) }
    'os.version' { $os=Get-CimInstance -ClassName Win32_OperatingSystem; $value=[string]$os.Version }
    'os.architecture' { $value=if([Environment]::Is64BitOperatingSystem){'x64'}else{'x86'} }
    'secureboot.enabled' { $value=[bool](Confirm-SecureBootUEFI) }
