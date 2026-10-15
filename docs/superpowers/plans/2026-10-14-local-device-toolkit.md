@@ -342,7 +342,7 @@ Test assertions:
 
 **Recommended execution:** direct implementation in this session with the executing-plans skill, followed by an independent whole-branch review. These tasks share evolving identity, evidence and execution contracts; implementing them coherently is preferable to concurrent changes to those contracts. Task-by-task subagents remain an available alternative if the user selects them.
 
-The user’s pasted implementation request authorises direct execution of this plan, incorporating the revised setup/diagnostics design. The plan is not a record of completed software, and no unchecked item may be reported as implemented or verified.
+The user’s pasted implementation request authorises direct execution of this plan, incorporating the revised setup/diagnostics design. The original plan alone is not evidence of completed software. Unchecked historical commands must not be reported as executed; implemented equivalents and actual validation are recorded in the completion reconciliation below.
 
 
 ## Completion reconciliation — 15 October 2026
