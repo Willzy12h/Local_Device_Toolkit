@@ -72,7 +72,7 @@ jobs:
           $app=[Diagnostics.Process]::Start($start)
           if (-not $app.WaitForExit(60000)) { $app.Kill(); throw 'Read-only native render timed out.' }
           if ($app.ExitCode -ne 0) { throw "Packaged application failed: $($app.ExitCode)" }
-          foreach ($page in @('home','setup','diagnostics','deployments','reports','setup-compact','diagnostics-compact','deployments-compact','reports-compact','saved-reports','deployment-inputs','recorded-restoration','manual-review','setting-inputs','saved-reports-compact','deployment-inputs-compact','recorded-restoration-compact','manual-review-compact','setting-inputs-compact')) {
+          foreach ($page in @('home','setup','diagnostics','deployments','reports','setup-compact','diagnostics-compact','deployments-compact','reports-compact','saved-reports','deployment-inputs','recorded-restoration','manual-review','setting-inputs','saved-reports-compact','deployment-inputs-compact','recorded-restoration-compact','manual-review-compact','setting-inputs-compact','task-review','task-review-compact')) {
             $image=Get-Item (Join-Path $render ($page+'.png'))
             if ($image.Length -lt 1024) { throw "Native render is empty: $page" }
           }
@@ -85,4 +85,5 @@ jobs:
             dist/*.sha256
             dist/package-verification.json
             dist/native-renders/*.png
+            dist/native-renders/*.log
             TestResults

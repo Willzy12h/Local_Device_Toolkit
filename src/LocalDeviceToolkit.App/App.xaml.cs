@@ -25,7 +25,8 @@ public partial class App:Application
    var session=new WorkbenchSession(context,catalogue,workflows,inspector,store,operations);
    var plans=new PlanService(operations,TimeProvider.System);
    var coordinator=new LocalDeviceToolkit.Engine.Execution.RunCoordinator(plans,operations,identity,catalogue,store,new LocalDeviceToolkit.Windows.Elevation.WindowsActionDispatcher(operations,identity,System.IO.Path.Combine(AppContext.BaseDirectory,"worker","LocalDeviceToolkit.Worker.exe")),TimeProvider.System);
-   MainWindow=new MainWindow(session,store,plans,coordinator,new LocalDeviceToolkit.Engine.Reporting.ReportService(store,catalogue,context),new LocalDeviceToolkit.Engine.Reporting.ManualReviewRecorder(store,catalogue,context,identity.GetActorAsync));MainWindow.Show();
+   var reviewRuns=new ReviewRunService(operations,plans,coordinator,session,System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"LocalDeviceToolkit","logs"),TimeProvider.System);
+   MainWindow=new MainWindow(session,store,plans,coordinator,new LocalDeviceToolkit.Engine.Reporting.ReportService(store,catalogue,context),new LocalDeviceToolkit.Engine.Reporting.ManualReviewRecorder(store,catalogue,context,identity.GetActorAsync),reviewRuns);MainWindow.Show();
    if(smoke)
    {
     await ((MainWindow)MainWindow).RenderSmokePagesAsync(System.IO.Path.GetFullPath(e.Args[1]));Shutdown(0);

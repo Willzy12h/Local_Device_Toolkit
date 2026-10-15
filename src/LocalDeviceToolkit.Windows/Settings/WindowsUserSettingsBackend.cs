@@ -9,7 +9,7 @@ using Microsoft.Win32;
 using System.Diagnostics;
 using System.Text.Json;
 namespace LocalDeviceToolkit.Windows.Settings;
-public enum UserScriptAction { ReadRegion,ApplyRegion,ReadConsumerCopilot,RemoveConsumerCopilot }
+public enum UserScriptAction { ReadRegion,ApplyRegion,ReadConsumerCopilot,RemoveConsumerCopilot,ApplyUkFormats,ApplyUkHomeCountry,ApplyUkInputLanguage,ApplyUkKeyboard,ApplyUkDefaultKeyboard }
 public sealed record UserScriptRequest(int SchemaVersion,UserScriptAction Action,string OriginalUserSid,JsonElement? ExpectedBefore);
 public sealed record UserScriptReply(int SchemaVersion,UserScriptAction Action,string OriginalUserSid,bool Completed,JsonElement? Value,DateTimeOffset CapturedAt,string Reason);
 public sealed class WindowsUserSettingsBackend(string scriptRoot):IUserSettingsBackend
@@ -26,7 +26,7 @@ public sealed class WindowsUserSettingsBackend(string scriptRoot):IUserSettingsB
   if(!OperatingSystem.IsWindows())throw new PlatformNotSupportedException();ct.ThrowIfCancellationRequested();
   try
   {
-   var paths=setting==UserSettingId.UkRegionKeyboard?new[]{@"SOFTWARE\Policies\Microsoft\Control Panel\International",@"SOFTWARE\Policies\Microsoft\MUI\Settings",@"SOFTWARE\Microsoft\PolicyManager\current\device\TimeLanguageSettings"}:new[]{@"SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot",@"SOFTWARE\Microsoft\PolicyManager\current\device\WindowsAI"};
+   var paths=setting!=UserSettingId.RemoveConsumerCopilot?new[]{@"SOFTWARE\Policies\Microsoft\Control Panel\International",@"SOFTWARE\Policies\Microsoft\MUI\Settings",@"SOFTWARE\Microsoft\PolicyManager\current\device\TimeLanguageSettings"}:new[]{@"SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot",@"SOFTWARE\Microsoft\PolicyManager\current\device\WindowsAI"};
    foreach(var hive in new[]{RegistryHive.LocalMachine,RegistryHive.CurrentUser})
     foreach(var path in paths)
     {
@@ -39,7 +39,7 @@ public sealed class WindowsUserSettingsBackend(string scriptRoot):IUserSettingsB
  }
  public async Task<UserSettingSnapshot> ReadAsync(UserSettingId setting,DeviceContext original,CancellationToken ct)
  {
-  await ValidateContext(original,ct);var action=setting==UserSettingId.UkRegionKeyboard?UserScriptAction.ReadRegion:UserScriptAction.ReadConsumerCopilot;
+  await ValidateContext(original,ct);var action=setting!=UserSettingId.RemoveConsumerCopilot?UserScriptAction.ReadRegion:UserScriptAction.ReadConsumerCopilot;
   var reply=await RunAsync(action,original,null,ct);
   return new(setting,reply.Value?.Clone()??throw new InvalidDataException("The user probe returned no measured state."),"Windows PowerShell 5.1 / fixed original-user preferences probe",reply.CapturedAt);
  }
@@ -47,7 +47,7 @@ public sealed class WindowsUserSettingsBackend(string scriptRoot):IUserSettingsB
  {
   await ValidateContext(original,ct);var policy=await InspectPolicyAsync(setting,ct);if(!policy.Available||policy.ConflictObserved)throw new PlanValidationException(policy.Reason);
   if(before.Setting!=setting)throw new PlanValidationException("Current-user before evidence targets another operation.");
-  var action=setting==UserSettingId.UkRegionKeyboard?UserScriptAction.ApplyRegion:UserScriptAction.RemoveConsumerCopilot;
+  var action=setting switch {UserSettingId.UkFormats=>UserScriptAction.ApplyUkFormats,UserSettingId.UkHomeCountry=>UserScriptAction.ApplyUkHomeCountry,UserSettingId.UkInputLanguage=>UserScriptAction.ApplyUkInputLanguage,UserSettingId.UkKeyboard=>UserScriptAction.ApplyUkKeyboard,UserSettingId.UkDefaultKeyboard=>UserScriptAction.ApplyUkDefaultKeyboard,UserSettingId.RemoveConsumerCopilot=>UserScriptAction.RemoveConsumerCopilot,_=>throw new PlanValidationException("Legacy composite region mutation is not registered.")};
   _=await RunAsync(action,original,before.Value,ct);
  }
  async Task<UserScriptReply> RunAsync(UserScriptAction action,DeviceContext original,JsonElement? before,CancellationToken ct)

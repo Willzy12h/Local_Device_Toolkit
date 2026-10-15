@@ -4,7 +4,8 @@ Updated 15 October 2026. Implemented source and observed automation are separate
 
 ## Created
 
-- Native WPF Home, New device setup, Diagnostics, Deployments and Reports/history. Setup and diagnostics reference the same canonical tasks, operations and queue.
+- Native WPF Home, setup task table, diagnostic list/details, Deployments and Reports/history. Shared operations support individual selections, measured current/expected values, explicit review/confirmation and verified results.
+- Separate UK preferences, eight application rows and individual readiness checks. New dated text log per review/run includes checks, full sources and changes in the same file; already-correct values are skipped.
 - All 30 M365 Windows controls retained with pinned source commit/hash, separate local coverage, manual evidence and honest unknown results.
 - Immutable evidence, strict schemas, exact before-state, ten-minute review expiry, durable intent, deduplication across settings/restoration, and stop-on-uncertainty/replay guards.
 - Main application runs as the current engineer. A separately reviewed administrator worker handles protected actions while preserving original-user targets and recording the actual administrator.
@@ -16,6 +17,8 @@ Updated 15 October 2026. Implemented source and observed automation are separate
 - Checksum-verified SDK 10.0.401 and PowerShell 7.6.0 cloud setup, locked restore and reusable activation instructions.
 
 ## Checks actually run
+
+The select/review/run candidate passed **410 tests: 295 engine and 115 Windows-adapter tests**, zero failures/skips, on Linux. The full App/Worker solution built with zero warnings/errors. Native Windows verification is tracked separately in the acceptance record; Linux Windows-only branches do not establish native acceptance.
 
 The reviewed cloud candidate passed **296 tests: 185 engine and 111 Windows-adapter tests**, zero failures/skips, and a full App/Worker build with zero warnings/errors. The next native checkpoint at `aa80274` passed **297 tests: 185 engine and 112 adapter tests**, including actual Windows APIs, trust verification and MSI/MSIX metadata fixtures. Twenty package-verifier cases execute PowerShell 7 on Linux, including altered/missing assets and runtime checks. Windows-only test branches do not prove native behavior on Linux.
 

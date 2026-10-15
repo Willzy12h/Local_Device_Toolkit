@@ -10,7 +10,7 @@
     {
       "id": "settings.user",
       "path": "settings/Invoke-UserSetting.ps1",
-      "sha256": "ae894db9e66880bd277a4a59ca3304ae4d6b6084b7dd49ba2363d9653e413c43",
+      "sha256": "d67a015e49ec3193d083277fcfd6a4a530dc08cb7bbc76b04fa82f7083b6b51d",
       "readOnly": false
     },
     {

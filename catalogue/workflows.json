@@ -7,14 +7,24 @@
         "id": "readiness",
         "title": "Identify and check readiness",
         "taskIds": [
-          "security.device-readiness"
+          "readiness.os-version",
+          "readiness.secure-boot",
+          "readiness.tpm",
+          "readiness.bitlocker",
+          "readiness.code-integrity",
+          "readiness.antivirus"
         ]
       },
       {
         "id": "assessment",
         "title": "Assess the build standard",
         "taskIds": [
-          "security.device-readiness",
+          "readiness.os-version",
+          "readiness.secure-boot",
+          "readiness.tpm",
+          "readiness.bitlocker",
+          "readiness.code-integrity",
+          "readiness.antivirus",
           "control.cfg-win-001",
           "control.cfg-win-002",
           "control.cfg-win-003",
@@ -24,7 +34,11 @@
           "control.cfg-win-007",
           "control.cfg-win-008",
           "control.cfg-win-009",
-          "control.cfg-win-010",
+          "control.cfg-win-010-formats",
+          "control.cfg-win-010-home-country",
+          "control.cfg-win-010-input-language",
+          "control.cfg-win-010-keyboard",
+          "control.cfg-win-010-default-keyboard",
           "control.cfg-win-011",
           "windows.file-extensions",
           "control.cfg-win-013",
@@ -36,7 +50,14 @@
           "control.cfg-win-019",
           "windows.power-ac-sleep",
           "control.cfg-win-021",
-          "apps.installation"
+          "apps.app-win-001",
+          "apps.app-win-002",
+          "apps.app-win-003",
+          "apps.app-win-004",
+          "apps.app-win-005",
+          "apps.app-win-006",
+          "apps.app-win-007",
+          "apps.app-win-008"
         ]
       },
       {
@@ -52,7 +73,11 @@
           "control.cfg-win-007",
           "control.cfg-win-008",
           "control.cfg-win-009",
-          "control.cfg-win-010",
+          "control.cfg-win-010-formats",
+          "control.cfg-win-010-home-country",
+          "control.cfg-win-010-input-language",
+          "control.cfg-win-010-keyboard",
+          "control.cfg-win-010-default-keyboard",
           "control.cfg-win-011",
           "windows.file-extensions",
           "control.cfg-win-013",
@@ -71,14 +96,26 @@
         "id": "applications",
         "title": "Install applications",
         "taskIds": [
-          "apps.installation"
+          "apps.app-win-001",
+          "apps.app-win-002",
+          "apps.app-win-003",
+          "apps.app-win-004",
+          "apps.app-win-005",
+          "apps.app-win-006",
+          "apps.app-win-007",
+          "apps.app-win-008"
         ]
       },
       {
         "id": "handover",
         "title": "Verify and hand over",
         "taskIds": [
-          "security.device-readiness",
+          "readiness.os-version",
+          "readiness.secure-boot",
+          "readiness.tpm",
+          "readiness.bitlocker",
+          "readiness.code-integrity",
+          "readiness.antivirus",
           "control.cfg-win-001",
           "control.cfg-win-002",
           "control.cfg-win-003",
@@ -88,7 +125,11 @@
           "control.cfg-win-007",
           "control.cfg-win-008",
           "control.cfg-win-009",
-          "control.cfg-win-010",
+          "control.cfg-win-010-formats",
+          "control.cfg-win-010-home-country",
+          "control.cfg-win-010-input-language",
+          "control.cfg-win-010-keyboard",
+          "control.cfg-win-010-default-keyboard",
           "control.cfg-win-011",
           "windows.file-extensions",
           "control.cfg-win-013",
@@ -100,7 +141,14 @@
           "control.cfg-win-019",
           "windows.power-ac-sleep",
           "control.cfg-win-021",
-          "apps.installation"
+          "apps.app-win-001",
+          "apps.app-win-002",
+          "apps.app-win-003",
+          "apps.app-win-004",
+          "apps.app-win-005",
+          "apps.app-win-006",
+          "apps.app-win-007",
+          "apps.app-win-008"
         ]
       }
     ]
@@ -113,14 +161,24 @@
         "id": "health",
         "title": "Device health",
         "taskIds": [
-          "security.device-readiness"
+          "readiness.os-version",
+          "readiness.secure-boot",
+          "readiness.tpm",
+          "readiness.bitlocker",
+          "readiness.code-integrity",
+          "readiness.antivirus"
         ]
       },
       {
         "id": "security",
         "title": "Security and compliance",
         "taskIds": [
-          "security.device-readiness",
+          "readiness.os-version",
+          "readiness.secure-boot",
+          "readiness.tpm",
+          "readiness.bitlocker",
+          "readiness.code-integrity",
+          "readiness.antivirus",
           "control.cfg-win-001",
           "control.cfg-win-002",
           "control.cfg-win-003",
@@ -132,7 +190,14 @@
         "id": "applications",
         "title": "Applications and deployments",
         "taskIds": [
-          "apps.installation"
+          "apps.app-win-001",
+          "apps.app-win-002",
+          "apps.app-win-003",
+          "apps.app-win-004",
+          "apps.app-win-005",
+          "apps.app-win-006",
+          "apps.app-win-007",
+          "apps.app-win-008"
         ]
       },
       {
@@ -148,7 +213,11 @@
           "control.cfg-win-007",
           "control.cfg-win-008",
           "control.cfg-win-009",
-          "control.cfg-win-010",
+          "control.cfg-win-010-formats",
+          "control.cfg-win-010-home-country",
+          "control.cfg-win-010-input-language",
+          "control.cfg-win-010-keyboard",
+          "control.cfg-win-010-default-keyboard",
           "control.cfg-win-011",
           "windows.file-extensions",
           "control.cfg-win-013",

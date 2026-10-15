@@ -5,11 +5,13 @@ The target is Windows 11 x64. Open the application as your normal Windows accoun
 ## Start and assess
 
 1. Extract the entire portable ZIP into a local folder, retaining `worker`, `scripts`, `tools`, `catalogue` and documentation. Open `LocalDeviceToolkit.App.exe` normally. The package includes .NET and Windows Desktop runtimes; no SDK, browser, service or tenant login is required.
-2. Choose **New device setup** or **Diagnostics**, select a stage/group, then request checks. Navigation and task selection do not run checks or queue changes. Both workspaces reference the same tasks, evidence and operations.
-3. Review observed values, capture time and manual limitations. Use **Read with administrator** explicitly for supported protected checks. Routine user checks stay in the original process.
-4. For a supported fix, review effective GPO/MDM policy and add it to the shared queue. Review targets, scope, required privilege, parameters and exact before values before applying. Review expires after ten minutes; changed state or policy blocks execution.
-5. Inspect each outcome and actual execution account. Recheck affected controls before handover. A restart requirement is reported; the toolkit does not request a device restart. An absent consumer Copilot app is **No change needed**, not a claimed removal.
+2. Choose **New device setup** for the task table or **Diagnostics** for the task list and details. Both use the same underlying operations. Tick each task you want; navigation runs nothing. UK formats, home country, input language, keyboard and default keyboard are separate choices. Applications also have individual rows.
+3. Choose **Check selected only** to inspect without changes, or review the selected changes. Choose an approved application profile or recorded restoration input when required. No dependent task is selected automatically.
+4. Review **Current**, **Expected**, **Status** and **Account**. **Already correct** is skipped. **Different** shows the observed value. **Missing** means no stored value was found; it does not assume a Windows default. **Unreadable** means the state could not be established and blocks changes. Select a row to read or copy the full source, including long registry paths.
+5. Check effective company GPO/MDM policy, confirm the review and run the listed changes. A review expires after ten minutes; changed selection, state or policy requires another review. Machine actions request UAC as required. The live log records checks before dispatch, then actual outcomes and independent readback in the same file.
+6. Inspect each result and execution account. Recheck before handover. Restart requirements are reported without restarting the device. An absent consumer Copilot app is already correct and is not removed again.
 
+Each review creates a new dated text file under `%LOCALAPPDATA%\LocalDeviceToolkit\logs`. The review shows its full path and live output. The log contains UTC timestamps, selected tasks, current/expected values, full sources and raw before/after evidence. Cancelled and check-only reviews retain their own files. These readable logs accompany the immutable evidence; they cannot authorize changes.
 The Windows fixes cover original-user extensions, UK formats/region/keyboard while preserving existing languages and input methods, exact consumer Copilot removal, long paths, fast startup off, AC-only sleep Never and UK time zone. Time zone preserves the daylight-saving choice and uses the engineer's assigned right when available. Automatic time-zone or observed management conflicts block the local action. System locale, default/welcome-screen profiles and other users are not configured.
 
 ## Approved local application deployment
@@ -33,7 +35,7 @@ Create a **draft** profile from the complete local media folder using Windows Po
 
 The helper reads metadata, signatures and hashes; it never launches an installer. The output must be a new file outside the media folder. It supports all four formats. Office additionally needs `-OfficeProductId` (`O365BusinessRetail` or `O365ProPlusRetail`), `-TargetOfficeVersion` matching the four-part offline media version, and `-LicenseAuthorized`. These are engineer/client inputs, not defaults that establish licensing.
 
-In **Setup → Install applications** or **Diagnostics → Applications**, choose the shared application task and **Review fix**. Alternatively, use **Deployments → Choose application deployment**.
+In **Setup → Install applications** or **Diagnostics → Applications**, select the individual application and choose its inputs. Alternatively, use **Deployments → Choose application deployment**.
 
 1. Choose the local media folder and **Import profile JSON for administrator approval**.
 2. Review product/control mapping, scope, version, all file hashes and signer pins. Confirm client authorization, licensing, vendor guidance and effective policy. UAC approval only saves the immutable profile; it installs nothing.
@@ -59,7 +61,7 @@ Stopping a queue or losing supervision never kills an installer or retries it au
 
 **Resolve reviewed completion** is separate and requires explicit vendor-completion/no-pending-children review, fresh exact installed product evidence and a completed original process. Lost process identity can resolve only with positive evidence of a different native boot identifier. A checkbox, absent product or unknown process does not prove safe completion. A separate receipt records the reviewer and evidence; the original uncertain run is preserved. Machine reconciliation uses UAC; user-package reconciliation stays as the original engineer.
 
-Use **Restore a recorded local setting** under Windows configuration to select an original complete verified run/action. It restores only the five supported fixed settings, including recorded registry absence, after a new review and fresh no-drift check. Machine targets are independently derived from protected journals. Changed privilege, policy, power scheme, battery state, catalogue or incomplete evidence blocks restoration. There is no generic undo for application removal, installers, encryption or regional language changes.
+Use **Restore a recorded local setting** under Windows configuration to select an original complete verified run/action. Select this restoration separately; it restores only the five supported fixed settings, including recorded registry absence, after a new review and fresh no-drift check. Machine targets are independently derived from protected journals. Changed privilege, policy, power scheme, battery state, catalogue or incomplete evidence blocks restoration. There is no generic undo for application removal, installers, encryption or regional language changes.
 
 ## Reports and history
 

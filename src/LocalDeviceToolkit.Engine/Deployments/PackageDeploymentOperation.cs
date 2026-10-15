@@ -30,7 +30,7 @@ public sealed class PackageDeploymentOperation:ILocalOperation
  {
   var check=await backend.CheckInputsAsync(p,source,ct);var inventory=await backend.ReadInventoryAsync(p,context,ct);
   if(!check.Accepted)throw new PlanValidationException(check.Reason);
-  return new(p.ControlId,Check,ObservationState.Known,StrictJson.Value(new DeploymentReviewState(p.Id,check.Digest,inventory)),"Verified package manifest and fresh installed-product inventory",clock.GetUtcNow(),"Package input fingerprint and independent installed-state evidence; no installer is executed during review.");
+  return new(p.ControlId,Check,ObservationState.Known,StrictJson.Value(new DeploymentReviewState(p.Id,check.Digest,inventory,p.Version,p.ProductName,p.ProductIdentity)),"Verified package manifest and fresh installed-product inventory",clock.GetUtcNow(),"Package input fingerprint and independent installed-state evidence; no installer is executed during review.");
  }
  public async Task<IReadOnlyList<ProbeObservation>> CaptureBeforeAsync(DeviceContext context,JsonElement parameters,CancellationToken ct)
  {var input=Parameters(parameters);return new[]{await Snapshot(profiles[input.ProfileId],context,input.SourceDirectory,ct)};}
@@ -112,5 +112,5 @@ public sealed class PackageDeploymentOperation:ILocalOperation
   if(!consistent)throw new PlanValidationException("The durable result conflicts with the installer observation.");
   await pending.CompleteAsync(guard,ct);
  }
- public sealed record DeploymentReviewState(string ProfileId,string InputDigest,DeploymentInventory Inventory);
+ public sealed record DeploymentReviewState(string ProfileId,string InputDigest,DeploymentInventory Inventory,string? ExpectedVersion=null,string? ProductName=null,string? ProductIdentity=null);
 }

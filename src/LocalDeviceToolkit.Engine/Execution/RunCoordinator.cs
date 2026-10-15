@@ -6,7 +6,7 @@ public sealed class RunCoordinator(PlanService plans,OperationRegistry operation
 {
  readonly SemaphoreSlim gate=new(1,1);
  readonly HashSet<Guid> consumed=[];
- public async Task<RunRecord> ExecuteAsync(ReviewedPlan plan,CancellationToken stop)
+ public async Task<RunRecord> ExecuteAsync(ReviewedPlan plan,CancellationToken stop,IRunProgressSink? progress=null)
  {
   if(!await gate.WaitAsync(0,CancellationToken.None))throw new PlanValidationException("An operation is already running.");
   try
@@ -20,7 +20,7 @@ public sealed class RunCoordinator(PlanService plans,OperationRegistry operation
    var runId=Guid.NewGuid();var started=clock.GetUtcNow();var results=new List<ActionResult>();bool halted=false,complete=true;
    foreach(var action in plan.Actions)
    {
-    ActionResult result;
+    ActionResult result;bool notifyResult=false;
     if(halted||stop.IsCancellationRequested)
      result=new(action.Id,ActionOutcome.CancelledBeforeExecution,null,"Not started: the queue was stopped.",[]);
     else
@@ -39,6 +39,17 @@ public sealed class RunCoordinator(PlanService plans,OperationRegistry operation
       stop.ThrowIfCancellationRequested();
       validation=plans.ValidateAction(plan,action,context,catalogue.Identity,before,clock.GetUtcNow());
       if(!validation.IsValid)throw new PlanValidationException(string.Join(" ",validation.Reasons));
+      if(progress is not null)
+      {
+       try{await progress.BeforeActionAsync(plan,action,stop);}
+       catch(Exception)
+       {
+        complete=false;halted=true;
+        throw new PlanValidationException("The companion run log could not be saved; execution was blocked.");
+       }
+      }
+      stop.ThrowIfCancellationRequested();
+      notifyResult=true;
       dispatched=true;
       result=await dispatcher.DispatchAsync(plan,action,stop);
       ToolkitEvidenceSchemas.ValidateResult(result);
@@ -52,14 +63,24 @@ public sealed class RunCoordinator(PlanService plans,OperationRegistry operation
      }
      catch(Exception) when(dispatched){result=new(action.Id,ActionOutcome.OutcomeUnknown,null,"The execution outcome could not be confirmed; reconcile before retrying.",[]);}
     }
+    bool resultSaved=true;
     try
     {
      await evidence.SaveNewAsync(EvidenceRecord.Create(Guid.NewGuid(),"result",plan.Context,clock.GetUtcNow(),StrictJson.Value(new ResultRecord(runId,plan.Id,result))),CancellationToken.None);
     }
     catch(Exception e) when(e is IOException or UnauthorizedAccessException or EvidenceValidationException)
     {
-     complete=false;
+     complete=false;resultSaved=false;halted=true;
      if(result.Actor is not null)result=result with { Outcome=ActionOutcome.OutcomeUnknown,Reason="A result was observed but could not be durably saved; reconcile before retrying." };
+    }
+    if(progress is not null&&notifyResult&&resultSaved)
+    {
+     try{await progress.AfterActionAsync(plan,action,result,CancellationToken.None);}
+     catch(Exception)
+     {
+      complete=false;halted=true;
+      result=result with { Reason=result.Reason+" Companion run log unavailable after execution; remaining actions were stopped." };
+     }
     }
     results.Add(result);
     if(result.Outcome!=ActionOutcome.AppliedVerified)halted=true;

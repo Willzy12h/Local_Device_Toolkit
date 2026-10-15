@@ -27,7 +27,7 @@ public sealed class ProfileStoreTests : IDisposable
   var profile=Profile();var store=new ApprovedProfileStore(root);await store.SaveAsync(profile,default);
   var registry=new LocalDeviceToolkit.Engine.Planning.OperationRegistry(LocalDeviceToolkit.Engine.Catalogue.WorkflowCatalogue.LoadShipped(),[new ApprovedPackageOperation(store,new FileDeploymentPendingStore(Path.Combine(root,"pending")),true)]);
   var context=new DeviceContext("device","PC","S-1-5-21-123","engineer",false,new Version(10,0,26200),"x64",true);var queue=new LocalDeviceToolkit.Engine.Planning.DeploymentQueue(context,registry);
-  var request=new ActionRequest("apps.installation","packages.install",StrictJson.Value(new DeploymentParameters(profile.Id,Path.GetFullPath("media"))),new("setup","applications"));queue.Add(request);File.Delete(Path.Combine(root,profile.Id+".json"));
+  var request=new ActionRequest("apps.app-win-005","packages.install",StrictJson.Value(new DeploymentParameters(profile.Id,Path.GetFullPath("media"))),new("setup","applications"));queue.Add(request);File.Delete(Path.Combine(root,profile.Id+".json"));
   Assert.True(queue.Remove(queue.Requests[0]));Assert.Empty(queue.Requests);
  }
  [Fact] public async Task Mutated_profile_and_unsafe_id_are_refused()

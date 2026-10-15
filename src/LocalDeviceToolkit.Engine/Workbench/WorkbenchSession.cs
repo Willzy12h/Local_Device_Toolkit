@@ -56,10 +56,10 @@ public sealed class WorkbenchSession
   if(capture.Context!=Context||capture.Catalogue!=Catalogue.Identity||capture.Origin!=origin||!capture.CapturedBy.IsElevated)throw new EvidenceValidationException("Protected evidence does not match the original engineer, device, catalogue, workspace or elevated actor.");
   await evidence.SaveNewAsync(EvidenceRecord.Capture(capture),ct);captures.Add(capture);if(captures.Count>100)captures.RemoveAt(0);
  }
- public async Task<DeviceCapture> CaptureAsync(IReadOnlyList<string> taskIds,CancellationToken ct)
+ public Task<DeviceCapture> CaptureAsync(IReadOnlyList<string> taskIds,CancellationToken ct)=>CaptureAtOriginAsync(taskIds,Origin,ct);
+ public async Task<DeviceCapture> CaptureAtOriginAsync(IReadOnlyList<string> taskIds,WorkflowOrigin origin,CancellationToken ct)
  {
   if(taskIds.Count is <1 or >100)throw new ArgumentException("Select tasks to check.");
-  var origin=Origin;
   var selected=taskIds.Select(id=>Workflows.ResolveWorkflowTask(origin.WorkflowId,origin.StageId,id)).ToArray();
   if(!await gate.WaitAsync(0,ct))throw new InvalidOperationException("A check is already running.");
   try
