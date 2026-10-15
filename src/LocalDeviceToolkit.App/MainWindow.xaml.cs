@@ -38,7 +38,12 @@ public partial class MainWindow:Window
    var encoder=new System.Windows.Media.Imaging.PngBitmapEncoder();encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));using var file=new FileStream(path,FileMode.CreateNew,FileAccess.Write,FileShare.None);encoder.Save(file);
   }
   var pages=new[]{("home",(string?)null),("setup","windows"),("diagnostics","configuration"),("deployments",(string?)null),("reports",(string?)null)};
-  foreach(var (area,stage) in pages){NavigateWorkspace(area,stage);await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle);Save(this,Path.Combine(output,area+".png"));}
+  foreach(var (area,stage) in pages)
+  {
+   NavigateWorkspace(area,stage);await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle);UpdateLayout();
+   if(area=="setup"&&(SetupRows.Columns.Any(column=>column.ActualWidth<column.MinWidth-1)||SetupRows.ColumnHeaderHeight>40||SetupRows.RowHeight>50))throw new InvalidOperationException("Setup column labels and row controls must retain readable native bounds.");
+   Save(this,Path.Combine(output,area+".png"));
+  }
   Width=900;Height=520;
   foreach(var (area,stage) in pages.Where(p=>p.Item1!="home"))
   {
@@ -102,7 +107,7 @@ public partial class MainWindow:Window
    {
     var flow=session.Workflows.Workflows.Single(w=>w.Id==session.Area);Stages.ItemsSource=flow.Stages;Stages.SelectedItem=flow.Stages.Single(s=>s.Id==session.StageId);
    }
-   UpdateQueueButtons();RefreshTasks();QueueShortcut.Content=$"Deployment queue ({session.Queue.Requests.Count})";
+   UpdateQueueButtons();RefreshTasks();QueueShortcut.Content=$"Selected changes ({session.Queue.Requests.Count})";
    QueueList.ItemsSource=session.Queue.Requests.Select(r=>$"{session.Workflows.ResolveTask(r.TaskId).Title}\n{r.OperationId} • {r.Origin.WorkflowId} / {r.Origin.StageId}").DefaultIfEmpty("No changes queued. Select a task and request a change to add it.").ToArray();
   }
   finally{rendering=false;}
@@ -188,7 +193,7 @@ public partial class MainWindow:Window
   else foreach(var request in session.Queue.Requests.Where(r=>r.TaskId==row.Definition.Id).ToArray())session.Queue.Remove(request);
   UpdateSelectionStatus();
  }
- void UpdateSelectionStatus(){QueueShortcut.Content=$"Deployment queue ({session.Queue.Requests.Count})";StatusLine.Text=$"{selections.Values.Count(r=>r.Selected)} selected • {selections.Values.Count(r=>r.Selected&&r.ChangeRequested)} changes requested. Configure application or restoration inputs before review.";UpdateQueueButtons();}
+ void UpdateSelectionStatus(){QueueShortcut.Content=$"Selected changes ({session.Queue.Requests.Count})";StatusLine.Text=$"{selections.Values.Count(r=>r.Selected)} selected • {selections.Values.Count(r=>r.Selected&&r.ChangeRequested)} changes requested. Configure application or restoration inputs before review.";UpdateQueueButtons();}
  void SetupTask_Changed(object sender,SelectionChangedEventArgs e){if(SetupRows.SelectedItem is TaskSelectionRow row)TaskList.SelectedItem=row;}
  void ConfigureRow_Click(object sender,RoutedEventArgs e){if(sender is FrameworkElement{DataContext:TaskSelectionRow row}){TaskList.SelectedItem=row;ReviewFix_Click(sender,e);}}
  async void CheckSelected_Click(object sender,RoutedEventArgs e){if(TaskList.SelectedItem is TaskSelectionRow row){row.Selected=true;reviewRuns.Invalidate();await CheckReviewAsync(true);}}
