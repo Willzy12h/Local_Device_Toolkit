@@ -53,6 +53,7 @@ public sealed class EvidenceStoreTests:IDisposable
    using var process=System.Diagnostics.Process.Start(start)!;process.WaitForExit();Assert.Equal(0,process.ExitCode);
   }
   else Directory.CreateSymbolicLink(root,target);
-  await Assert.ThrowsAsync<EvidenceValidationException>(()=>new EvidenceStore(root).SaveNewAsync(EvidenceRecord.Capture(TestData.Capture()),default));
+  try{await Assert.ThrowsAsync<EvidenceValidationException>(()=>new EvidenceStore(root).SaveNewAsync(EvidenceRecord.Capture(TestData.Capture()),default));}
+  finally{Directory.Delete(root,false);} // Remove the link itself before recursive fixture cleanup; never traverse its target.
  }
 }
