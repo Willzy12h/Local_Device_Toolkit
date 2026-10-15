@@ -3,7 +3,7 @@
   <Border DockPanel.Dock="Top" Padding="24,18" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}">
    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
     <StackPanel><TextBlock Text="LOCAL DEVICE TOOLKIT" FontWeight="Bold" FontSize="22"/><TextBlock x:Name="DeviceHeader" Margin="0,6,0,0"/></StackPanel>
-    <StackPanel Grid.Column="1" Margin="20,0,0,0"><TextBlock x:Name="StandardHeader"/><TextBlock Text="Local Windows workstation • engineer session" Margin="0,6,0,0"/></StackPanel>
+    <StackPanel Grid.Column="1" Margin="20,0,0,0"><TextBlock x:Name="StandardHeader"/><TextBlock Text="Local Windows device • engineer session" Margin="0,6,0,0"/></StackPanel>
    </Grid>
   </Border>
   <Border DockPanel.Dock="Bottom" Padding="20,10" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}">
@@ -31,7 +31,7 @@
      </ListBox>
      <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto"><StackPanel>
       <TextBlock x:Name="TaskTitle" Text="Select a task" FontSize="22" FontWeight="SemiBold"/><TextBlock x:Name="TaskIds" Margin="0,8,0,14"/><TextBlock x:Name="TaskRequirement"/><TextBlock Text="Local coverage and verification" FontSize="17" FontWeight="SemiBold" Margin="0,20,0,8"/><TextBlock x:Name="TaskLimitations"/>
-      <WrapPanel Margin="0,18,0,0"><Button x:Name="CheckSelected" Content="Check selected task" Click="CheckSelected_Click" IsEnabled="False"/><Button x:Name="ReviewFix" Content="Review fix" Click="ReviewFix_Click" IsEnabled="False"/></WrapPanel>
+      <WrapPanel Margin="0,18,0,0"><Button x:Name="CheckSelected" Content="Check selected task" Click="CheckSelected_Click" IsEnabled="False"/><Button x:Name="ProtectedRead" Content="Read with administrator" Click="ProtectedRead_Click" IsEnabled="False"/><Button x:Name="ReviewFix" Content="Review fix" Click="ReviewFix_Click" IsEnabled="False"/></WrapPanel>
       <TextBlock x:Name="ObservedAt" Margin="0,8"/><TextBlock Text="Observed evidence" FontSize="17" FontWeight="SemiBold" Margin="0,12,0,8"/><TextBox x:Name="Observations" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" Background="Transparent" MinHeight="100" AutomationProperties.Name="Observed check values and limitations"/>
      </StackPanel></ScrollViewer>
     </Grid>

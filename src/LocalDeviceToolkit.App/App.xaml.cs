@@ -18,7 +18,7 @@ public partial class App:Application
    var store=new EvidenceStore(System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"LocalDeviceToolkit","evidence"),ToolkitEvidenceSchemas.Create(),context);
    var source=new NativeFactsSource(System.IO.Path.Combine(AppContext.BaseDirectory,"scripts"));
    var inspector=new WindowsDeviceInspector(identity,identity,source,catalogue,TimeProvider.System);
-   var operations=new OperationRegistry(workflows,[]);
+   var operations=LocalDeviceToolkit.Windows.WindowsOperations.Create(workflows);
    var session=new WorkbenchSession(context,catalogue,workflows,inspector,store,operations);
    MainWindow=new MainWindow(session,store);MainWindow.Show();
   }

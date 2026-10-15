@@ -5,6 +5,8 @@ using LocalDeviceToolkit.Core;
 using LocalDeviceToolkit.Engine.Workbench;
 using LocalDeviceToolkit.Engine.Evidence;
 using Microsoft.Win32;
+using LocalDeviceToolkit.Engine.Elevation;
+using LocalDeviceToolkit.Windows.Elevation;
 using TaskStatus=LocalDeviceToolkit.Engine.Workbench.TaskStatus;
 namespace LocalDeviceToolkit.App;
 public partial class MainWindow:Window
@@ -58,6 +60,12 @@ public partial class MainWindow:Window
  void ShowTask()
  {
   var selected=TaskList.SelectedItem as TaskStatus;CheckSelected.IsEnabled=selected is not null&&!isBusy;CheckStage.IsEnabled=!isBusy;
+  ProtectedRead.IsEnabled=false;
+  if(selected is not null&&!isBusy)
+  {
+   try{WorkerRequestValidator.Validate(new(1,WorkerMode.CaptureProtected,session.Context,new(selected.Definition.ControlIds,session.Origin),null,null),session.Catalogue,session.Workflows);ProtectedRead.IsEnabled=true;}
+   catch(LocalDeviceToolkit.Engine.Execution.PlanValidationException){}
+  }
   ReviewFix.IsEnabled=selected?.Definition.OperationId is not null&&!isBusy;
   if(selected is null){TaskTitle.Text="Select a task";TaskIds.Text=TaskRequirement.Text=TaskLimitations.Text=Observations.Text=ObservedAt.Text="";return;}
   TaskTitle.Text=selected.Definition.Title;TaskIds.Text=string.Join(" • ",selected.Definition.ControlIds);
@@ -70,6 +78,20 @@ public partial class MainWindow:Window
  }
  async void CheckSelected_Click(object sender,RoutedEventArgs e){if(TaskList.SelectedItem is TaskStatus task)await RunUiAsync(async()=>{await session.CaptureAsync([task.Definition.Id],lifetime.Token);StatusLine.Text="Check complete. Evidence saved; review the observed values and limitations.";RefreshTasks();});}
  async void CheckStage_Click(object sender,RoutedEventArgs e)=>await RunUiAsync(async()=>{var ids=session.Tasks().Select(t=>t.Definition.Id).ToArray();await session.CaptureAsync(ids,lifetime.Token);StatusLine.Text="Stage checks complete. Evidence saved; manual verification remains visible.";RefreshTasks();});
+ async void ProtectedRead_Click(object sender,RoutedEventArgs e)
+ {
+  if(TaskList.SelectedItem is not TaskStatus task)return;
+  var origin=session.Origin;
+  await RunUiAsync(async()=>
+  {
+   var request=new WorkerRequest(1,WorkerMode.CaptureProtected,session.Context,new(task.Definition.ControlIds,origin),null,null);
+   WorkerRequestValidator.Validate(request,session.Catalogue,session.Workflows);
+   var broker=new UacWorkerBroker(Path.Combine(AppContext.BaseDirectory,"worker","LocalDeviceToolkit.Worker.exe"));
+   var response=await broker.RequestAsync(request,lifetime.Token);
+   if(!response.Success||response.Capture is null)throw new InvalidOperationException(response.Message);
+   await session.AcceptProtectedCaptureAsync(response.Capture,origin,lifetime.Token);RefreshTasks();StatusLine.Text="Protected evidence saved. Original engineer and executing administrator are recorded separately.";
+  });
+ }
  void ReviewFix_Click(object sender,RoutedEventArgs e){StatusLine.Text="Select a supported action and review its exact parameters before adding it to the queue.";}
  async void History_Click(object sender,RoutedEventArgs e)=>await RunUiAsync(async()=>
  {

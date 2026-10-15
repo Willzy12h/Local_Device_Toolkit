@@ -36,7 +36,7 @@ public static class RegisteredScripts
   catch{stream.Dispose();throw;}
  }
 }
-public sealed class NativeFactsSource(string scriptRoot):IWindowsFactsSource
+public sealed class NativeFactsSource(string scriptRoot,string? protectedRuntime=null):IWindowsFactsSource
 {
  public async Task<IReadOnlyList<WindowsFact>> ReadAsync(IReadOnlyList<string> checkIds,CancellationToken ct)
  {
@@ -52,7 +52,7 @@ public sealed class NativeFactsSource(string scriptRoot):IWindowsFactsSource
   checkIds=checkIds.Except(nativeChecks,StringComparer.Ordinal).ToArray();
   if(checkIds.Count==0)return nativeFacts.AsReadOnly();
   using var script=RegisteredScripts.OpenVerified(scriptRoot,"device.facts");
-  var runtime=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"LocalDeviceToolkit","runtime");
+  var runtime=protectedRuntime??Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"LocalDeviceToolkit","runtime");
   Directory.CreateDirectory(runtime);
   for(var directory=new DirectoryInfo(runtime);directory is not null;directory=directory.Parent)
    if((directory.Attributes&FileAttributes.ReparsePoint)!=0)throw new InvalidDataException("Runtime path contains a reparse point.");

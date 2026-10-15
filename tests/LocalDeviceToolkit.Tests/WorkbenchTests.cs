@@ -26,6 +26,13 @@ public sealed class WorkbenchTests
   var f=new Fixture();f.Store.Fail=true;f.Session.Navigate("diagnostics","configuration");
   await Assert.ThrowsAsync<IOException>(()=>f.Session.CaptureAsync(["windows.file-extensions"],default));Assert.Empty(f.Session.Captures);
  }
+ [Fact] public async Task Protected_capture_preserves_original_engineer_and_actual_administrator()
+ {
+  var f=new Fixture();f.Session.Navigate("diagnostics","health");var origin=f.Session.Origin;
+  var capture=TestData.Capture() with {Origin=origin,CapturedBy=TestData.Actor with {Sid="S-1-5-21-500",UserName="TEST\\admin",IsElevated=true},Observations=[new("CMP-WIN-001","secureboot.enabled",ObservationState.Known,StrictJson.Value(true),"fixture",DateTimeOffset.UtcNow,"")]};
+  await f.Session.AcceptProtectedCaptureAsync(capture,origin,default);Assert.Equal(TestData.Context.OriginalUserSid,Assert.Single(f.Session.Captures).Context.OriginalUserSid);Assert.NotEqual(TestData.Context.OriginalUserSid,f.Session.Captures[0].CapturedBy.Sid);
+  await Assert.ThrowsAsync<EvidenceValidationException>(()=>f.Session.AcceptProtectedCaptureAsync(capture with {Context=capture.Context with {OriginalUserSid=capture.CapturedBy.Sid}},origin,default));Assert.Single(f.Store.Records);
+ }
  [Fact] public async Task Task_outside_selected_stage_cannot_start_a_probe()
  {
   var f=new Fixture();f.Session.Navigate("diagnostics","health");
