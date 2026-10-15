@@ -76,8 +76,9 @@ public sealed class PackageDeploymentOperation:ILocalOperation
  public async Task<DeploymentReconciliation> ReconcileAsync(DeviceContext context,JsonElement parameters,CancellationToken ct)
  {
   var input=Parameters(parameters);var profile=profiles[input.ProfileId];var guard=await pending.ReadAsync(DeploymentTarget.For(context,profile),ct);var inventory=await backend.ReadInventoryAsync(profile,context,ct);var status=await backend.InspectProcessAsync(guard?.Process,ct);
+  if(guard is not null&&!DeploymentRecoveryProof.HasCompleteProcessIdentity(guard.Process))status=DeploymentProcessStatus.Unknown;
   Guid? currentBoot=null;
-  if(guard is {Process:null,BootSession:Guid previousBoot}&&previousBoot!=Guid.Empty){currentBoot=await backend.GetBootSessionAsync(ct);if(currentBoot is Guid observedBoot&&observedBoot!=Guid.Empty&&observedBoot!=previousBoot)status=DeploymentProcessStatus.NotRunning;}
+  if(guard is {BootSession:Guid previousBoot}&&previousBoot!=Guid.Empty){currentBoot=await backend.GetBootSessionAsync(ct);if(DeploymentRecoveryProof.HasDifferentBoot(guard,currentBoot))status=DeploymentProcessStatus.NotRunning;}
   return new(guard,inventory,status,"Read-only reconciliation never launches/retries an installer or deletes a pending guard. A positively different boot identity proves a prior-boot process ended; it does not prove installed state or vendor completion. Installed inventory, process identity and pending children remain separate evidence.",currentBoot);
  }
  public async Task<Guid> ResolveReviewedAsync(DeviceContext context,JsonElement parameters,DeploymentResolutionReview review,IEvidenceStore trustedEvidence,CancellationToken ct)
@@ -85,8 +86,9 @@ public sealed class PackageDeploymentOperation:ILocalOperation
   var input=Parameters(parameters);var profile=profiles[input.ProfileId];var guard=await pending.ReadAsync(DeploymentTarget.For(context,profile),ct)??throw new PlanValidationException("There is no pending deployment to resolve.");
   var actor=await backend.GetActorAsync(ct);
   if((profile.Scope==OperationScope.Machine?!actor.IsElevated:actor.Sid!=context.OriginalUserSid||guard.OriginalUserSid!=context.OriginalUserSid)||!review.ConfirmVendorCompletionAndNoPendingChildren)throw new PlanValidationException("Resolution requires the authenticated device/original-user scope, the required execution privilege and explicit review of vendor completion and pending children.");
-  var process=await backend.InspectProcessAsync(guard.Process,ct);Guid? currentBoot=null;
-  if(guard.Process is null&&guard.BootSession is Guid previousBoot&&previousBoot!=Guid.Empty){currentBoot=await backend.GetBootSessionAsync(ct);if(currentBoot is Guid observedBoot&&observedBoot!=Guid.Empty&&observedBoot!=previousBoot)process=DeploymentProcessStatus.NotRunning;}
+  var process=await backend.InspectProcessAsync(guard.Process,ct);if(!DeploymentRecoveryProof.HasCompleteProcessIdentity(guard.Process))process=DeploymentProcessStatus.Unknown;Guid? currentBoot=null;
+  if(guard.BootSession is Guid previousBoot&&previousBoot!=Guid.Empty){currentBoot=await backend.GetBootSessionAsync(ct);if(DeploymentRecoveryProof.HasDifferentBoot(guard,currentBoot))process=DeploymentProcessStatus.NotRunning;}
+  if(!DeploymentRecoveryProof.HasCompleteProcessIdentity(guard.Process)&&!DeploymentRecoveryProof.HasDifferentBoot(guard,currentBoot))throw new PlanValidationException("Incomplete original process identity requires independently observed proof of a different boot session.");
   if(process is not (DeploymentProcessStatus.NotRunning or DeploymentProcessStatus.IdentityMismatch))throw new PlanValidationException("The original installer is running or cannot be identified. Its pending guard cannot be cleared by a confirmation checkbox.");
   var inventory=await backend.ReadInventoryAsync(profile,context,ct);
   if(!inventory.Available||!inventory.Present||inventory.ProductIdentity!=profile.ProductIdentity||inventory.Version!=profile.Version)throw new PlanValidationException("Resolution requires fresh exact installed-product identity and version. Absent or incomplete inventory does not prove a safe retry.");

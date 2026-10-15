@@ -12,20 +12,35 @@ public sealed class DeploymentProfileDraftTests:IDisposable
   if(!File.Exists(script))throw new FileNotFoundException("Deployment draft helper is missing from the source checkout.",script);
   return script;
  }
+ static void ConfigureWindowsPowerShellEnvironment(ProcessStartInfo start)
+ {
+  // CI invokes dotnet from PowerShell 7; its module path cannot supply Windows PowerShell 5.1 modules.
+  start.Environment["PSModulePath"]=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell","v1.0","Modules");
+  start.Environment.Remove("PSExecutionPolicyPreference");
+ }
  static async Task<(int Exit,string Output)> PowerShell(params string[] arguments)
  {
   var start=new ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell","v1.0","powershell.exe")){UseShellExecute=false,RedirectStandardOutput=true,RedirectStandardError=true,CreateNoWindow=true};
+  ConfigureWindowsPowerShellEnvironment(start);
   start.Environment["TOOLKIT_DRAFT_SCRIPT"]=Script;
   foreach(var argument in new[]{"-NoProfile","-NonInteractive"}.Concat(arguments))start.ArgumentList.Add(argument);
   using var process=Process.Start(start)!;var output=process.StandardOutput.ReadToEndAsync();var error=process.StandardError.ReadToEndAsync();
   using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(45));try{await process.WaitForExitAsync(timeout.Token);}catch(OperationCanceledException){process.Kill(true);throw;}
   return(process.ExitCode,(await output)+(await error));
  }
+ [Fact] public void Child_environment_uses_Windows_modules_and_removes_inherited_execution_policy_override()
+ {
+  var start=new ProcessStartInfo("unused");start.Environment["PSModulePath"]="inherited-powershell-7-modules";start.Environment["PSExecutionPolicyPreference"]="Bypass";
+  ConfigureWindowsPowerShellEnvironment(start);
+  Assert.Equal(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell","v1.0","Modules"),start.Environment["PSModulePath"]);
+  Assert.False(start.Environment.ContainsKey("PSExecutionPolicyPreference"));
+ }
  [Fact] public async Task Helper_parses_with_installed_Windows_PowerShell_51()
  {
   if(!OperatingSystem.IsWindows())return;
   // Pass the path as process environment data, never interpolate it as PowerShell source.
   var start=new ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell","v1.0","powershell.exe")){UseShellExecute=false,RedirectStandardError=true,RedirectStandardOutput=true};
+  ConfigureWindowsPowerShellEnvironment(start);
   start.Environment["TOOLKIT_DRAFT_SCRIPT"]=Script;
   foreach(var argument in new[]{"-NoProfile","-NonInteractive","-Command","$t=$null;$e=$null;[void][Management.Automation.Language.Parser]::ParseFile($env:TOOLKIT_DRAFT_SCRIPT,[ref]$t,[ref]$e);if($e.Count){$e|Out-String|Write-Error;exit 1};if($PSVersionTable.PSVersion.Major -ne 5){throw 'Windows PowerShell 5.1 required'}"})start.ArgumentList.Add(argument);
   using var process=Process.Start(start)!;var output=process.StandardOutput.ReadToEndAsync();var error=process.StandardError.ReadToEndAsync();await process.WaitForExitAsync();Assert.True(process.ExitCode==0,(await output)+(await error));
@@ -78,7 +93,7 @@ try {
  $summary=$database.SummaryInformation(20);$summary.Property(7)='x64;1033';$summary.Persist()
  Release-ComObject $summary;$summary=$null
  $database.Commit();Release-ComObject $database;$database=$null
- $before=(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+ $before=(Microsoft.PowerShell.Utility\Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
  $database=$installer.OpenDatabase($path,0)
  if((Read-MsiProperty $database 'SELECT `Value` FROM `Property` WHERE `Property` = ''ProductVersion''') -cne '1.2.3'){throw 'Wrong version'}
  if((Read-MsiProperty $database 'SELECT `Value` FROM `Property` WHERE `Property` = ''ProductCode''') -cne '{11111111-2222-3333-4444-555555555555}'){throw 'Wrong product code'}
@@ -87,7 +102,7 @@ try {
  $summary=$database.SummaryInformation(0)
  if(([string]$summary.Property(7)).Split(';')[0] -cne 'x64'){throw 'Wrong architecture'}
  Release-ComObject $summary;$summary=$null;Release-ComObject $database;$database=$null
- if((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -cne $before){throw 'Read-only metadata queries changed fixture bytes'}
+ if((Microsoft.PowerShell.Utility\Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -cne $before){throw 'Read-only metadata queries changed fixture bytes'}
 }finally{Release-ComObject $summary;Release-ComObject $database;Release-ComObject $installer}
 """);
   var result=await PowerShell("-File",harness);Assert.True(result.Exit==0,result.Output);

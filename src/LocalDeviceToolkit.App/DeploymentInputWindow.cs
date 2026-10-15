@@ -61,7 +61,8 @@ public sealed class DeploymentInputWindow : Window
   if (busy) return; busy = true; UpdateEnabled();
   try { await action(); }
   catch (OperationCanceledException) { status.Text = "Administrator approval was cancelled. No installer was started by this form."; }
-  catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or JsonException or EvidenceValidationException or System.ComponentModel.Win32Exception)
+  catch (LocalDeviceToolkit.Windows.Elevation.ElevationCancelledException e) { status.Text=e.Message; }
+  catch (Exception e)
   { status.Text = "Unable to use deployment input: " + e.Message; }
   finally { busy = false; UpdateEnabled(); }
  }

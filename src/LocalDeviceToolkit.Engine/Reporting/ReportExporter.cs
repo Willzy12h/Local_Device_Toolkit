@@ -14,7 +14,7 @@ public static class ReportExporter
  }
  public static string Render(LocalReport report, ReportFormat format) => format switch
  {
-  ReportFormat.Json => JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }),
+  ReportFormat.Json => JsonSerializer.Serialize(report, new JsonSerializerOptions(LocalDeviceToolkit.Core.StrictJson.Options) { WriteIndented = true }),
   ReportFormat.Csv => Csv(report), ReportFormat.Html => Html(report), _ => throw new ArgumentOutOfRangeException(nameof(format))
  };
  static string Csv(LocalReport report)
@@ -39,10 +39,10 @@ public static class ReportExporter
   html.Append("</ul><h2>Control snapshots</h2><table><tr><th>Control / expected</th><th>Status / reason</th><th>Capture provenance</th><th>Observations / review</th></tr>");
   foreach (var c in report.Controls)
   {
-   html.Append("<tr><td>").Append(E(c.ControlId)).Append(" — ").Append(E(c.Name)).Append("<p>").Append(E(c.Expected)).Append("</p></td><td>").Append(E(c.Status)).Append("<p>").Append(E(c.Reason)).Append("</p></td><td>").Append(E(c.CaptureId)).Append("<p>").Append(E(c.CapturedAt?.ToString("O"))).Append("</p><pre>").Append(E(JsonSerializer.Serialize(c.CapturedBy))).Append("</pre></td><td><pre>").Append(E(JsonSerializer.Serialize(new { c.Observations, c.ManualReview }, new JsonSerializerOptions { WriteIndented = true }))).Append("</pre></td></tr>");
+   html.Append("<tr><td>").Append(E(c.ControlId)).Append(" — ").Append(E(c.Name)).Append("<p>").Append(E(c.Expected)).Append("</p></td><td>").Append(E(c.Status)).Append("<p>").Append(E(c.Reason)).Append("</p></td><td>").Append(E(c.CaptureId)).Append("<p>").Append(E(c.CapturedAt?.ToString("O"))).Append("</p><pre>").Append(E(JsonSerializer.Serialize(c.CapturedBy))).Append("</pre></td><td><pre>").Append(E(JsonSerializer.Serialize(new { c.Observations, c.ManualReview }, new JsonSerializerOptions(LocalDeviceToolkit.Core.StrictJson.Options) { WriteIndented = true }))).Append("</pre></td></tr>");
   }
   html.Append("</table><h2>Complete selected evidence and deployment details</h2><p>Original requesting identity and actual executing actors, before/after values, parameters and uncertainty are retained below.</p><pre>");
-  html.Append(E(JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }))).Append("</pre></body></html>");
+  html.Append(E(JsonSerializer.Serialize(report, new JsonSerializerOptions(LocalDeviceToolkit.Core.StrictJson.Options) { WriteIndented = true }))).Append("</pre></body></html>");
   return html.ToString();
  }
  public static async Task<ExportReceipt> ExportAsync(LocalReport report, ReportFormat format, string destination, CancellationToken ct)

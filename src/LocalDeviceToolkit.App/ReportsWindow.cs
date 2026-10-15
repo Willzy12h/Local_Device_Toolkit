@@ -44,6 +44,7 @@ public sealed class ReportsWindow : Window
   next.Click += async (_, _) => await GuardAsync(() => LoadPageAsync(false)); buttons.Children.Add(next);
   AddButton(buttons, "Select session captures", SelectSessionAsync);
   AddButton(buttons, "Build selected report", BuildAsync);
+  AddButton(buttons,"View saved record JSON",ViewRecordAsync);
   AddButton(buttons, "Record manual review", RecordManualAsync, recorder is not null);
   AddButton(buttons, "Export HTML", () => ExportAsync(ReportFormat.Html));
   AddButton(buttons, "Export CSV", () => ExportAsync(ReportFormat.Csv));
@@ -66,6 +67,13 @@ public sealed class ReportsWindow : Window
   catch (Exception e) when (e is IOException or UnauthorizedAccessException or EvidenceValidationException or InvalidOperationException or ArgumentException or JsonException)
   { status.Text = "Unable to complete: " + e.Message; }
   finally { busy = false; }
+ }
+ async Task ViewRecordAsync()
+ {
+  if(history.SelectedItems.Count!=1||history.SelectedItem is not HistoryItem item)throw new InvalidOperationException("Select exactly one saved record to inspect.");
+  var record=await service.ReadRecordAsync(item.Id,CancellationToken.None);report=null;controls.ItemsSource=null;
+  details.Text=JsonSerializer.Serialize(record,new JsonSerializerOptions(StrictJson.Options){WriteIndented=true});
+  status.Text="Verified saved record; select/copy its JSON to retain the original schema, source versions and digest. Historical data does not establish current compliance. Projected reports require a matching reference catalogue.";
  }
  async Task LoadPageAsync(bool reset)
  {

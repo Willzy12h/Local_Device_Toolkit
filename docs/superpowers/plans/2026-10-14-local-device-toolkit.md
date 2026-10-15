@@ -343,3 +343,8 @@ Test assertions:
 **Recommended execution:** direct implementation in this session with the executing-plans skill, followed by an independent whole-branch review. These tasks share evolving identity, evidence and execution contracts; implementing them coherently is preferable to concurrent changes to those contracts. Task-by-task subagents remain an available alternative if the user selects them.
 
 The user’s pasted implementation request authorises direct execution of this plan, incorporating the revised setup/diagnostics design. The plan is not a record of completed software, and no unchecked item may be reported as implemented or verified.
+
+
+## Completion reconciliation — 15 October 2026
+
+The original steps above describe the planned TDD sequence and retain unchecked historical commands/test names where that exact sequence was not recorded. They are not an outstanding feature list. Implemented equivalents, deliberate adaptations and evidence are recorded in IMPLEMENTATION-DECISIONS.md, IMPLEMENTATION-STATUS.md and WINDOWS-ACCEPTANCE.md. All twelve source slices are implemented; actual device mutation/vendor/accessibility acceptance remains pending. Cloud setup and final native automation are tracked separately from publication.

@@ -22,6 +22,16 @@ else
   tar -xzf "$toolkit_stage/sdk.tar.gz" -C "$toolkit_stage/sdk"
   mv -- "$toolkit_stage/sdk" "$toolkit_tools/dotnet"
 fi
+# PS7 is a build/test dependency for read-only portable package verification, not product runtime.
+source "$toolkit_repository/build/Use-CloudTools.sh"
+mkdir -p "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME"
+if [[ ! -x "$TOOLKIT_TEST_PWSH" ]]; then
+  [[ ! -e "$toolkit_tools/powershell" ]] || { echo 'PowerShell destination is incomplete; inspect it before replacing.' >&2; exit 1; }
+  "$toolkit_sdk" tool install PowerShell --tool-path "$toolkit_tools/powershell" --version 7.6.0 --add-source https://api.nuget.org/v3/index.json
+fi
+toolkit_ps_archive="$toolkit_tools/powershell/.store/powershell/7.6.0/powershell/7.6.0/powershell.7.6.0.nupkg"
+echo '2cb1a4c4d2e9f142367ba46675912608012d051e4c1ad49a2be7bebc44627c1bf22601f1401704b19df43ca24adb0ab664c187dfe15bdc2006555babf908e79f  '"$toolkit_ps_archive" | sha512sum --check --status
+[[ "$("$TOOLKIT_TEST_PWSH" -NoLogo -NoProfile -NonInteractive -Command '$PSVersionTable.PSVersion.ToString()')" == '7.6.0' ]] || { echo 'PowerShell differs from the reviewed tool version.' >&2; exit 1; }
 cd -- "$toolkit_repository"
 "$toolkit_sdk" restore LocalDeviceToolkit.sln --locked-mode
 "$toolkit_sdk" --version

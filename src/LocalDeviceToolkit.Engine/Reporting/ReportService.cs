@@ -9,6 +9,7 @@ public sealed class ReportService(IEvidenceStore store, LocalCatalogue catalogue
 {
  readonly EvidenceSchemaRegistry schemas = CreateSchemas();
  static EvidenceSchemaRegistry CreateSchemas() { var schemas = ToolkitEvidenceSchemas.Create(); ReportingEvidenceSchemas.Register(schemas); LocalDeviceToolkit.Engine.Deployments.DeploymentEvidenceSchemas.Register(schemas); return schemas; }
+ public Task<EvidenceRecord> ReadRecordAsync(Guid id,CancellationToken ct)=>LoadAsync(id,ct);
  public Task<HistoryPage> ReadHistoryAsync(string? cursor, CancellationToken ct) => store.ReadHistoryAsync(cursor, ct);
  async Task<EvidenceRecord> LoadAsync(Guid id, CancellationToken ct)
  {
@@ -52,13 +53,15 @@ public sealed class ReportService(IEvidenceStore store, LocalCatalogue catalogue
    var finding = capture is null ? new Finding(control.Id, FindingStatus.Unknown, "No selected capture contains this control.", []) : AssessmentService.Assess(catalogue with { Controls = [control] }, capture).Single();
    var status = finding.Status; var reason = finding.Reason;
    if (stale) { status = FindingStatus.Unknown; reason = "Dated snapshot exceeds ten minutes; historical finding: " + finding.Status + ". " + reason; }
+   bool manualApplied=false;
    var eligible = control.Coverage == CoverageMode.Manual || finding.Status == FindingStatus.ManualVerification;
    if (review is not null && eligible && !stale && (capture is null || review.ReviewedAt >= capture.CapturedAt) && now - review.ReviewedAt <= TimeSpan.FromMinutes(10))
    {
+    manualApplied=true;
     status = review.Outcome switch { ManualReviewOutcome.Verified => FindingStatus.MeetsStandard, ManualReviewOutcome.Failed => FindingStatus.DoesNotMeetStandard, _ => FindingStatus.NotApplicable };
     reason = "Recorded manual review: " + review.Outcome + ". " + review.Note + (review.ScopeReason is null ? "" : " Scope/reason: " + review.ScopeReason);
    }
-   controls.Add(new(control.Id, control.Name, control.ExpectedDescription, control.Coverage, status, reason, capture?.Id, capture?.CapturedAt, capture?.CapturedBy, stale, finding.Observations, review));
+   controls.Add(new(control.Id, control.Name, control.ExpectedDescription, control.Coverage, status, reason, capture?.Id, capture?.CapturedAt, capture?.CapturedBy, stale, finding.Observations, review,manualApplied));
   }
   var resolutions=records.Where(r=>r.Kind=="deployment-resolution").Select(Read<LocalDeviceToolkit.Engine.Deployments.DeploymentResolution>).ToArray();
   var limitations = new List<string> { "Selected, dated local evidence only; this report is not a claim of current compliance. Only the displayed selected records were considered, not all history.", "Inventory does not establish application licensing, sign-in, escrow, tenant policy or client approval. Manual reviews and excluded scope are not automated success.", "Capture IDs, actors and timestamps remain distinct. No checks are combined across captures to invent completeness." };

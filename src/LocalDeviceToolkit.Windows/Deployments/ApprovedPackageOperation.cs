@@ -17,10 +17,9 @@ public sealed class ApprovedPackageOperation(ApprovedProfileStore profiles,IDepl
    var profile=profiles.LoadAsync(input.ProfileId,default).GetAwaiter().GetResult();
    if(profile.Scope==OperationScope.CurrentUser)
    {
-    if(!originalUserHost)throw new PlanValidationException("Original-user package operations cannot execute in the administrator worker.");
-    profile=ApprovedProfileAuthority.LoadAsync(profile.Id,default).GetAwaiter().GetResult();
+    if(originalUserHost)profile=ApprovedProfileAuthority.LoadAsync(profile.Id,default).GetAwaiter().GetResult();
     if(profile.Scope!=OperationScope.CurrentUser)throw new PlanValidationException("The independent approved scope differs.");
-    return new([profile],new WindowsDeploymentBackend(),new FileDeploymentPendingStore(UserPendingRoot));
+    return new([profile],new WindowsDeploymentBackend(),originalUserHost?new FileDeploymentPendingStore(UserPendingRoot):pending);
    }
    return new([profile],new WindowsDeploymentBackend(),pending);
   }
@@ -28,7 +27,18 @@ public sealed class ApprovedPackageOperation(ApprovedProfileStore profiles,IDepl
  }
  public void ValidateParameters(JsonElement parameters)=>Resolve(parameters).ValidateParameters(parameters);
  public string GetTargetKey(DeviceContext context,JsonElement parameters)=>Resolve(parameters).GetTargetKey(context,parameters);
- public Task<ActionReadiness> InspectAsync(DeviceContext context,JsonElement parameters,CancellationToken ct)=>Resolve(parameters).InspectAsync(context,parameters,ct);
+ public Task<ActionReadiness> InspectAsync(DeviceContext context,JsonElement parameters,CancellationToken ct)
+ {
+  var operation=Resolve(parameters);
+  var profile=profiles.LoadAsync(StrictJson.Read<DeploymentParameters>(StrictJson.Bytes(parameters)).ProfileId,ct).GetAwaiter().GetResult();
+  if(!originalUserHost&&profile.Scope==OperationScope.CurrentUser)return Task.FromResult(new ActionReadiness(false,OperationScope.CurrentUser,PrivilegeRequirement.CurrentUser,"Original-user package actions cannot execute in the administrator worker."));
+  return operation.InspectAsync(context,parameters,ct);
+ }
  public Task<IReadOnlyList<ProbeObservation>> CaptureBeforeAsync(DeviceContext context,JsonElement parameters,CancellationToken ct)=>Resolve(parameters).CaptureBeforeAsync(context,parameters,ct);
- public Task<ActionResult> ExecuteAsync(DeviceContext context,PlannedAction action,CancellationToken ct)=>Resolve(action.Request.Parameters).ExecuteAsync(context,action,ct);
+ public async Task<ActionResult> ExecuteAsync(DeviceContext context,PlannedAction action,CancellationToken ct)
+ {
+  var readiness=await InspectAsync(context,action.Request.Parameters,ct);
+  if(!readiness.CanExecute)return new(action.Id,ActionOutcome.Failed,null,"Not started: "+readiness.Reason,[]);
+  return await Resolve(action.Request.Parameters).ExecuteAsync(context,action,ct);
+ }
 }

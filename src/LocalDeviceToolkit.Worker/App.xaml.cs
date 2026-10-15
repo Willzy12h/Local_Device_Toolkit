@@ -64,6 +64,7 @@ public partial class App:Application
   }
   else if(request.Mode is WorkerMode.ReconcileDeployment or WorkerMode.ResolveDeployment)
   {
+   if((await profileStore.LoadAsync(request.DeploymentReconcile!.ProfileId,default)).Scope!=OperationScope.Machine)throw new PlanValidationException("Original-user package reconciliation stays in the original engineer process.");
    var input=StrictJson.Value(request.DeploymentReconcile!);var status=await packages.Resolve(input).ReconcileAsync(request.OriginalContext,input,default);
    details=(request.Mode==WorkerMode.ResolveDeployment?"Record explicit administrator review that the vendor operation has finished and no installer children remain. Fresh state and original process identity are checked again; no installer is launched.\n":"Read-only deployment inventory and original process status. No installer is launched or pending guard removed.\n")+System.Text.Json.JsonSerializer.Serialize(status,new System.Text.Json.JsonSerializerOptions(StrictJson.Options){WriteIndented=true});
    button=request.Mode==WorkerMode.ResolveDeployment?"Record reviewed completion":"Read deployment state";

@@ -24,7 +24,7 @@ try{
  }finally{Pop-Location}
  foreach($name in @('README.md','NOTICE.md','docs','provenance','catalogue')){Copy-Item -LiteralPath (Join-Path $repository $name) -Destination $stage -Recurse}
  [void][IO.Directory]::CreateDirectory((Join-Path $stage 'tools'))
- Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'New-DeploymentProfile.ps1') -Destination (Join-Path $stage 'tools/New-DeploymentProfile.ps1')
+ foreach($tool in @('New-DeploymentProfile.ps1','Test-Portable.ps1')){Copy-Item -LiteralPath (Join-Path $PSScriptRoot $tool) -Destination (Join-Path $stage ('tools/'+$tool))}
  $inventory=@(Get-ChildItem -LiteralPath $stage -Recurse -File | Sort-Object FullName | ForEach-Object {
   if($_.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'Package contains a reparse point.'}
   [pscustomobject]@{path=$_.FullName.Substring($stage.Length+1).Replace('\','/');bytes=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()}

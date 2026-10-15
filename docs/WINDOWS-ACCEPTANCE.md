@@ -7,7 +7,8 @@ No real device settings or client applications have been changed by this cloud t
 - `049b2fd`: [Windows/Linux CI](https://github.com/Willzy12h/Local_Device_Toolkit/actions/runs/38660754520) passed 77 tests, native token/pipe/junction checks, PowerShell 5.1 parsing, self-contained packaging and five actual extracted-application WPF renders.
 - `b3802a8`: [Windows/Linux CI](https://github.com/Willzy12h/Local_Device_Toolkit/actions/runs/38665135124) passed 94 tests, including actual Windows PowerShell read-only original-user checks and UI refinements.
 - `50ab862`: native Windows-adapter tests passed; deployment engine fixture tests failed because a Linux-only absolute fixture path was not fully qualified on Windows. The fixture now uses the host's absolute path. The production path validation was preserved.
-- Current source: 169 engine and 89 adapter tests passed on Linux, zero skipped. Windows-specific test branches are not exercised by that count. Updated native CI, signer/boot/MSIX reads, metadata helper and expanded normal/compact view renders are pending the next pushed checkpoint.
+- `6682d2b`: 169 engine tests passed on Windows; two adapter fixtures failed (catalog-signed executable selection and inherited PowerShell module paths). Fixtures were corrected while preserving production trust checks.
+- Final cloud candidate: 185 engine and 111 adapter tests passed on Linux, zero failures/skips. Windows-specific branches are not exercised by that count. Twenty ZIP-verifier cases execute PowerShell 7 on Linux. Final native rerun is pending the next checkpoint.
 
 ## Required device acceptance
 
