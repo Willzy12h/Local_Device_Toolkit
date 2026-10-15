@@ -17,7 +17,9 @@ public sealed class ReviewRunTests
  }
  [Fact] public async Task Checks_and_verified_changes_append_to_the_same_unique_dated_file()
  {
-  using var f=new ReviewFixture();var review=await f.Service.CheckAsync([f.Selection()],default);var path=review.FilePath;var before=File.ReadAllText(path);
+  using var f=new ReviewFixture();var review=await f.Service.CheckAsync([f.Selection()],default);var path=review.FilePath;string before;
+  using(var stream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.ReadWrite))
+  using(var reader=new StreamReader(stream))before=await reader.ReadToEndAsync();
   var run=await f.Service.RunAsync(review,true,default);Assert.Equal(1,f.Backend.Writes);Assert.Equal(ActionOutcome.AppliedVerified,Assert.Single(run!.Results).Outcome);
   Assert.Equal(path,review.FilePath);Assert.StartsWith(before,File.ReadAllText(path));Assert.Contains("confirm",review.LogText,StringComparison.OrdinalIgnoreCase);Assert.Contains("AppliedVerified",review.LogText);Assert.Contains(TestData.Actor.UserName.Replace("\\","\\\\"),review.LogText);Assert.Contains(f.Clock.Now.ToString("O"),review.LogText);Assert.Single(Directory.GetFiles(f.LogDirectory,"*.log"));
  }
@@ -99,7 +101,7 @@ public sealed class ReviewFixture:IDisposable,IExecutionContextProvider,IDeviceI
  public ReviewSelection Selection(bool change=true)=>new("windows.file-extensions",new("setup","windows"),change,change?new("windows.file-extensions","settings.show-file-extensions",StrictJson.Value(new SettingParameters(true)),new("setup","windows")):null);
  public Task<DeviceContext> GetCurrentAsync(CancellationToken ct)=>Task.FromResult(TestData.Context);
  public Task<DeviceCapture> CaptureAsync(CaptureRequest request,CancellationToken ct)=>Task.FromResult(new DeviceCapture(Guid.NewGuid(),TestData.Context,Session.Catalogue.Identity,request.Origin,TestData.Actor,Clock.Now,[new("CFG-WIN-012","extensions.visible",ObservationState.Known,StrictJson.Value(Backend.State is {Exists:true,Value:0}),"fixture read-only facts",Clock.Now,"fixture")]));
- public void Dispose(){if(Directory.Exists(root))Directory.Delete(root,true);}
+ public void Dispose(){if(Service.Current is {} review)Service.CancelAsync(review,default).GetAwaiter().GetResult();if(Directory.Exists(root))Directory.Delete(root,true);}
 }
 public sealed class ReviewBackend:ISettingsBackend
 {
