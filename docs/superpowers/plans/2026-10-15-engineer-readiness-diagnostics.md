@@ -287,4 +287,4 @@ Self-review completed: paths resolve or are explicitly planned new files; shared
 
 **Execution recommendation:** Native execution in this session, with one fresh independent whole-branch reviewer at the end. The tasks repeatedly touch the same capture/worker/plan interfaces, so keeping their implementation context together reduces integration overhead. Subagent-driven execution remains available for an independent review after every task at greater context cost.
 
-**Execution:** Native selected by the user. Implementation is in progress; verification evidence is tracked in the ignored plan ledger and will be summarized here at completion.
+**Execution:** Native selected by the user. Source implementation is delivered; review fixes and available verification are recorded in [the execution record](../2026-10-16-engineer-readiness-execution.md). The original detailed checkboxes are retained as the planned verification matrix; real Windows 11/device acceptance remains explicitly pending. No production-readiness claim is made from Linux fixtures.

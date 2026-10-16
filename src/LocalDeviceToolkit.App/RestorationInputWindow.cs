@@ -18,7 +18,7 @@ public sealed class RestorationInputWindow:Window
   panel.Children.Add(new TextBlock{Text="Restoration uses the exact saved prior value or absence. Machine changes require independent protected-journal evidence. Subsequent drift, policy changes or a different standard block restoration. Installers, language changes and app removal have no automatic undo.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,12,0,12)});
   panel.Children.Add(runs);var next=new Button{Content="Load next history page"};panel.Children.Add(next);panel.Children.Add(new TextBlock{Text="Original action",Margin=new Thickness(0,12,0,4)});panel.Children.Add(actions);panel.Children.Add(notice);panel.Children.Add(confirm);panel.Children.Add(add);panel.Children.Add(new Button{Content="Cancel",IsCancel=true});
   next.Click+=async(_,_)=>await LoadAsync();Loaded+=async(_,_)=>await LoadAsync();runs.SelectionChanged+=async(_,_)=>await SelectRunAsync();actions.SelectionChanged+=(_,_)=>Update();confirm.Checked+=(_,_)=>Update();confirm.Unchecked+=(_,_)=>Update();
-  add.Click+=(_,_)=>{if(actions.SelectedItem is SourceAction selected){Parameters=new(selected.Run.PlanId,selected.Action.Id,selected.Run.Id,true,FixedSettingOperation.Definitions.Single(d=>d.OperationId==selected.Action.Request.OperationId).Setting);DialogResult=true;}};
+  add.Click+=(_,_)=>{if(actions.SelectedItem is SourceAction selected){Parameters=new(selected.Run.PlanId,selected.Action.Id,selected.Run.Id,true,FixedSettingOperation.RestorableDefinitions.Single(d=>d.OperationId==selected.Action.Request.OperationId).Setting);DialogResult=true;}};
  }
  async Task LoadAsync()
  {
@@ -28,7 +28,7 @@ public sealed class RestorationInputWindow:Window
  async Task SelectRunAsync()
  {
   actions.Items.Clear();if(runs.SelectedItem is not SourceRun selected)return;
-  try{var record=await store.LoadAsync(selected.Run.PlanId,default);if(record.Kind!="plan")throw new EvidenceValidationException("The source is not a plan.");var plan=StrictJson.Read<ReviewedPlan>(StrictJson.Bytes(record.Data));foreach(var action in plan.Actions.Where(a=>FixedSettingOperation.Definitions.Any(d=>d.OperationId==a.Request.OperationId)&&selected.Run.Results.Any(r=>r.ActionId==a.Id&&r.Outcome==ActionOutcome.AppliedVerified)))actions.Items.Add(new SourceAction(selected.Run,action));actions.SelectedIndex=actions.Items.Count>0?0:-1;Update();}
+  try{var record=await store.LoadAsync(selected.Run.PlanId,default);if(record.Kind!="plan")throw new EvidenceValidationException("The source is not a plan.");var plan=StrictJson.Read<ReviewedPlan>(StrictJson.Bytes(record.Data));foreach(var action in plan.Actions.Where(a=>FixedSettingOperation.RestorableDefinitions.Any(d=>d.OperationId==a.Request.OperationId)&&selected.Run.Results.Any(r=>r.ActionId==a.Id&&r.Outcome==ActionOutcome.AppliedVerified)))actions.Items.Add(new SourceAction(selected.Run,action));actions.SelectedIndex=actions.Items.Count>0?0:-1;Update();}
   catch(Exception error){notice.Text="Could not load original plan: "+error.Message;}
  }
  void Update()

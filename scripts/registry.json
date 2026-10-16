@@ -22,7 +22,7 @@
     {
       "id": "probes.common",
       "path": "diagnostics/Read-ProbeRequest.ps1",
-      "sha256": "198055e4b2e1253da80f070b1b2ca3e6704e1098b87da89a7fa596f24a5d3fca",
+      "sha256": "c7f1097f12bc75066fb9f7a958c0fc78fbe6450441eb15ef840b4707fb685dd2",
       "readOnly": true
     },
     {
@@ -48,6 +48,24 @@
       "path": "diagnostics/Get-SecurityServiceFacts.ps1",
       "sha256": "077b42058e4425d63004de734e7a29b51fbca1825e366137a7ebcf5cd34e202f",
       "readOnly": true
+    },
+    {
+      "id": "probes.events",
+      "path": "diagnostics/Get-IncidentEvents.ps1",
+      "sha256": "e899357172c45848638af95187f605478cb71795a705873320a9778b4b305c20",
+      "readOnly": true
+    },
+    {
+      "id": "repair.read",
+      "path": "diagnostics/Get-RepairState.ps1",
+      "sha256": "f26cbbff2daf5d2627f6d1162e327d063598d1d8b3e3ee4b1f18a1a1c8b24cd0",
+      "readOnly": true
+    },
+    {
+      "id": "repair.defender",
+      "path": "diagnostics/Invoke-DefenderSignatureUpdate.ps1",
+      "sha256": "b377d29ab4eb60aa8ea20e8b46026397522fa11dd76334acc0239d94013790d2",
+      "readOnly": false
     }
   ]
 }

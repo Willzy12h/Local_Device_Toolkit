@@ -33,12 +33,23 @@ public sealed class OperationalProbeSource(string scriptRoot,string? protectedRu
     if(id=="local.proxy.user"){details["autoDetect"]=proxy.AutoDetect;details["pacUrl"]=proxy.PacUrl;}
     result=Known(id,digest,"Proxy configuration collected",details,["Configuration only; no PAC file was fetched or evaluated. Apps can use different proxy stacks."]);
    }
-   else if(id=="local.identity.context")result=Known(id,digest,NativeJoinContext.Read(),new Dictionary<string,string>{{"joinState",NativeJoinContext.Read()},{"management","Local join indicators do not prove MDM enrollment, tenant compliance or assignment."},{"originalUser",context.OriginalUserName}},["No online device authentication or tenant query was made."]);
+   else if(id=="local.identity.context")
+   {
+    var join=NativeJoinContext.Read();result=Known(id,digest,join.Current,new Dictionary<string,string>{{"joinState",join.Current},{"management","Local join indicators do not prove MDM enrollment, tenant compliance or assignment."},{"originalUser",context.OriginalUserName}},join.Limitations) with{Coverage=new(join.Complete,false,1,null,join.Limitations)};
+   }
    else if(id=="local.battery.capacity")result=await BatteryAsync(id,digest,work,ct);
-   else if(id is "local.events.incident" or "local.app.verification")result=Unknown(id,digest,"This provider requires its registered evidence integration.");
+   else if(id=="local.app.verification")
+   {
+    var profiles=new Deployments.ApprovedProfileStore(Deployments.ApprovedProfileStore.UserCacheRoot);var profile=await profiles.LoadAsync(parameters.GetProperty("profileId").GetString()!,ct);
+    if(profile.Scope==OperationScope.CurrentUser&&actor.Sid!=context.OriginalUserSid)throw new UnauthorizedAccessException();
+    var inventory=await new Deployments.WindowsDeploymentBackend(scriptRoot).ReadInventoryAsync(profile,context,ct);
+    var pending=profile.Scope!=OperationScope.CurrentUser||await new LocalDeviceToolkit.Engine.Deployments.FileDeploymentPendingStore(Path.Combine(Deployments.ApprovedProfileStore.UserCacheRoot,"preview-pending")).ReadAsync(LocalDeviceToolkit.Engine.Deployments.DeploymentTarget.For(context,profile),ct) is not null;
+    var verified=LocalDeviceToolkit.Engine.Deployments.ApplicationVerificationService.Evaluate(inventory,profile.ProductIdentity,profile.Version,pending);
+    result=Known(id,digest,"Installed: "+verified.Installed+"; readiness: "+verified.Verified,new Dictionary<string,string>{{"profileId",profile.Id},{"packageChecked",verified.PackageChecked.ToString()},{"installed",verified.Installed.ToString()},{"configured",verified.Configured.ToString()},{"signedIn",verified.SignedIn.ToString()},{"licensed",verified.Licensed.ToString()},{"restart",verified.Restart.ToString()},{"verified",verified.Verified.ToString()}},verified.Reasons) with {Coverage=new(false,false,1,null,verified.Reasons)};
+   }
    else
    {
-    var family=id.StartsWith("local.network.",StringComparison.Ordinal)?"network":id.StartsWith("local.defender.",StringComparison.Ordinal)||id.StartsWith("local.print.",StringComparison.Ordinal)||id=="local.time.status"?"services":id.StartsWith("local.hardware.",StringComparison.Ordinal)||id.StartsWith("local.storage.",StringComparison.Ordinal)||id=="local.power.capabilities"?"hardware":"readiness";
+    var family=id=="local.events.incident"?"events":id.StartsWith("local.network.",StringComparison.Ordinal)?"network":id.StartsWith("local.defender.",StringComparison.Ordinal)||id.StartsWith("local.print.",StringComparison.Ordinal)||id=="local.time.status"?"services":id.StartsWith("local.hardware.",StringComparison.Ordinal)||id.StartsWith("local.storage.",StringComparison.Ordinal)||id=="local.power.capabilities"?"hardware":"readiness";
     using var script=RegisteredScripts.OpenVerified(scriptRoot,"probes."+family);using var helpers=RegisteredScripts.OpenVerified(scriptRoot,"probes.common");
     var requestFile=Path.Combine(work,"request.json");await File.WriteAllBytesAsync(requestFile,StrictJson.Bytes(new {schemaVersion=2,checkId=id,targetDigest=digest,parameters}),ct);
     var start=PowerShell(script.Name,requestFile,helpers.Name);var began=time.GetUtcNow();var execution=await new DiagnosticProcessRunner().RunCommandAsync(start,TimeSpan.FromSeconds(30),ct);ct.ThrowIfCancellationRequested();
@@ -80,18 +91,25 @@ public sealed class OperationalProbeSource(string scriptRoot,string? protectedRu
   start.Environment["PSModulePath"]=Path.Combine(system,"WindowsPowerShell","v1.0","Modules");start.Environment.Remove("PSExecutionPolicyPreference");return start;
  }
 }
-static class NativeJoinContext
+public sealed record JoinContextResult(string Current,bool Complete,IReadOnlyList<string> Limitations);
+public static class NativeJoinContext
 {
- public static string Read()
+ public static JoinContextResult Read()
  {
   IntPtr domain=IntPtr.Zero,aad=IntPtr.Zero;
   try
   {
-   var domainStatus=NetGetJoinInformation(null,out domain,out var join)==0?join:-1;
-   var aadStatus=NetGetAadJoinInformation(null,out aad)==0?(aad==IntPtr.Zero?0:Marshal.ReadInt32(aad)):-1;
-   return "Domain: "+(domainStatus==3?"Joined":domainStatus is 1 or 2?"Not joined":"Unknown")+"; Entra device join: "+(aadStatus==1?"Observed":aadStatus==2?"Workplace registration observed":aadStatus==0?"Not observed":"Unknown");
+   var domainReturn=NetGetJoinInformation(null,out domain,out var join);var aadReturn=NetGetAadJoinInformation(null,out aad);
+   return Project(domainReturn,join,aadReturn,aad!=IntPtr.Zero,aad!=IntPtr.Zero?Marshal.ReadInt32(aad):0);
   }
   finally{if(domain!=IntPtr.Zero)NetApiBufferFree(domain);if(aad!=IntPtr.Zero)NetFreeAadJoinInformation(aad);}
+ }
+ public static JoinContextResult Project(int domainReturn,int join,int aadReturn,bool hasAadData,int aadJoin)
+ {
+  bool domainKnown=domainReturn==0&&join is 1 or 2 or 3;bool aadKnown=aadReturn==0&&(!hasAadData||aadJoin is 1 or 2);
+  var domain=domainKnown?join==3?"Joined":"Not joined":"Unknown";var aad=aadKnown?!hasAadData?"Not observed":aadJoin==1?"Observed":"Workplace registration observed":"Unknown";
+  var limitations=new List<string>{"No online device authentication or tenant query was made."};if(!domainKnown)limitations.Add("Domain join provider unavailable or unrecognized.");if(!aadKnown)limitations.Add("Entra join provider unavailable or unrecognized.");
+  return new("Domain: "+domain+"; Entra device join: "+aad,domainKnown&&aadKnown,limitations);
  }
  [DllImport("netapi32.dll",CharSet=CharSet.Unicode)]static extern int NetGetJoinInformation(string? server,out IntPtr name,out int status);
  [DllImport("netapi32.dll",CharSet=CharSet.Unicode)]static extern int NetGetAadJoinInformation(string? tenant,out IntPtr information);

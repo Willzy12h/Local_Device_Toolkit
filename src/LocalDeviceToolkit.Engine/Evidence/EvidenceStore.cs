@@ -32,10 +32,14 @@ public sealed class EvidenceSchemaRegistry
  {
   Register<CaptureSelectionEvidence>("capture-selection.v2",(selection,record)=>
   {
+   if(selection.Inputs is not null)foreach(var input in selection.Inputs){if(!selection.CheckIds.Contains(input.Key,StringComparer.Ordinal)||!LocalProbeValues.IsRegistered(input.Key))throw new EvidenceValidationException("Unexpected capture input.");Catalogue.LocalProbeCatalogue.ValidateInput(input.Key,input.Value);}
    if(selection.SchemaVersion!=2||selection.CaptureId==Guid.Empty||selection.TaskIds is null||selection.CheckIds is null||selection.TaskIds.Count is <1 or >100||selection.CheckIds.Count>128||selection.TaskIds.Any(string.IsNullOrWhiteSpace)||selection.CheckIds.Any(string.IsNullOrWhiteSpace)||selection.TaskIds.Distinct(StringComparer.Ordinal).Count()!=selection.TaskIds.Count||selection.CheckIds.Distinct(StringComparer.Ordinal).Count()!=selection.CheckIds.Count)throw new EvidenceValidationException("Invalid exact capture selection.");
   });
   Register<DeviceCapture>("capture",(capture,record)=>
   {
+   if(capture.Observations is not null)foreach(var o in capture.Observations.Where(o=>o is not null&&LocalProbeValues.IsRegistered(o.CheckId)))
+   {if(o.EvidenceCaptureId!=capture.Id||o.LocalSchemaVersion!=2||o.RuleVersion is null||o.RuleVersion.Length is <1 or >64||o.TargetDigest is null||o.TargetDigest.Length!=64||!o.TargetDigest.All(Uri.IsHexDigit)||o.Coverage is not {} c||c.ReturnedCount is <0 or >1000||c.Complete&&c.HasMore||c.Limitations.Count>20||c.NextCursor?.Length>2048||o.State==ObservationState.Known&&(o.Value is not {} v||!LocalProbeValues.Accepts(o.CheckId,v)))throw new EvidenceValidationException("Invalid bounded local capture.");}
+
    if(capture.Id!=record.Id||capture.Context!=record.Context||capture.CapturedAt!=record.RecordedAt||capture.CapturedBy is null||capture.Catalogue is null||capture.Origin is null||capture.Observations is null)
     throw new EvidenceValidationException("Capture identity or evidence is inconsistent.");
    if(capture.CapturedAt.Offset!=TimeSpan.Zero||capture.Observations.Any(o=>o is null||string.IsNullOrWhiteSpace(o.ControlId)||string.IsNullOrWhiteSpace(o.CheckId)||o.CapturedAt.Offset!=TimeSpan.Zero||o.CapturedAt>capture.CapturedAt.AddMinutes(2)|| (o.State==ObservationState.Known&&!o.Value.HasValue)))

@@ -19,6 +19,7 @@ public static class LocalProbeCatalogue
  public static void ValidateInput(string id,JsonElement value)
  {
   var definition=Resolve(id);
+  using var strict=StrictJson.Parse(System.Text.Encoding.UTF8.GetBytes(value.GetRawText()),8192);
   if(value.ValueKind!=JsonValueKind.Object||System.Text.Encoding.UTF8.GetByteCount(value.GetRawText())>8192)throw new CatalogueValidationException("Check inputs must be a bounded object.");
   var keys=definition.InputSchema switch {"volume"=>new[]{"volumeId","requiredBytes"},"history"=>["count"],"dns"=>["hostname","queryType","adapterId"],"tcp"=>["host","port","adapterId"],"adapter"=>["adapterId"],"printer"=>["printerName","allowRemoteRead"],"incident"=>["symptom","fromUtc","toUtc","cursor"],"profile"=>["profileId"],_=>Array.Empty<string>()};
   if(value.EnumerateObject().Any(p=>!keys.Contains(p.Name,StringComparer.Ordinal)))throw new CatalogueValidationException("Unknown input field. Commands and unregistered options are refused.");

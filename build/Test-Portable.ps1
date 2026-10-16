@@ -167,16 +167,24 @@ try{
   'device.facts'=@{path='diagnostics/Get-DeviceFacts.ps1';readOnly=$true}
   'settings.user'=@{path='settings/Invoke-UserSetting.ps1';readOnly=$false}
   'deployments.msix'=@{path='deployments/Invoke-CurrentUserMsix.ps1';readOnly=$false}
+  'probes.common'=@{path='diagnostics/Read-ProbeRequest.ps1';readOnly=$true}
+  'probes.readiness'=@{path='diagnostics/Get-ReadinessFacts.ps1';readOnly=$true}
+  'probes.hardware'=@{path='diagnostics/Get-HardwareFacts.ps1';readOnly=$true}
+  'probes.network'=@{path='diagnostics/Get-NetworkFacts.ps1';readOnly=$true}
+  'probes.services'=@{path='diagnostics/Get-SecurityServiceFacts.ps1';readOnly=$true}
+  'probes.events'=@{path='diagnostics/Get-IncidentEvents.ps1';readOnly=$true}
+  'repair.read'=@{path='diagnostics/Get-RepairState.ps1';readOnly=$true}
+  'repair.defender'=@{path='diagnostics/Invoke-DefenderSignatureUpdate.ps1';readOnly=$false}
  }
  foreach($scriptPrefix in @('scripts/','worker/scripts/')){
   if(-not $files.ContainsKey($scriptPrefix+'registry.json')){throw 'Critical script registry is missing.'}
   $registry=Read-JsonEntry $files[$scriptPrefix+'registry.json'] 1048576
   Assert-Members $registry @('schemaVersion','scripts')
-  if($registry['schemaVersion'] -isnot [decimal] -or $registry['schemaVersion'] -ne 1 -or $registry['scripts'] -isnot [Collections.Generic.List[object]] -or $registry['scripts'].Count -ne 3){throw 'Script registry must declare exactly the three known scripts in schema 1.'}
+  if($registry['schemaVersion'] -isnot [decimal] -or $registry['schemaVersion'] -ne 1 -or $registry['scripts'] -isnot [Collections.Generic.List[object]] -or $registry['scripts'].Count -ne $expectedScripts.Count){throw 'Script registry must declare exactly the known script inventory in schema 1.'}
   $scriptIds=New-Object 'Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
   foreach($registered in $registry['scripts']){
    Assert-Members $registered @('id','path','sha256','readOnly')
-   if($registered['id'] -isnot [string] -or -not (@('device.facts','settings.user','deployments.msix') -ccontains $registered['id']) -or -not $scriptIds.Add($registered['id'])){throw 'Unknown or duplicate registered script identity.'}
+   if($registered['id'] -isnot [string] -or -not $expectedScripts.ContainsKey($registered['id']) -or -not $scriptIds.Add($registered['id'])){throw 'Unknown or duplicate registered script identity.'}
    $expected=$expectedScripts[$registered['id']]
    if($registered['path'] -cne $expected.path -or $registered['readOnly'] -isnot [bool] -or $registered['readOnly'] -ne $expected.readOnly -or $registered['sha256'] -isnot [string] -or $registered['sha256'] -cnotmatch '\A[0-9a-f]{64}\z'){throw 'Registered script path, read-only flag or hash is invalid.'}
    $scriptPath=$scriptPrefix+$registered['path']

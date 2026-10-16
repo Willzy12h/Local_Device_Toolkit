@@ -2,10 +2,10 @@ using LocalDeviceToolkit.Core;
 using System.Buffers.Binary;
 using LocalDeviceToolkit.Engine.Execution;
 namespace LocalDeviceToolkit.Engine.Elevation;
-public enum WorkerMode { CaptureProtected,ExecuteAction,ApproveDeploymentProfile,ReconcileDeployment,ResolveDeployment }
+public enum WorkerMode { CaptureProtected,ExecuteAction,ApproveDeploymentProfile,ReconcileDeployment,ResolveDeployment,ReconcileDiagnostic,ResolveDiagnostic }
 public sealed record DeploymentProfileApproval(LocalDeviceToolkit.Engine.Deployments.DeploymentProfile Profile,string SourceDirectory);
-public sealed record WorkerRequest(int SchemaVersion,WorkerMode Mode,DeviceContext OriginalContext,CaptureRequest? Capture,ReviewedPlan? Plan,Guid? ActionId,string? ToolkitBuild=null,DeploymentProfileApproval? DeploymentApproval=null,LocalDeviceToolkit.Engine.Deployments.DeploymentParameters? DeploymentReconcile=null,LocalDeviceToolkit.Engine.Deployments.DeploymentResolutionReview? DeploymentResolutionReview=null);
-public sealed record WorkerResponse(int SchemaVersion,bool Success,string Message,ExecutionActor Actor,DeviceCapture? Capture,ActionResult? Result,LocalDeviceToolkit.Engine.Deployments.DeploymentProfile? ApprovedProfile=null,LocalDeviceToolkit.Engine.Deployments.DeploymentReconciliation? DeploymentStatus=null,LocalDeviceToolkit.Engine.Evidence.EvidenceRecord? DeploymentResolution=null);
+public sealed record WorkerRequest(int SchemaVersion,WorkerMode Mode,DeviceContext OriginalContext,CaptureRequest? Capture,ReviewedPlan? Plan,Guid? ActionId,string? ToolkitBuild=null,DeploymentProfileApproval? DeploymentApproval=null,LocalDeviceToolkit.Engine.Deployments.DeploymentParameters? DeploymentReconcile=null,LocalDeviceToolkit.Engine.Deployments.DeploymentResolutionReview? DeploymentResolutionReview=null,bool? DiagnosticCompletionReview=null);
+public sealed record WorkerResponse(int SchemaVersion,bool Success,string Message,ExecutionActor Actor,DeviceCapture? Capture,ActionResult? Result,LocalDeviceToolkit.Engine.Deployments.DeploymentProfile? ApprovedProfile=null,LocalDeviceToolkit.Engine.Deployments.DeploymentReconciliation? DeploymentStatus=null,LocalDeviceToolkit.Engine.Evidence.EvidenceRecord? DeploymentResolution=null,LocalDeviceToolkit.Engine.Evidence.EvidenceRecord? DiagnosticResolution=null);
 public static class WorkerFrames
 {
  public const int MaximumBytes=1024*1024;

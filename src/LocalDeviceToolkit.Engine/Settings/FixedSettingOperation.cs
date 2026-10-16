@@ -3,7 +3,7 @@ using LocalDeviceToolkit.Engine.Execution;
 using LocalDeviceToolkit.Engine.Planning;
 using System.Text.Json;
 namespace LocalDeviceToolkit.Engine.Settings;
-public enum SettingId { ShowFileExtensions,LongPaths,DisableFastStartup,NoAcSleep,UkTimeZone }
+public enum SettingId { ShowFileExtensions,LongPaths,DisableFastStartup,NoAcSleep,UkTimeZone,PowerSleepAc,PowerSleepDc,PowerDisplayAc,PowerDisplayDc }
 public sealed record SettingParameters(bool ConfirmManagedPolicyReview);
 public sealed record RegistryDwordState(bool Exists,int? Value);
 public sealed record AcSleepState(Guid ActiveScheme,uint Seconds,uint DcSeconds=0);
@@ -22,6 +22,7 @@ public interface ISettingsBackend
 public sealed class FixedSettingOperation(SettingDefinition definition,ISettingsBackend backend):ILocalOperation
 {
  public static IReadOnlyList<SettingDefinition> Definitions {get;}=Array.AsReadOnly(new SettingDefinition[]{new(SettingId.ShowFileExtensions,"settings.show-file-extensions","CFG-WIN-012",OperationScope.CurrentUser),new(SettingId.LongPaths,"settings.long-paths","CFG-WIN-007",OperationScope.Machine),new(SettingId.DisableFastStartup,"settings.disable-fast-startup","CFG-WIN-019",OperationScope.Machine),new(SettingId.NoAcSleep,"settings.no-ac-sleep","CFG-WIN-020",OperationScope.Machine),new(SettingId.UkTimeZone,"settings.uk-timezone","CFG-WIN-011",OperationScope.Machine)});
+ public static IReadOnlyList<SettingDefinition> RestorableDefinitions=>Definitions.Concat(Enum.GetValues<PowerSlot>().Select(slot=>new SettingDefinition(PowerTimeoutOperation.Setting(slot),PowerTimeoutOperation.OperationId(slot),"CFG-WIN-020",OperationScope.Machine))).ToArray();
  public string Id=>definition.OperationId;
  public void ValidateParameters(JsonElement parameters)
  {
@@ -36,7 +37,7 @@ public sealed class FixedSettingOperation(SettingDefinition definition,ISettings
   ActionReadiness Result(bool ready,string reason)=>new(ready,definition.Scope,privilege,reason);
   if(!Parameters(parameters).ConfirmManagedPolicyReview)return Result(false,"Review effective GPO/MDM policy and confirm this local change is appropriate before proceeding.");
   var actor=await backend.GetActorAsync(ct);
-  if(definition.Scope==OperationScope.CurrentUser&&actor.Sid!=context.OriginalUserSid)return Result(false,"Current-user changes must execute as the original engineer, never an alternate administrator.");
+  if((definition.Scope==OperationScope.CurrentUser||definition.Setting==SettingId.NoAcSleep)&&actor.Sid!=context.OriginalUserSid)return Result(false,"Current-user changes must execute as the original engineer, never an alternate administrator.");
   var policy=await backend.InspectPolicyAsync(definition.Setting,ct);
   if(!policy.Available||policy.ConflictObserved)return Result(false,policy.Reason);
   return Result(true,"No conflict observed in the checked policy sources. Engineer confirmed the required external policy review; this does not prove the device is unmanaged.");

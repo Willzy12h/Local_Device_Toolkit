@@ -21,6 +21,8 @@ public static class ReferenceProfiles
  public static void Validate(ClientChecklist profile)
  {
   if(string.IsNullOrWhiteSpace(profile.Id)||profile.Id.Length>128||profile.Version<1||string.IsNullOrWhiteSpace(profile.Label)||profile.Label.Length>256||profile.Expected.Count>100||profile.RequiredItems.Count>100||profile.RequiredItems.Distinct(StringComparer.Ordinal).Count()!=profile.RequiredItems.Count)throw new CatalogueValidationException("Invalid client checklist.");
-  foreach(var item in profile.Expected)if(!LocalProbeValues.IsRegistered(item.Key)&&!item.Key.StartsWith("settings.power.",StringComparison.Ordinal))throw new CatalogueValidationException("Unregistered expected-value key. Profiles cannot declare operations or execution permission.");
+  foreach(var id in profile.RequiredItems)if(!LocalProbeValues.IsRegistered(id)&&!Reporting.HandoverService.ManualItems.ContainsKey(id))throw new CatalogueValidationException("Unregistered handover requirement.");
+  foreach(var item in profile.Expected)if(!LocalProbeValues.IsRegistered(item.Key)&&!Enum.GetValues<Settings.PowerSlot>().Any(s=>Settings.PowerTimeoutOperation.OperationId(s)==item.Key))throw new CatalogueValidationException("Unregistered expected-value key. Profiles cannot declare operations or execution permission.");
+  foreach(var value in profile.Expected.Values)if(value.ValueKind!=JsonValueKind.String||value.GetString()!.Length>8192)throw new CatalogueValidationException("Expected values must be bounded text.");
  }
 }

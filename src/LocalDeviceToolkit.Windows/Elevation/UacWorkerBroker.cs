@@ -28,6 +28,7 @@ public sealed class UacWorkerBroker(string workerPath)
   }
   var peer=NativePeer.Observe(NativePeer.PipeClient(pipe.SafePipeHandle));
   if(peer.Actor!=expected.Actor||!string.Equals(peer.ImagePath,expected.ImagePath,StringComparison.OrdinalIgnoreCase))throw new IOException("The connected process is not the worker launched through UAC.");
+  if(request.Plan is {} plan&&(plan.Lifetime is null||!plan.Lifetime.Matches(parent.Actor)||plan.Lifetime.IsExpired(Environment.TickCount64)))throw new InvalidDataException("The review elapsed limit expired during elevation. Check and review again.");
   request=request with {ToolkitBuild=ToolkitBuildIdentity.Current};
   await WorkerFrames.WriteAsync(pipe,request,ct);
   var response=await WorkerFrames.ReadAsync<WorkerResponse>(pipe,ct);

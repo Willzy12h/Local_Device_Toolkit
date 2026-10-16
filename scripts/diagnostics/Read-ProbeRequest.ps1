@@ -11,13 +11,15 @@ $details=[ordered]@{}
 $limitations=New-Object 'Collections.Generic.List[string]'
 $complete=$true
 $returned=1
+$hasMore=$false
+$nextCursor=$null
 $current='Observed'
 $status='Observed'
 function Write-Probe([string]$State='Known',[string]$Reason='Observed locally.'){
  $value=$null
  if($State -eq 'Known'){$value=[ordered]@{current=$current;expected=$null;status=$status;details=$details}}
  else{$script:complete=$false}
- [ordered]@{schemaVersion=2;checkId=[string]$request.checkId;targetDigest=[string]$request.targetDigest;state=$State;value=$value;source='Registered local Windows probe';capturedAt=[DateTimeOffset]::UtcNow.ToString('o');coverage=[ordered]@{complete=$complete;hasMore=$false;returnedCount=$returned;nextCursor=$null;limitations=@($limitations.ToArray())};reason=$Reason} | ConvertTo-Json -Depth 12 -Compress
+ [ordered]@{schemaVersion=2;checkId=[string]$request.checkId;targetDigest=[string]$request.targetDigest;state=$State;value=$value;source='Registered local Windows probe';capturedAt=[DateTimeOffset]::UtcNow.ToString('o');coverage=[ordered]@{complete=$complete;hasMore=$hasMore;returnedCount=$returned;nextCursor=$nextCursor;limitations=@($limitations.ToArray())};reason=$Reason} | ConvertTo-Json -Depth 12 -Compress
 }
 function Write-Unavailable {
  # Never expose provider exception text, raw output, request data or recovery material.

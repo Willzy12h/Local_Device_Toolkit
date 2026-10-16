@@ -72,7 +72,7 @@ jobs:
           $app=[Diagnostics.Process]::Start($start)
           if (-not $app.WaitForExit(60000)) { $app.Kill(); throw 'Read-only native render timed out.' }
           if ($app.ExitCode -ne 0) { throw "Packaged application failed: $($app.ExitCode)" }
-          foreach ($page in @('home','setup','diagnostics','deployments','reports','setup-compact','diagnostics-compact','deployments-compact','reports-compact','saved-reports','deployment-inputs','recorded-restoration','manual-review','setting-inputs','saved-reports-compact','deployment-inputs-compact','recorded-restoration-compact','manual-review-compact','setting-inputs-compact','task-review','task-review-compact')) {
+          foreach ($page in @('home','setup','diagnostics','deployments','reports','setup-compact','diagnostics-compact','deployments-compact','reports-compact','saved-reports','deployment-inputs','recorded-restoration','manual-review','setting-inputs','saved-reports-compact','deployment-inputs-compact','recorded-restoration-compact','manual-review-compact','setting-inputs-compact','task-review','task-review-compact','incident-inputs','incident-inputs-compact','network-inputs','network-inputs-compact','power-timeout','power-timeout-compact','dns-refresh','dns-refresh-compact','defender-request','defender-request-compact','engineer-handover','engineer-handover-compact','setup-local','setup-local-compact','diagnostics-local','diagnostics-local-compact')) {
             $image=Get-Item (Join-Path $render ($page+'.png'))
             if ($image.Length -lt 1024) { throw "Native render is empty: $page" }
           }

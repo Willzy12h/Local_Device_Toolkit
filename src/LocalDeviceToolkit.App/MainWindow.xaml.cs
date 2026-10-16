@@ -14,12 +14,13 @@ namespace LocalDeviceToolkit.App;
 public partial class MainWindow:Window
 {
  readonly LocalDeviceToolkit.Engine.Reporting.ReportService reportService;readonly LocalDeviceToolkit.Engine.Reporting.ManualReviewRecorder manualReviews;
+ string? selectedScenario;
  readonly ReviewRunService reviewRuns;readonly Dictionary<string,TaskSelectionRow> selections=new(StringComparer.Ordinal);
  readonly LocalDeviceToolkit.Engine.Planning.PlanService plans;readonly LocalDeviceToolkit.Engine.Execution.RunCoordinator coordinator;readonly WorkbenchSession session;readonly IEvidenceStore evidence;readonly CancellationTokenSource lifetime=new();bool rendering,isBusy;
  public MainWindow(WorkbenchSession session,IEvidenceStore evidence,LocalDeviceToolkit.Engine.Planning.PlanService plans,LocalDeviceToolkit.Engine.Execution.RunCoordinator coordinator,LocalDeviceToolkit.Engine.Reporting.ReportService reportService,LocalDeviceToolkit.Engine.Reporting.ManualReviewRecorder manualReviews,ReviewRunService reviewRuns)
  {
   this.reportService=reportService;this.manualReviews=manualReviews;this.reviewRuns=reviewRuns;
-  InitializeComponent();Height=Math.Min(Height,SystemParameters.WorkArea.Height);Width=Math.Min(Width,SystemParameters.WorkArea.Width);this.session=session;this.evidence=evidence;this.plans=plans;this.coordinator=coordinator;
+  InitializeComponent();Scenario.ItemsSource=new[]{"All tasks","Setup","Hardware","Power","Network","Security","Printing","Applications","Diagnostics"};Scenario.SelectedIndex=0;Height=Math.Min(Height,SystemParameters.WorkArea.Height);Width=Math.Min(Width,SystemParameters.WorkArea.Width);this.session=session;this.evidence=evidence;this.plans=plans;this.coordinator=coordinator;
   var osLabel=!session.Context.IsWorkstation?"Windows Server":session.Context.OsVersion.Major==10&&session.Context.OsVersion.Build>=22000?"Windows 11":"Windows";
   DeviceHeader.Text=$"{session.Context.ComputerName}  •  {session.Context.OriginalUserName}  •  {osLabel} build {session.Context.OsVersion.Build} ({session.Context.Architecture})";
   StandardHeader.Text=$"Build standard {session.Catalogue.Identity.Version}  •  30 controls";
@@ -57,13 +58,17 @@ public partial class MainWindow:Window
    }
    Save(this,Path.Combine(output,area+"-compact.png"));
   }
+  Width=1280;Height=860;
+  foreach(var area in new[]{"setup","diagnostics"})
+  {NavigateWorkspace(area,"local");await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle);Save(this,Path.Combine(output,area+"-local.png"));Width=900;Height=520;await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle);Save(this,Path.Combine(output,area+"-local-compact.png"));Width=1280;Height=860;}
   var smokeReview=await reviewRuns.CheckAsync([new ReviewSelection("windows.file-extensions",new("setup","windows"),false)],lifetime.Token);
   if(smokeReview.Actions.Count!=0||smokeReview.ChangesCount!=0||smokeReview.CanApply||smokeReview.Rows.Count!=1)throw new InvalidOperationException("Smoke review must remain read only with one actual checked row and no change plan.");
   if(!System.Text.RegularExpressions.Regex.IsMatch(smokeReview.LogText,@"\d{4}-\d{2}-\d{2}T")||!smokeReview.LogText.Contains("source=",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("Read-only smoke log must record dated checks and actual sources.");
   try
   {
   Window[] dialogs=[new ReportsWindow(reportService,session,manualReviews),new DeploymentInputWindow(new ApprovedProfileStore(ApprovedProfileStore.UserCacheRoot),(_,_,_)=>throw new InvalidOperationException("Smoke rendering cannot approve media.")),new RestorationInputWindow(evidence),new ManualReviewWindow(session.Catalogue),new ActionInputWindow(session.Workflows.ResolveTask("control.cfg-win-011"),session.Context),new ReviewRunWindow(smokeReview)];
-  string[] names=["saved-reports","deployment-inputs","recorded-restoration","manual-review","setting-inputs","task-review"];
+  dialogs=dialogs.Concat(new Window[]{new ProbeInputWindow("local.events.incident",StrictJson.Value(new{})),new ProbeInputWindow("local.network.dns",StrictJson.Value(new{})),new PowerTimeoutInputWindow("Display timeout · battery"),new DiagnosticRepairInputWindow(LocalDeviceToolkit.Engine.Diagnostics.DiagnosticRepairKind.DnsCache,_=>throw new InvalidOperationException("Rendering cannot reconcile or execute.")),new DiagnosticRepairInputWindow(LocalDeviceToolkit.Engine.Diagnostics.DiagnosticRepairKind.DefenderSignatures,_=>throw new InvalidOperationException("Rendering cannot reconcile or execute.")),new HandoverWindow(session,evidence)}).ToArray();
+  string[] names=["saved-reports","deployment-inputs","recorded-restoration","manual-review","setting-inputs","task-review","incident-inputs","network-inputs","power-timeout","dns-refresh","defender-request","engineer-handover"];
   for(var index=0;index<dialogs.Length;index++)
   {
    var window=dialogs[index];window.Owner=this;window.Height=Math.Min(window.Height,SystemParameters.WorkArea.Height);window.Width=Math.Min(window.Width,SystemParameters.WorkArea.Width);window.Show();
@@ -112,7 +117,12 @@ public partial class MainWindow:Window
   }
   finally{rendering=false;}
  }
- void Stage_Changed(object sender,SelectionChangedEventArgs e){if(rendering||session is null)return;if(Stages.SelectedItem is WorkflowStage stage){session.Navigate(session.Area,stage.Id);RefreshTasks();WorkspaceViewport.ScrollToTop();}}
+ void Scenario_Changed(object sender,SelectionChangedEventArgs e)
+ {
+  if(rendering||isBusy||session is null||Scenario.SelectedItem is not string value)return;selectedScenario=value=="All tasks"?null:value.ToLowerInvariant();
+  if(session.Area is "setup" or "diagnostics"){session.Navigate(session.Area,selectedScenario is null?"all":"local");Render();}
+ }
+ void Stage_Changed(object sender,SelectionChangedEventArgs e){if(rendering||session is null)return;if(Stages.SelectedItem is WorkflowStage stage){session.Navigate(session.Area,stage.Id);selectedScenario=null;rendering=true;Scenario.SelectedIndex=0;rendering=false;RefreshTasks();WorkspaceViewport.ScrollToTop();}}
  void Search_Changed(object sender,TextChangedEventArgs e){if(session is not null)RefreshTasks();}
  void RefreshTasks()
  {
@@ -122,7 +132,7 @@ public partial class MainWindow:Window
   var all=session.Tasks();
   StageProgress.Text=all.Count==0?"":$"{all.Count} tasks • {all.Count(t=>t.Status=="Meets standard")} meet local checks • {all.Count(t=>t.Status=="Needs attention")} need attention • {all.Count(t=>t.Status=="Manual verification")} need manual verification • {all.Count(t=>t.Status=="Unknown")} unknown • {all.Count(t=>t.Status=="Needs administrator read")} need administrator read • {all.Count(t=>t.Status=="Not checked")} not checked";
   var selected=(TaskList.SelectedItem as TaskSelectionRow)?.Definition.Id;
-  var rows=session.Tasks(Search.Text).Select(t=>GetRow(t.Definition)).ToArray();
+  var rows=session.Tasks(Search.Text,selectedScenario).Select(t=>GetRow(t.Definition)).ToArray();
   TaskList.ItemsSource=rows;SetupRows.ItemsSource=rows;TaskList.SelectedItem=rows.FirstOrDefault(t=>t.Definition.Id==selected)??rows.FirstOrDefault();SetupRows.SelectedItem=TaskList.SelectedItem;ShowTask();
   }finally{rendering=wasRendering;}
  }
@@ -130,12 +140,17 @@ public partial class MainWindow:Window
  void TaskDetails_Click(object sender,RoutedEventArgs e)
  {
   if(TaskList.SelectedItem is not TaskSelectionRow row)return;
-  var text=new TextBox{IsReadOnly=true,TextWrapping=TextWrapping.Wrap,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,Margin=new Thickness(18),Text=$"{row.Definition.Title}\n\nCurrent: {row.Current}\nExpected: {row.Expected}\nStatus: {row.Status}\nAccount: {row.Account}\n\n{row.Preview.Explanation}\nSource: {row.Preview.Source}\n\n{TaskRequirement.Text}\n\n{TaskLimitations.Text}"};
+  var permitted=System.Text.Json.JsonSerializer.Serialize(session.LatestObservations(row.Definition),new System.Text.Json.JsonSerializerOptions(StrictJson.Options){WriteIndented=true});
+  var text=new TextBox{IsReadOnly=true,TextWrapping=TextWrapping.Wrap,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,Margin=new Thickness(18),Text=$"{row.Definition.Title}\n\nCurrent: {row.Current}\nExpected: {row.Expected}\nStatus: {row.Status}\nAccount: {row.Account}\n\n{row.Preview.Explanation}\nSource: {row.Preview.Source}\n\n{TaskRequirement.Text}\n\n{TaskLimitations.Text}\n\nFull permitted collected evidence (read only):\n{permitted}"};
   new Window{Owner=this,Title="Task details",Width=720,Height=560,MinWidth=500,MinHeight=380,Content=text,WindowStartupLocation=WindowStartupLocation.CenterOwner}.ShowDialog();
  }
  void Reference_Click(object sender,RoutedEventArgs e)
  {
   if(TaskList.SelectedItem is not TaskSelectionRow task)return;
+  if(LocalProbeValues.IsRegistered(task.Definition.Id))
+  {
+   var descriptor=LocalDeviceToolkit.Engine.Catalogue.LocalProbeCatalogue.Resolve(task.Definition.Id);MessageBox.Show(this,descriptor.Disclosure+"\n\nLocal operational check: "+descriptor.Id+"\nSource: bundled local-probes.json and registered Windows provider; separate from the 30 M365 build controls.","Local check reference");return;
+  }
   var files=LocalDeviceToolkit.Engine.Catalogue.CatalogueLoader.ShippedFiles();using var document=StrictJson.Parse(files["reference.json"]);
   var controls=document.RootElement.GetProperty("controls").EnumerateArray().Where(c=>task.Definition.ControlIds.Contains(c.GetProperty("id").GetString()!)).ToArray();
   var content=new TextBox {Text=System.Text.Json.JsonSerializer.Serialize(new { source=document.RootElement.GetProperty("source"),controls },new System.Text.Json.JsonSerializerOptions {WriteIndented=true}),IsReadOnly=true,TextWrapping=TextWrapping.Wrap,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,Margin=new Thickness(20)};
@@ -147,7 +162,7 @@ public partial class MainWindow:Window
   ProtectedRead.IsEnabled=false;
   if(selected is not null&&!isBusy)
   {
-   try{WorkerRequestValidator.Validate(new(2,WorkerMode.CaptureProtected,session.Context,new(selected.Definition.ControlIds,session.Origin,selected.Definition.CheckIds,[selected.Definition.Id]),null,null),session.Catalogue,session.Workflows);ProtectedRead.IsEnabled=true;}
+   try{WorkerRequestValidator.Validate(new(2,WorkerMode.CaptureProtected,session.Context,new CaptureRequest(selected.Definition.ControlIds,session.Origin,selected.Definition.CheckIds,[selected.Definition.Id]){Inputs=LocalProbeValues.IsRegistered(selected.Definition.Id)?new Dictionary<string,System.Text.Json.JsonElement>{{selected.Definition.Id,session.Inputs(selected.Definition.Id)}}:null},null,null),session.Catalogue,session.Workflows);ProtectedRead.IsEnabled=true;}
    catch(LocalDeviceToolkit.Engine.Execution.PlanValidationException){}
   }
   ReviewFix.IsEnabled=selected?.NeedsInputs==true&&!isBusy;
@@ -155,11 +170,12 @@ public partial class MainWindow:Window
   if(selected is null){TaskTitle.Text="Select a task";TaskIds.Text=TaskRequirement.Text=TaskLimitations.Text=Observations.Text=ObservedAt.Text="";return;}
   TaskTitle.Text=selected.Definition.Title;TaskIds.Text=string.Join(" • ",selected.Definition.ControlIds);
   var controls=session.Catalogue.Controls.Where(c=>selected.Definition.ControlIds.Contains(c.Id)).ToArray();
-  TaskRequirement.Text=string.Join("\n\n",controls.Select(c=>c.ExpectedDescription));
+  if(LocalProbeValues.IsRegistered(selected.Definition.Id)){TaskRequirement.Text=LocalDeviceToolkit.Engine.Catalogue.LocalProbeCatalogue.Resolve(selected.Definition.Id).Disclosure;}else TaskRequirement.Text=string.Join("\n\n",controls.Select(c=>c.ExpectedDescription));
   TaskLimitations.Text=string.Join("\n\n",controls.Select(c=>$"{c.Id} • {c.Coverage}\n{c.ManualInstructions}"));
   var captured=session.Tasks().FirstOrDefault(t=>t.Definition.Id==selected.Definition.Id)?.CapturedAt;
   ObservedAt.Text=captured is DateTimeOffset at?$"Evidence collected {at.ToLocalTime():g}. Recheck before handover or changing settings.":"No evidence collected for this task.";
   var observations=session.LatestObservations(selected.Definition);
+  NextEvents.IsEnabled=observations.Any(o=>o.Coverage?.NextCursor is not null)&&!isBusy;
   Observations.Text=$"Current: {selected.Current}\nExpected: {selected.Expected}\nStatus: {selected.Status}\nAccount: {selected.Account}\n\n{selected.Preview.Explanation}\nSource: {selected.Preview.Source}";
  }
  TaskSelectionRow GetRow(TaskDefinition task)
@@ -167,7 +183,7 @@ public partial class MainWindow:Window
   if(!selections.TryGetValue(task.Id,out var row)){row=new(task,session.Origin);selections.Add(task.Id,row);}
   var request=session.Queue.Requests.FirstOrDefault(r=>r.TaskId==task.Id);
   var observations=session.LatestObservations(task);
-  var reviewed=reviewRuns.Current?.Rows.FirstOrDefault(r=>r.Task.Id==task.Id);
+  var reviewed=LocalProbeValues.IsRegistered(task.Id)?null:reviewRuns.Current?.Rows.FirstOrDefault(r=>r.Task.Id==task.Id);
   var latestCapture=observations.Where(o=>task.CheckIds.Contains(o.CheckId)).Select(o=>o.CapturedAt).DefaultIfEmpty(DateTimeOffset.MinValue).Max();
   var reviewedCapture=reviewed?.AfterCapturedAt??reviewed?.Before.Select(o=>o.CapturedAt).DefaultIfEmpty(DateTimeOffset.MinValue).Max()??DateTimeOffset.MinValue;
   var preview=reviewed is not null&&latestCapture<=reviewedCapture?reviewed.AfterPreview??reviewed.Preview:null;
@@ -193,18 +209,18 @@ public partial class MainWindow:Window
   else foreach(var request in session.Queue.Requests.Where(r=>r.TaskId==row.Definition.Id).ToArray())session.Queue.Remove(request);
   UpdateSelectionStatus();
  }
- void UpdateSelectionStatus(){QueueShortcut.Content=$"Selected changes ({session.Queue.Requests.Count})";StatusLine.Text=$"{selections.Values.Count(r=>r.Selected)} selected • {selections.Values.Count(r=>r.Selected&&r.ChangeRequested)} changes requested. Configure application or restoration inputs before review.";UpdateQueueButtons();}
+ void UpdateSelectionStatus(){QueueShortcut.Content=$"Selected changes ({session.Queue.Requests.Count})";StatusLine.Text=$"{selections.Values.Count(r=>r.Selected)} selected • {selections.Values.Count(r=>r.Selected&&r.ChangeRequested)} changes requested. Configure required inputs before review. "+selections.Values.Count(r=>r.Selected&&!session.Tasks(Search.Text,selectedScenario).Any(t=>t.Definition.Id==r.Definition.Id))+" selected outside this view.";UpdateQueueButtons();}
  void SetupTask_Changed(object sender,SelectionChangedEventArgs e){if(SetupRows.SelectedItem is TaskSelectionRow row)TaskList.SelectedItem=row;}
  void ConfigureRow_Click(object sender,RoutedEventArgs e){if(sender is FrameworkElement{DataContext:TaskSelectionRow row}){TaskList.SelectedItem=row;ReviewFix_Click(sender,e);}}
- async void CheckSelected_Click(object sender,RoutedEventArgs e){if(TaskList.SelectedItem is TaskSelectionRow row){row.Selected=true;reviewRuns.Invalidate();await CheckReviewAsync(true);}}
+ async void CheckSelected_Click(object sender,RoutedEventArgs e){if(TaskList.SelectedItem is TaskSelectionRow row){row.Selected=true;reviewRuns.Invalidate();await CheckReviewAsync(true,onlyTask:row.Definition.Id);}}
  async void CheckStage_Click(object sender,RoutedEventArgs e)=>await CheckReviewAsync();
  async void CheckOnly_Click(object sender,RoutedEventArgs e)=>await CheckReviewAsync(true);
- async Task CheckReviewAsync(bool checkOnly=false)=>await RunUiAsync(async()=>
+ async Task CheckReviewAsync(bool checkOnly=false,Guid? parentRun=null,string? onlyTask=null)=>await RunUiAsync(async()=>
  {
-  var chosen=selections.Values.Where(r=>r.Selected).Select(r=>new ReviewSelection(r.Definition.Id,r.Origin,!checkOnly&&r.ChangeRequested,session.Queue.Requests.FirstOrDefault(q=>q.TaskId==r.Definition.Id))).ToArray();
+  var chosen=selections.Values.Where(r=>r.Selected&&(onlyTask is null||r.Definition.Id==onlyTask)).Select(r=>new ReviewSelection(r.Definition.Id,r.Origin,!checkOnly&&r.ChangeRequested,session.Queue.Requests.FirstOrDefault(q=>q.TaskId==r.Definition.Id))).ToArray();
   if(chosen.Length==0)throw new InvalidOperationException("Select at least one individual task to check.");
   var timer=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(500)};timer.Tick+=(_,_)=>{if(reviewRuns.Current is {} live){LiveLog.Text=live.FilePath+Environment.NewLine+live.LogText;LiveLog.ScrollToEnd();}};timer.Start();LiveLog.Visibility=Visibility.Visible;
-  ReviewRun run;try{run=await reviewRuns.CheckAsync(chosen,lifetime.Token);}finally{timer.Stop();if(reviewRuns.Current is {} latest)LiveLog.Text=latest.FilePath+Environment.NewLine+latest.LogText;}
+  ReviewRun run;try{run=await reviewRuns.CheckAsync(chosen,lifetime.Token,parentRun,new RunLabels(ClientLabel.Text,TicketLabel.Text));}finally{timer.Stop();if(reviewRuns.Current is {} latest)LiveLog.Text=latest.FilePath+Environment.NewLine+latest.LogText;}
   RefreshTasks();LiveLog.Text=run.FilePath+Environment.NewLine+run.LogText;
   var attempted=false;var applied=false;Func<Task>? apply=checkOnly?null:async()=>{attempted=true;await ApplyReviewAsync(run);applied=true;};var review=new ReviewRunWindow(run,apply){Owner=this};review.ShowDialog();
   if(!attempted)await reviewRuns.CancelAsync(run,lifetime.Token);
@@ -215,7 +231,7 @@ public partial class MainWindow:Window
  {
   var run=await reviewRuns.RunAsync(review,true,lifetime.Token);if(run is null)throw new InvalidOperationException("No change run was recorded. Review the log and check again.");
   string ResultTitle(Guid actionId){var action=review.Actions.FirstOrDefault(a=>a.Id==actionId);return action is null?"Action":session.Workflows.ResolveTask(action.Request.TaskId).Title;}
-  RunResults.Text=$"Run {run.Id:D} • {(run.EvidenceComplete?"Evidence recorded":"Log or evidence incomplete — inspect results before continuing")}\n"+string.Join("\n\n",run.Results.Select(result=>$"{OutcomeLabel(result.Outcome)} • {ResultTitle(result.ActionId)}\n{result.Reason}\nExecuting account: {result.Actor?.UserName??"Not confirmed / not started"}"));
+  RunResults.Text=$"Run {run.Id:D} • {(run.EvidenceComplete?"Evidence recorded":"Log or evidence incomplete — inspect results before continuing")}\n"+string.Join("\n\n",run.Results.Select(result=>$"{OutcomeLabel(result.Outcome)} • {ResultTitle(result.ActionId)}\n{result.Reason}\nAction completed: {result.Outcomes?.ActionCompleted?.ToString()??"See recorded outcome"}; expected state verified: {result.Outcomes?.ExpectedStateVerified?.ToString()??"Unknown"}; original symptom resolved: {result.Outcomes?.OriginalSymptomResolved?.ToString()??"Unknown"}\nExecuting account: {result.Actor?.UserName??"Not confirmed / not started"}"));
   foreach(var action in review.Actions.Where(a=>a.Request.OperationId=="packages.install"&&a.Readiness.Privilege==PrivilegeRequirement.CurrentUser&&run.Results.Any(r=>r.ActionId==a.Id)))
   {
    try{var input=StrictJson.Read<DeploymentParameters>(StrictJson.Bytes(action.Request.Parameters));await(await UserPackageAsync(input,CancellationToken.None)).AcknowledgeRecordedRunAsync(session.Context,action.Request.Parameters,run.Id,evidence,CancellationToken.None);}
@@ -223,13 +239,22 @@ public partial class MainWindow:Window
   }
   session.Queue.Clear();foreach(var row in selections.Values)row.ChangeRequested=false;Render();
  }
+ async void NextEvents_Click(object sender,RoutedEventArgs e)
+ {
+  if(isBusy||TaskList.SelectedItem is not TaskSelectionRow row||row.Definition.Id!="local.events.incident")return;
+  var observation=session.LatestObservations(row.Definition).SingleOrDefault();if(observation?.Coverage?.NextCursor is not string cursor)return;
+  var input=System.Text.Json.Nodes.JsonNode.Parse(session.Inputs(row.Definition.Id).GetRawText())!.AsObject();input["cursor"]=cursor;
+  var parent=reviewRuns.Current?.RunId;session.SetInputs(row.Definition.Id,StrictJson.Value(input));reviewRuns.Invalidate();row.Selected=true;
+  await CheckReviewAsync(true,parent,row.Definition.Id);StatusLine.Text="Explicit continuation page collected. Previous review: "+parent+". Coverage limitations remain visible.";
+ }
+ void Handover_Click(object sender,RoutedEventArgs e)=>new HandoverWindow(session,evidence,session.HasUnresolvedWork){Owner=this}.ShowDialog();
  async void ProtectedRead_Click(object sender,RoutedEventArgs e)
  {
   if(TaskList.SelectedItem is not TaskSelectionRow task)return;
   var origin=session.Origin;
   await RunUiAsync(async()=>
   {
-   var request=new WorkerRequest(2,WorkerMode.CaptureProtected,session.Context,new(task.Definition.ControlIds,origin,task.Definition.CheckIds,[task.Definition.Id]),null,null);
+   var request=new WorkerRequest(2,WorkerMode.CaptureProtected,session.Context,new CaptureRequest(task.Definition.ControlIds,origin,task.Definition.CheckIds,[task.Definition.Id]){Inputs=LocalProbeValues.IsRegistered(task.Definition.Id)?new Dictionary<string,System.Text.Json.JsonElement>{{task.Definition.Id,session.Inputs(task.Definition.Id)}}:null},null,null);
    WorkerRequestValidator.Validate(request,session.Catalogue,session.Workflows);
    var broker=new UacWorkerBroker(Path.Combine(AppContext.BaseDirectory,"worker","LocalDeviceToolkit.Worker.exe"));
    var response=await broker.RequestAsync(request,lifetime.Token);
@@ -240,10 +265,16 @@ public partial class MainWindow:Window
  async void ReviewFix_Click(object sender,RoutedEventArgs e)
  {
   if(TaskList.SelectedItem is not TaskSelectionRow task||!task.NeedsInputs||isBusy)return;
+  if(LocalProbeValues.IsRegistered(task.Definition.Id))
+  {
+   var input=new ProbeInputWindow(task.Definition.Id,session.Inputs(task.Definition.Id)){Owner=this};if(input.ShowDialog()==true){session.SetInputs(task.Definition.Id,input.Parameters);reviewRuns.Invalidate();RefreshTasks();}return;
+  }
   await RunUiAsync(()=>
   {
   System.Text.Json.JsonElement parameters;
-  if(task.Definition.OperationId=="settings.restore-recorded")
+  if(task.Definition.OperationId is "diagnostics.refresh-dns-cache" or "diagnostics.update-defender-signatures"){var kind=task.Definition.OperationId=="diagnostics.refresh-dns-cache"?LocalDeviceToolkit.Engine.Diagnostics.DiagnosticRepairKind.DnsCache:LocalDeviceToolkit.Engine.Diagnostics.DiagnosticRepairKind.DefenderSignatures;var dialog=new DiagnosticRepairInputWindow(kind,ReconcileSignaturesAsync){Owner=this};if(dialog.ShowDialog()!=true)return Task.CompletedTask;parameters=dialog.Parameters;}
+  else if(task.Definition.OperationId?.StartsWith("settings.power.",StringComparison.Ordinal)==true){var power=new PowerTimeoutInputWindow(task.Definition.Title){Owner=this};if(power.ShowDialog()!=true)return Task.CompletedTask;parameters=StrictJson.Value(power.Parameters);}
+  else if(task.Definition.OperationId=="settings.restore-recorded")
   {var restore=new RestorationInputWindow(evidence){Owner=this};if(restore.ShowDialog()!=true)return Task.CompletedTask;parameters=StrictJson.Value(restore.Parameters);}
   else if(task.Definition.OperationId=="packages.install")
   {var deployment=new DeploymentInputWindow(new ApprovedProfileStore(ApprovedProfileStore.UserCacheRoot),ApproveProfileAsync,controlId:task.Definition.ControlIds.Single(),reconcile:ReconcileDeploymentAsync){Owner=this};if(deployment.ShowDialog()!=true)return Task.CompletedTask;parameters=StrictJson.Value(deployment.Parameters);}
@@ -251,6 +282,19 @@ public partial class MainWindow:Window
   var request=new ActionRequest(task.Definition.Id,task.Definition.OperationId!,parameters,task.Origin);
   reviewRuns.Invalidate();var added=session.Queue.Add(request);if(added==LocalDeviceToolkit.Engine.Execution.QueueAddResult.Added){task.Selected=true;task.ChangeRequested=true;}StatusLine.Text=added switch {LocalDeviceToolkit.Engine.Execution.QueueAddResult.AlreadyQueued=>"This identical change is already in the shared queue.",LocalDeviceToolkit.Engine.Execution.QueueAddResult.Added=>"Added to the shared queue. Review the complete plan before execution.",_=>"A different change already targets this setting; remove it explicitly before adding this request."};Render();return Task.CompletedTask;
   });
+ }
+ async Task<string> ReconcileSignaturesAsync(bool confirm)
+ {
+  var broker=new UacWorkerBroker(Path.Combine(AppContext.BaseDirectory,"worker","LocalDeviceToolkit.Worker.exe"));
+  var response=await broker.RequestAsync(new(2,confirm?WorkerMode.ResolveDiagnostic:WorkerMode.ReconcileDiagnostic,session.Context,null,null,null,DiagnosticCompletionReview:confirm?true:null),lifetime.Token);
+  if(!response.Success)throw new InvalidOperationException(response.Message);
+  if(response.DiagnosticResolution is {} receipt)
+  {
+   var data=StrictJson.Read<LocalDeviceToolkit.Engine.Diagnostics.DiagnosticReconciliation>(StrictJson.Bytes(receipt.Data));
+   if(receipt.Context!=session.Context||data.Actor!=response.Actor)throw new EvidenceValidationException("Reconciliation receipt does not match the protected worker/context.");
+   await evidence.SaveNewAsync(receipt,lifetime.Token);session.RecordDiagnosticResolution(receipt);
+  }
+  return response.Message;
  }
  async Task<DeploymentProfile> ApproveProfileAsync(DeploymentProfile profile,string directory,CancellationToken ct)
  {
@@ -265,14 +309,14 @@ public partial class MainWindow:Window
   if(cached.Scope==OperationScope.CurrentUser)
   {
    var operation=await UserPackageAsync(parameters,ct);Guid? receipt=null;
-   if(resolve)receipt=await operation.ResolveReviewedAsync(session.Context,StrictJson.Value(parameters),new(true,OperationScope.CurrentUser),evidence,ct);
+   if(resolve){receipt=await operation.ResolveReviewedAsync(session.Context,StrictJson.Value(parameters),new(true,OperationScope.CurrentUser),evidence,ct);session.RecordDeploymentResolution(await evidence.LoadAsync(receipt.Value,ct));}
    var observed=await operation.ReconcileAsync(session.Context,StrictJson.Value(parameters),ct);
    return "Original-user read-only reconciliation; no installer was launched.\n"+System.Text.Json.JsonSerializer.Serialize(new{observed,ResolutionReceipt=receipt},new System.Text.Json.JsonSerializerOptions(StrictJson.Options){WriteIndented=true});
   }
   var broker=new UacWorkerBroker(Path.Combine(AppContext.BaseDirectory,"worker","LocalDeviceToolkit.Worker.exe"));
   var response=await broker.RequestAsync(new(2,resolve?WorkerMode.ResolveDeployment:WorkerMode.ReconcileDeployment,session.Context,null,null,null,DeploymentReconcile:parameters,DeploymentResolutionReview:resolve?new(true):null),ct);
   if(!response.Success||response.DeploymentStatus is null)throw new InvalidOperationException(response.Message);
-  if(response.DeploymentResolution is not null)await evidence.SaveNewAsync(response.DeploymentResolution,ct);
+  if(response.DeploymentResolution is not null){await evidence.SaveNewAsync(response.DeploymentResolution,ct);session.RecordDeploymentResolution(response.DeploymentResolution);}
   return response.Message+"\nObserved by: "+response.Actor.UserName+" ("+response.Actor.Sid+")\n"+System.Text.Json.JsonSerializer.Serialize(new{response.DeploymentStatus,ResolutionReceipt=response.DeploymentResolution},new System.Text.Json.JsonSerializerOptions(StrictJson.Options){WriteIndented=true});
  }
  static async Task<PackageDeploymentOperation> UserPackageAsync(DeploymentParameters input,CancellationToken ct)

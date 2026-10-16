@@ -32,3 +32,16 @@ Use a dedicated authorized Windows 11 x64 workstation and record the exact porta
 Client RMM/EDR media, tenant sign-in, licensing rights and client-specific authorization must be supplied through the approved engineer/vendor process. The toolkit does not invent these or collect administrator passwords.
 
 Exact current commit/run outcomes, including the final archive verification and 21 normal/compact WPF views, are available in [Verify native toolkit](https://github.com/Willzy12h/Local_Device_Toolkit/actions/workflows/verify.yml). A failed or unrun step is not native acceptance.
+
+## Engineer readiness expansion — 16 October 2026
+
+The expansion adds 24 local checks, four separate power timeout actions, DNS cache refresh and a guarded Defender signature request. Linux fixtures and cross-compilation do **not** establish Windows 11 acceptance. Until a recorded disposable-device run is attached, the following remain pending:
+
+- Same-engineer UAC and alternate-credential refusal for all new and legacy power writes/restoration; protected prefix validation across multiple selected power actions; all four indices and scheme preserved; exact raw-seconds restoration and concurrent scheme/policy changes.
+- S0/S3 laptops, battery/no-battery desktops, VM/unsupported media-health providers, multi-battery systems, localized WinRE/time output, denied provider/channel access, encrypted/suspended volumes and recovery references without key retrieval.
+- VPN/split-DNS/NRPT changes, positive/negative cache hypotheses, no cache restoration claim, only selected-host retest, offline/third-party AV/passive Defender, configured source order, update process timeout/cancellation/restart and explicit protected reconciliation.
+- Local/shared/unavailable printer inventory without document/owner data, literal-target identity, approved-profile inventory and unresolved installer states. No actual installer media or customer sign-in is supplied by this repository.
+- App sleep/resume, wall-clock rollback and waiting at UAC beyond the review deadline; original app restart must require a new review.
+- Native normal/compact layouts for local task lists, incident/network inputs, each repair review, power timeouts and handover; keyboard/tab order, high contrast, Narrator and physical DPI.
+
+CI renders native WPF without executing mutations and parses scripts under Windows PowerShell 5.1. These checks complement this matrix; they do not replace it. A manual-only checklist is scoped to its selected requirements and original engineer, not a certification of the eventual end user's device or tenant state.

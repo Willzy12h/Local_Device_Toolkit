@@ -20,9 +20,10 @@ public partial class App:Application
    var schemas=ToolkitEvidenceSchemas.Create();LocalDeviceToolkit.Engine.Reporting.ReportingEvidenceSchemas.Register(schemas);LocalDeviceToolkit.Engine.Deployments.DeploymentEvidenceSchemas.Register(schemas);
    var store=new EvidenceStore(System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"LocalDeviceToolkit","evidence"),schemas,context);
    var source=new NativeFactsSource(System.IO.Path.Combine(AppContext.BaseDirectory,"scripts"));
-   var inspector=new WindowsDeviceInspector(identity,identity,source,catalogue,TimeProvider.System);
+   var inspector=new WindowsDeviceInspector(identity,identity,source,catalogue,TimeProvider.System,new OperationalProbeSource(System.IO.Path.Combine(AppContext.BaseDirectory,"scripts")));
    var operations=LocalDeviceToolkit.Windows.WindowsOperations.Create(workflows,settingSource:store,deploymentProfiles:new LocalDeviceToolkit.Windows.Deployments.ApprovedProfileStore(LocalDeviceToolkit.Windows.Deployments.ApprovedProfileStore.UserCacheRoot),deploymentPending:new LocalDeviceToolkit.Engine.Deployments.FileDeploymentPendingStore(System.IO.Path.Combine(LocalDeviceToolkit.Windows.Deployments.ApprovedProfileStore.UserCacheRoot,"preview-pending")));
    var session=new WorkbenchSession(context,catalogue,workflows,inspector,store,operations);
+   await session.LoadActionHistoryAsync(default);
    var plans=new PlanService(operations,TimeProvider.System);
    var coordinator=new LocalDeviceToolkit.Engine.Execution.RunCoordinator(plans,operations,identity,catalogue,store,new LocalDeviceToolkit.Windows.Elevation.WindowsActionDispatcher(operations,identity,System.IO.Path.Combine(AppContext.BaseDirectory,"worker","LocalDeviceToolkit.Worker.exe")),TimeProvider.System);
    var reviewRuns=new ReviewRunService(operations,plans,coordinator,session,System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"LocalDeviceToolkit","logs"),TimeProvider.System);

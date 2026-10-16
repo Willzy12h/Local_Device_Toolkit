@@ -23,9 +23,9 @@ public sealed class PortablePackageTests : IDisposable
    files[prefix + name + ".runtimeconfig.json"] = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { runtimeOptions = new { tfm = "net10.0", includedFrameworks = new[] { new { name = "Microsoft.NETCore.App", version = "10.0.0" }, new { name = "Microsoft.WindowsDesktop.App", version = "10.0.0" } } } }));
   }
   var repository = Path.GetDirectoryName(Path.GetDirectoryName(Script())!)!;
-  foreach (var relative in new[] { "NOTICE.md", "docs/LOCAL-USAGE.md", "provenance/import-manifest.json", "catalogue/reference.json", "catalogue/local-windows.json", "catalogue/tasks.json", "catalogue/workflows.json", "catalogue/pins.json" }) files[relative] = File.ReadAllBytes(Path.Combine(repository, relative));
+  foreach (var relative in new[] { "NOTICE.md", "docs/LOCAL-USAGE.md", "provenance/import-manifest.json", "catalogue/reference.json", "catalogue/local-windows.json", "catalogue/tasks.json", "catalogue/workflows.json", "catalogue/pins.json", "catalogue/local-probes.json", "catalogue/windows-support.json" }) files[relative] = File.ReadAllBytes(Path.Combine(repository, relative));
   foreach(var tool in new[]{"New-DeploymentProfile.ps1","Test-Portable.ps1"})files["tools/"+tool]=File.ReadAllBytes(Path.Combine(repository,"build",tool));
-  foreach (var relative in new[] { "registry.json", "diagnostics/Get-DeviceFacts.ps1", "settings/Invoke-UserSetting.ps1", "deployments/Invoke-CurrentUserMsix.ps1" })
+  foreach (var relative in new[]{"registry.json"}.Concat(LocalDeviceToolkit.Windows.Inspection.RegisteredScripts.Manifest.Scripts.Select(s=>s.Path)))
    foreach (var prefix in new[] { "scripts/", "worker/scripts/" }) files[prefix + relative] = File.ReadAllBytes(Path.Combine(repository, "scripts", relative));
   files["LocalDeviceToolkit.App.dll"] = [0];
   if (defect == "case-collision") files["NOTICE.MD"] = [1];
