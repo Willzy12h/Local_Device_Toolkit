@@ -20,7 +20,13 @@ Final full-suite verification: **469 tests passed (329 engine +140 Windows adapt
 
 All **11** registered script bodies passed integrity and PowerShell syntax checks in the cloud. Research/reference validation passed: 24 check rows, six action rows, 78-source original manifest, 11 supplemental sources and checked excerpts. PowerShell 7 fixtures on Linux do not establish Windows PowerShell 5.1 or real-device acceptance.
 
-The native CI job publishes and verifies a self-contained matching App/Worker ZIP and captures the actual normal/compact WPF windows without executing mutations. Its result belongs to its exact commit; earlier ZIPs/screenshots do not prove this expansion's behavior.
+[Native and Ubuntu CI run 38890927681](https://github.com/Willzy12h/Local_Device_Toolkit/actions/runs/38890927681) passed for **`e472383f948288a317d817c889b11f01a08f16e1`**: both full builds/tests, Windows PowerShell 5.1 parsing and registered hashes, the self-contained matching App/Worker ZIP, complete archive verification, and extracted-app native launch without SDK paths. All **37** normal/compact WPF images and the actual dated read-only review log were produced. Setup, diagnostics, power, DNS, handover, reports and review images were inspected. The CI host is Windows Server; this does not establish physical Windows 11 acceptance.
+
+The downloaded ZIP matched its manifest commit and verification report: **858 files**, SHA-256 **`5e50ccb82f4b7afd27313666eaa46c99826ce2291b850cd2c421930cda4bab47`**. Download it from the run's `windows-package-and-native-evidence` artifact. Integrity and native launch are separate checks; neither certifies release signing or vendor media.
+
+The first Ubuntu CI run failed 11 script fixtures because `TOOLKIT_TEST_PWSH` was not activated. The workflow now exports the existing runner PowerShell path; the corrected full job passed without weakening assertions or adding dependencies. The subsequent documentation-only commit records these results; the artifact belongs to the exact source commit above.
+
+[Draft PR #3](https://github.com/Willzy12h/Local_Device_Toolkit/pull/3) is stacked on #2 and remains unmerged pending the device matrix below.
 
 ## Remaining acceptance and limitations
 
