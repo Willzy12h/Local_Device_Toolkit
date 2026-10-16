@@ -19,6 +19,7 @@ public sealed class ReportsWindow : Window
  readonly TextBlock status = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 8) };
  readonly TextBox details = new() { MinHeight=180,MaxHeight=400, IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
  readonly DataGrid controls = new() { IsReadOnly = true, AutoGenerateColumns = false, MinHeight = 160, MaxHeight = 260 };
+ readonly CheckBox identifiers=new(){Content="Include permitted identifying details in export (review preview before sharing)",IsChecked=false};
  readonly Button next = new() { Content = "Next history page", IsEnabled = false };
  readonly List<HistoryDiagnostic> diagnostics = [];
  readonly HashSet<Guid> seen = [];
@@ -49,6 +50,8 @@ public sealed class ReportsWindow : Window
   AddButton(buttons, "Export HTML", () => ExportAsync(ReportFormat.Html));
   AddButton(buttons, "Export CSV", () => ExportAsync(ReportFormat.Csv));
   AddButton(buttons, "Export JSON", () => ExportAsync(ReportFormat.Json));
+  top.Children.Add(identifiers);identifiers.Click+=(_,_)=>{if(report is not null)details.Text=ReportDisclosure.Render(ReportDisclosure.Project(report,identifiers.IsChecked==true),ReportFormat.Json);};
+  AddButton(buttons,"Compare two selected captures",CompareAsync);
   top.Children.Add(history); top.Children.Add(status);
   foreach (var (header, path, width) in new[] { ("Control", "ControlId", 100d), ("Name", "Name", 230d), ("Status", "Status", 150d), ("Captured UTC", "CapturedAt", 190d), ("Stale", "Stale", 60d), ("Reason", "Reason", 450d) })
    controls.Columns.Add(new DataGridTextColumn { Header = header, Binding = new System.Windows.Data.Binding(path), Width = width });
@@ -107,7 +110,15 @@ public sealed class ReportsWindow : Window
   report = await service.BuildAsync((ReportPurpose)purpose.SelectedItem, ids, CancellationToken.None);
   controls.ItemsSource = report.Controls;
   status.Text = report.Completion + $" Automated verified controls: {report.VerifiedCount}. Generated {report.GeneratedAt:O}.";
-  details.Text = string.Join("\n", report.Limitations) + "\n\n" + ReportExporter.Render(report, ReportFormat.Json);
+  details.Text = string.Join("\n", report.Limitations) + "\n\n" + ReportDisclosure.Render(ReportDisclosure.Project(report,identifiers.IsChecked==true),ReportFormat.Json);
+ }
+ async Task CompareAsync()
+ {
+  var selected=history.SelectedItems.Cast<HistoryItem>().ToArray();if(selected.Length!=2||selected.Any(i=>i.Kind!="capture"))throw new InvalidOperationException("Select exactly two capture records.");
+  var captures=new List<DeviceCapture>();foreach(var item in selected){var record=await service.ReadRecordAsync(item.Id,default);captures.Add(StrictJson.Read<DeviceCapture>(StrictJson.Bytes(record.Data)));}
+  var ordered=captures.OrderBy(c=>c.CapturedAt).ToArray();report=null;controls.ItemsSource=null;
+  details.Text=JsonSerializer.Serialize(RunComparisonService.Compare(ordered[0],ordered[1]),new JsonSerializerOptions(StrictJson.Options){WriteIndented=true});
+  status.Text="Comparison: "+ordered[0].CapturedAt.ToString("O")+" → "+ordered[1].CapturedAt.ToString("O")+". Different targets, incomplete or historical coverage are not comparable.";
  }
  async Task ExportAsync(ReportFormat format)
  {
@@ -115,8 +126,8 @@ public sealed class ReportsWindow : Window
   var extension = format.ToString().ToLowerInvariant();
   var dialog = new SaveFileDialog { Title = "Export dated snapshot report to a new file", Filter = $"{format} report|*.{extension}", DefaultExt = extension, AddExtension = true, FileName = $"device-report-{DateTime.UtcNow:yyyyMMdd-HHmmss}.{extension}", OverwritePrompt = true };
   if (dialog.ShowDialog(this) != true) return;
-  var receipt = await ReportExporter.ExportAsync(report, format, dialog.FileName, CancellationToken.None);
-  status.Text = $"Exported {receipt.Bytes} bytes to {receipt.Destination}. Existing files are never overwritten; choose a new name.";
+  await ReportDisclosure.ExportAsync(ReportDisclosure.Project(report,identifiers.IsChecked==true),format,dialog.FileName,CancellationToken.None);
+  status.Text="Projected report exported to "+dialog.FileName+". Existing files are never overwritten.";
  }
  async Task RecordManualAsync()
  {

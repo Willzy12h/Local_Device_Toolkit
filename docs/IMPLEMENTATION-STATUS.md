@@ -31,3 +31,13 @@ Earlier native Windows CI passed 77 and then 94 tests, PowerShell 5.1 checks, to
 - User publication of the saved cloud environment configuration and validation in a fresh task.
 
 No customer device was modified by this cloud task. The unavailable earlier WinForms toolkit was not recovered; this is the new WPF implementation selected by the user, adapted from the M365 source with provenance.
+
+## Engineer readiness source expansion — 16 October 2026
+
+The new source adds the 24 separately registered local checks, native typed target inputs, shared setup/diagnostic task navigation, unticked suggestions, bounded incident pages and deterministic event explanations. Source M365 controls remain 30. Check evidence includes target, coverage, local schema/rule versions and exact selection; changes of target invalidate displayed evidence and review. Application inventory separates installed/configured/sign-in/licensing/restart dimensions.
+
+Six separate actions extend the existing review/UAC/journal path: four power timeout slots, whole-device DNS cache refresh with an explicit stale-cache hypothesis, and configured-source Defender signature requests. Original-engineer power guards, protected ordered-state checks, drift refusal and raw recorded restoration are included. Signature process uncertainty keeps a durable guard and requires explicit protected reconciliation. Action completion, expected-state verification and symptom resolution remain distinct; no exit code is presented as a general fix.
+
+Native handover provides eleven independent manual rows, client-checklist loading, target-specific attestations and eight fixed Settings launch buttons. Reports offer minimized export previews and compatible two-capture comparison. Uptime and parent-process identity supplement wall-clock review expiry. Eleven scripts are pinned; package verification checks the complete closed inventory.
+
+Available validation is recorded in the expansion execution report. Native Windows 11/UAC/hardware/network acceptance remains pending as listed in WINDOWS-ACCEPTANCE.md. No customer device was changed. Earlier ZIPs and screenshots belong to their earlier commits; they do not prove this expansion's native behavior.

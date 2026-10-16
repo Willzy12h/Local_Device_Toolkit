@@ -15,6 +15,12 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
+      - name: Activate runner PowerShell for script fixtures
+        shell: bash
+        run: |
+          toolkit_test_pwsh=$(command -v pwsh)
+          test -x "$toolkit_test_pwsh"
+          echo "TOOLKIT_TEST_PWSH=$toolkit_test_pwsh" >> "$GITHUB_ENV"
       - run: dotnet restore LocalDeviceToolkit.sln --locked-mode
       - run: dotnet build LocalDeviceToolkit.sln -c Release --no-restore -warnaserror
       - run: dotnet test LocalDeviceToolkit.sln -c Release --no-restore -warnaserror --logger trx --results-directory TestResults
@@ -72,7 +78,7 @@ jobs:
           $app=[Diagnostics.Process]::Start($start)
           if (-not $app.WaitForExit(60000)) { $app.Kill(); throw 'Read-only native render timed out.' }
           if ($app.ExitCode -ne 0) { throw "Packaged application failed: $($app.ExitCode)" }
-          foreach ($page in @('home','setup','diagnostics','deployments','reports','setup-compact','diagnostics-compact','deployments-compact','reports-compact','saved-reports','deployment-inputs','recorded-restoration','manual-review','setting-inputs','saved-reports-compact','deployment-inputs-compact','recorded-restoration-compact','manual-review-compact','setting-inputs-compact','task-review','task-review-compact')) {
+          foreach ($page in @('home','setup','diagnostics','deployments','reports','setup-compact','diagnostics-compact','deployments-compact','reports-compact','saved-reports','deployment-inputs','recorded-restoration','manual-review','setting-inputs','saved-reports-compact','deployment-inputs-compact','recorded-restoration-compact','manual-review-compact','setting-inputs-compact','task-review','task-review-compact','incident-inputs','incident-inputs-compact','network-inputs','network-inputs-compact','power-timeout','power-timeout-compact','dns-refresh','dns-refresh-compact','defender-request','defender-request-compact','engineer-handover','engineer-handover-compact','setup-local','setup-local-compact','diagnostics-local','diagnostics-local-compact')) {
             $image=Get-Item (Join-Path $render ($page+'.png'))
             if ($image.Length -lt 1024) { throw "Native render is empty: $page" }
           }

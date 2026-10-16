@@ -8,16 +8,19 @@ public sealed class ProtectedActionService(OperationRegistry operations,PlanServ
  public async Task<ActionResult> ExecuteAsync(ReviewedPlan plan,Guid actionId,DeviceContext physicalMachine,ExecutionActor parent,ExecutionActor worker,Func<bool> parentStillMatches,CancellationToken ct)
  {
   WorkerGuard.ValidateOriginal(plan.Context,physicalMachine,parent);
+  if(plan.Lifetime is not {} lifetime||!lifetime.Matches(parent)||lifetime.IsExpired(Environment.TickCount64))throw new PlanValidationException("A fresh review from the authenticated parent is required.");
   if(!worker.IsElevated||worker.ProcessId<=0||!parentStillMatches())throw new PlanValidationException("An authenticated live parent and elevated worker are required.");
   if(plan.Actions is null)throw new PlanValidationException("Invalid action inventory.");
   var action=plan.Actions.SingleOrDefault(a=>a is not null&&a.Id==actionId)??throw new PlanValidationException("The action is not in this plan.");
   operations.Validate(action.Request);var operation=operations.Find(action.Request.OperationId);
+  IReadOnlyList<ProbeObservation> checkedBefore=action.Before;
   async Task CheckAsync()
   {
    ct.ThrowIfCancellationRequested();
+   await Settings.PowerPlanSequence.VerifyProtectedPrefixAsync(plan,action,journal,ct);
    var readiness=await operation.InspectAsync(plan.Context,action.Request.Parameters,ct);
    if(!readiness.CanExecute||readiness.Scope!=OperationScope.Machine||readiness.Privilege!=PrivilegeRequirement.Administrator||readiness!=action.Readiness)throw new PlanValidationException("The worker accepts only the exact reviewed machine action; original-user operations must stay in the original process.");
-   var before=await operation.CaptureBeforeAsync(plan.Context,action.Request.Parameters,ct);
+   var before=await operation.CaptureBeforeAsync(plan.Context,action.Request.Parameters,ct);checkedBefore=before;
    var valid=plans.ValidateAction(plan,action,plan.Context,catalogue.Identity,before,clock.GetUtcNow());
    if(!valid.IsValid)throw new PlanValidationException(string.Join(" ",valid.Reasons));
    if(!parentStillMatches())throw new PlanValidationException("The authenticated parent is no longer available.");
@@ -32,12 +35,12 @@ public sealed class ProtectedActionService(OperationRegistry operations,PlanServ
   // Deterministic, non-overwriting intent identity prevents replay even across worker restarts.
   var intentId=new Guid(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(plan.Id.ToString("D")+"/"+action.Id.ToString("D"))).AsSpan(0,16));
   var runId=Guid.NewGuid();var started=clock.GetUtcNow();
-  await journal.SaveNewAsync(EvidenceRecord.Create(intentId,"intent",plan.Context,started,StrictJson.Value(new IntentRecord(runId,plan.Id,action,action.Before))),ct);
+  await journal.SaveNewAsync(EvidenceRecord.Create(intentId,"intent",plan.Context,started,StrictJson.Value(new IntentRecord(runId,plan.Id,action,checkedBefore))),ct);
   ActionResult result;bool dispatched=false;
   try
   {
    await CheckAsync();
-   dispatched=true;result=await operation.ExecuteAsync(plan.Context,action,ct);ToolkitEvidenceSchemas.ValidateResult(result);
+   dispatched=true;result=await operation.ExecuteAsync(plan.Context,Settings.PowerPlanSequence.AtDispatch(plan,action),ct);ToolkitEvidenceSchemas.ValidateResult(result);
    if(result.ActionId!=action.Id||result.Actor!=worker)result=new(action.Id,ActionOutcome.OutcomeUnknown,worker,"The execution result did not match the authenticated worker/action; reconcile before retrying.",[]);
   }
   catch(PlanValidationException error) when(!dispatched){result=new(action.Id,ActionOutcome.Failed,worker,"Not started: "+error.Message,[]);}

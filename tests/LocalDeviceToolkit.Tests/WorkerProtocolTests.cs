@@ -32,13 +32,22 @@ public sealed class WorkerProtocolTests
  public void Mixed_UI_worker_builds_are_refused(string? requested)=>Assert.Throws<PlanValidationException>(()=>WorkerGuard.ValidateBuild(requested,"current-build"));
  [Fact] public void Protected_reads_cannot_switch_to_the_alternate_admins_profile()
  {
-  var request=new WorkerRequest(1,WorkerMode.CaptureProtected,TestData.Context,new(["CFG-WIN-012"],new("diagnostics","configuration")),null,null);
+  var request=new WorkerRequest(2,WorkerMode.CaptureProtected,TestData.Context,new(["CFG-WIN-012"],new("diagnostics","configuration"),["extensions.visible"],["windows.file-extensions"]),null,null);
   Assert.Throws<PlanValidationException>(()=>WorkerRequestValidator.Validate(request,LocalDeviceToolkit.Engine.Catalogue.CatalogueLoader.LoadShipped(),LocalDeviceToolkit.Engine.Catalogue.WorkflowCatalogue.LoadShipped()));
  }
  [Fact] public async Task Fixed_typed_request_survives_a_real_frame_roundtrip()
  {
-  var request=new WorkerRequest(1,WorkerMode.CaptureProtected,TestData.Context,new(["CMP-WIN-001"],new("diagnostics","health")),null,null);
+  var request=new WorkerRequest(2,WorkerMode.CaptureProtected,TestData.Context,new(["CMP-WIN-001"],new("diagnostics","health"),["secureboot.enabled"],["readiness.secure-boot"]),null,null);
   using var stream=new MemoryStream();await WorkerFrames.WriteAsync(stream,request,default);stream.Position=0;
   var result=await WorkerFrames.ReadAsync<WorkerRequest>(stream,default);Assert.Equal(request.OriginalContext,result.OriginalContext);Assert.Equal(request.Capture!.ControlIds,result.Capture!.ControlIds);
+ }
+ [Fact] public void Protected_read_requires_exact_registered_selection_and_current_protocol()
+ {
+  var catalogue=LocalDeviceToolkit.Engine.Catalogue.CatalogueLoader.LoadShipped();var flows=LocalDeviceToolkit.Engine.Catalogue.WorkflowCatalogue.LoadShipped();
+  var request=new WorkerRequest(2,WorkerMode.CaptureProtected,TestData.Context,new(["CMP-WIN-001"],new("diagnostics","health"),["secureboot.enabled"],["readiness.secure-boot"]),null,null);
+  WorkerRequestValidator.Validate(request,catalogue,flows);
+  Assert.Throws<PlanValidationException>(()=>WorkerRequestValidator.Validate(request with {SchemaVersion=1},catalogue,flows));
+  Assert.Throws<PlanValidationException>(()=>WorkerRequestValidator.Validate(request with {Capture=request.Capture! with {CheckIds=["tpm.ready"]}},catalogue,flows));
+  Assert.Throws<PlanValidationException>(()=>WorkerRequestValidator.Validate(request with {Capture=request.Capture! with {CheckIds=["secureboot.enabled","secureboot.enabled"]}},catalogue,flows));
  }
 }

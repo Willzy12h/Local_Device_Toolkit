@@ -1,0 +1,188 @@
+{
+  "purpose": "Supplemental sources for the expanded design; this records documentation, not Windows execution validation.",
+  "sources": [
+    {
+      "id": "E04",
+      "url": "https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-power",
+      "resolved_url": "https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-power",
+      "status": 200,
+      "title": "Power Policy CSP | Microsoft Learn",
+      "retrieved_utc": "2026-10-15T17:31:19.945809+00:00",
+      "text_sha256": "c80d1a986066ef573d9359d7af99d1f03c6705fb2970ca4e0f542590e71eab01",
+      "metadata": {
+        "description": "Learn more about the Power Area in Policy CSP.",
+        "ms.date": "2025-10-03T00:00:00Z",
+        "updated_at": "2025-10-03T20:35:00Z"
+      }
+    },
+    {
+      "id": "E05",
+      "url": "https://learn.microsoft.com/en-us/powershell/module/pnpdevice/get-pnpdevice?view=windowsserver2025-ps",
+      "resolved_url": "https://learn.microsoft.com/en-us/powershell/module/pnpdevice/get-pnpdevice?view=windowsserver2025-ps",
+      "status": 200,
+      "title": "Get-PnpDevice (PnpDevice) | Microsoft Learn",
+      "retrieved_utc": "2026-10-15T17:31:20.051257+00:00",
+      "text_sha256": "419cc54bf6313275a30dcd58c2d94bc96e9eb0121bb4414a72a334b062072304",
+      "metadata": {
+        "description": "Use this topic to help manage Windows and Windows Server technologies with Windows PowerShell.",
+        "ms.date": "2016-12-20T00:00:00Z",
+        "updated_at": "2025-05-14T22:44:00Z"
+      }
+    },
+    {
+      "id": "E06",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/wuapi/nf-wuapi-iupdatesearcher-queryhistory",
+      "resolved_url": "https://learn.microsoft.com/en-us/windows/win32/api/wuapi/nf-wuapi-iupdatesearcher-queryhistory",
+      "status": 200,
+      "title": "IUpdateSearcher::QueryHistory (wuapi.h) - Win32 apps | Microsoft Learn",
+      "retrieved_utc": "2026-10-15T17:31:20.304347+00:00",
+      "text_sha256": "67a00065f26b2a668448343b4c5166287350a64509ec79e423752f4d1a071cfc",
+      "metadata": {
+        "description": "Synchronously queries the computer for the history of the update events.",
+        "ms.date": "2018-12-05T00:00:00Z",
+        "updated_at": "2024-02-22T19:54:00Z"
+      },
+      "checked_excerpt": "Synchronously queries the computer for the history of the update events.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "E07",
+      "url": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/netsh-winhttp",
+      "resolved_url": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/netsh-winhttp",
+      "status": 200,
+      "title": "netsh winhttp | Microsoft Learn",
+      "retrieved_utc": "2026-10-15T17:31:20.003977+00:00",
+      "text_sha256": "75c431e25709f4969852e43c3cee9936227de568394ab4ce0c5b5eb51899b05f",
+      "metadata": {
+        "description": "The netsh winhttp command configures and manages WinHTTP settings for network communications for applications that use WinHTTP in Windows.",
+        "ms.date": "2025-08-19T00:00:00Z",
+        "updated_at": "2025-10-22T17:33:00Z"
+      }
+    },
+    {
+      "id": "E08",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/winhttp/nf-winhttp-winhttpgetieproxyconfigforcurrentuser",
+      "resolved_url": "https://learn.microsoft.com/en-us/windows/win32/api/winhttp/nf-winhttp-winhttpgetieproxyconfigforcurrentuser",
+      "status": 200,
+      "title": "WinHttpGetIEProxyConfigForCurrentUser function (winhttp.h) - Win32 apps | Microsoft Learn",
+      "retrieved_utc": "2026-10-15T17:31:20.103378+00:00",
+      "text_sha256": "1bc9159155b1c586989baec056345fb56001015db3ad7424581432d32a817307",
+      "metadata": {
+        "description": "Retrieves the Internet Explorer proxy configuration for the current user.",
+        "ms.date": "2018-12-05T00:00:00Z",
+        "updated_at": "2024-02-22T19:54:00Z"
+      },
+      "checked_excerpt": "returns the proxy settings for the current active connection.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "E09",
+      "url": "https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/powercfg-command-line-options",
+      "resolved_url": "https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/powercfg-command-line-options",
+      "status": 200,
+      "title": "Powercfg command-line options | Microsoft Learn",
+      "retrieved_utc": "2026-10-15T17:31:20.298960+00:00",
+      "text_sha256": "95e46ca112b5e7a7c7df446bb06bd51068745ed2dc1aeec0d0f94d9cfdb93672",
+      "metadata": {
+        "description": "You can use the powercfg.exe tool to control power schemes (also named power plans) to use the available sleep states, to control the power states of individual devices, and to analyze the system for common energy-efficiency and battery-life problems.",
+        "ms.date": "2017-10-27T00:00:00Z",
+        "updated_at": "2021-12-15T11:54:00Z"
+      }
+    },
+    {
+      "id": "E10",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/win32-pnpentity",
+      "resolved_url": "https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/win32-pnpentity",
+      "status": 200,
+      "title": "Win32_PnPEntity class - Win32 apps | Microsoft Learn",
+      "retrieved_utc": "2026-10-15T17:31:20.251367+00:00",
+      "text_sha256": "4cdaad5fcd6f311bdbad283d0d41020ce0561535a9ef3cbb08b110f2aa4ca260",
+      "metadata": {
+        "description": "Epresents the properties of a Plug and Play device.",
+        "ms.date": "2018-05-31T00:00:00Z",
+        "updated_at": "2023-11-09T23:21:00Z"
+      }
+    },
+    {
+      "id": "E11",
+      "url": "https://learn.microsoft.com/en-us/windows-hardware/customize/power-settings/display-settings-display-idle-timeout",
+      "resolved_url": "https://learn.microsoft.com/en-us/windows-hardware/customize/power-settings/display-settings-display-idle-timeout",
+      "status": 200,
+      "title": "Display idle timeout | Microsoft Learn",
+      "retrieved_utc": "2026-10-15T17:31:20.309238+00:00",
+      "text_sha256": "5228b711d5d25e23032328d566fba30792fe67419ad8b6081c9c41237e82ce41",
+      "metadata": {
+        "description": "Specifies the period of inactivity before the display is automatically turned off.",
+        "ms.date": "2020-03-31T00:00:00Z",
+        "updated_at": "2020-04-10T19:09:00Z"
+      },
+      "checked_excerpt": "The value denotes the number of seconds.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "E12",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/powersetting/nf-powersetting-powerwriteacvalueindex",
+      "resolved_url": "https://learn.microsoft.com/en-us/windows/win32/api/powersetting/nf-powersetting-powerwriteacvalueindex",
+      "status": 200,
+      "title": "PowerWriteACValueIndex function (powersetting.h) - Win32 apps | Microsoft Learn",
+      "retrieved_utc": "2026-10-15T17:32:39.809354+00:00",
+      "text_sha256": "a4aba6bc6a845dc2ce0892453b2073c0cf3d778646493fb9ebb1c62f184fc6bc",
+      "metadata": {
+        "description": "Sets the AC value index of the specified power setting.",
+        "ms.date": "2018-12-05T00:00:00Z",
+        "updated_at": "2025-07-01T18:41:00Z"
+      },
+      "checked_excerpt": "Changes to the settings for the active power scheme do not take effect until you call the PowerSetActiveScheme function.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "E13",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/powersetting/nf-powersetting-powerwritedcvalueindex",
+      "resolved_url": "https://learn.microsoft.com/en-us/windows/win32/api/powersetting/nf-powersetting-powerwritedcvalueindex",
+      "status": 200,
+      "title": "PowerWriteDCValueIndex function (powersetting.h) - Win32 apps | Microsoft Learn",
+      "retrieved_utc": "2026-10-15T17:32:40.064234+00:00",
+      "text_sha256": "2cc21a62cf06711e9526c1272f1c226e538168508646f2cb68a67125b1dffca8",
+      "metadata": {
+        "description": "Sets the DC index of the specified power setting.",
+        "ms.date": "2018-12-05T00:00:00Z",
+        "updated_at": "2025-07-01T18:41:00Z"
+      },
+      "checked_excerpt": "Sets the DC index of the specified power setting.",
+      "excerpt_verified_in_fetched_text": true
+    },
+    {
+      "id": "E14",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/powersetting/nf-powersetting-powersetactivescheme",
+      "resolved_url": "https://learn.microsoft.com/en-us/windows/win32/api/powersetting/nf-powersetting-powersetactivescheme",
+      "status": 200,
+      "title": "PowerSetActiveScheme function (powersetting.h) - Win32 apps | Microsoft Learn",
+      "retrieved_utc": "2026-10-15T17:32:40.283836+00:00",
+      "text_sha256": "821f5adb4e07d80ed7a68b09559485a68328114d6cb89d6d05b0bc6cd82d1c65",
+      "metadata": {
+        "description": "Sets the active power scheme for the current user.",
+        "ms.date": "2018-12-05T00:00:00Z",
+        "updated_at": "2025-07-01T18:41:00Z"
+      },
+      "checked_excerpt": "Sets the active power scheme for the current user.",
+      "excerpt_verified_in_fetched_text": true
+    }
+  ],
+  "failed_candidates": [
+    {
+      "id": "E01",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/powrprof/nf-powrprof-powerwriteacvalueindex",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "id": "E02",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/powrprof/nf-powrprof-powerwritedcvalueindex",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "id": "E03",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/powrprof/nf-powrprof-powersetactivescheme",
+      "error": "HTTP Error 404: Not Found"
+    }
+  ]
+}
