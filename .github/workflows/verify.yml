@@ -15,6 +15,12 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
+      - name: Activate runner PowerShell for script fixtures
+        shell: bash
+        run: |
+          toolkit_test_pwsh=$(command -v pwsh)
+          test -x "$toolkit_test_pwsh"
+          echo "TOOLKIT_TEST_PWSH=$toolkit_test_pwsh" >> "$GITHUB_ENV"
       - run: dotnet restore LocalDeviceToolkit.sln --locked-mode
       - run: dotnet build LocalDeviceToolkit.sln -c Release --no-restore -warnaserror
       - run: dotnet test LocalDeviceToolkit.sln -c Release --no-restore -warnaserror --logger trx --results-directory TestResults
