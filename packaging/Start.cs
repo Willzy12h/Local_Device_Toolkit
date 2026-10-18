@@ -18,6 +18,7 @@ class ToolkitStartup {
     arguments+=(args[0]=="--smoke-output"?" -SmokeOutput ":" -PreviewOutput ")+"\""+Path.GetFullPath(args[1]).TrimEnd('\\')+"\"";
    }
    var start=new ProcessStartInfo(shell,arguments){UseShellExecute=false,CreateNoWindow=true,RedirectStandardError=true,WorkingDirectory=root};
+   start.EnvironmentVariables["PSModulePath"]=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell","v1.0","Modules");
    using(var process=Process.Start(start)){
     if(process==null)throw new IOException("Windows could not start the toolkit.");
     var detail=new StringBuilder();var buffer=new char[512];int read;

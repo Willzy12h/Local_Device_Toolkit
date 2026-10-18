@@ -1,6 +1,9 @@
 # Native Windows PowerShell 5.1 bootstrap; no downloaded script is executed.
 # Release pins: https://builds.dotnet.microsoft.com/dotnet/release-metadata/10.0/releases.json
 Set-StrictMode -Version Latest
+if($PSVersionTable.PSEdition -eq 'Desktop'){
+ $env:PSModulePath=Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::System)) 'WindowsPowerShell/v1.0/Modules'
+}
 $script:ToolkitRuntimeVersion='10.0.13'
 $script:ToolkitRuntimeMinimumVersion='10.0.0'
 function Get-ToolkitRuntimeDownloads {

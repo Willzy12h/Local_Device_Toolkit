@@ -10,27 +10,18 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 public static class ToolkitTestElevation {
  [DllImport("advapi32.dll",SetLastError=true)] static extern bool GetTokenInformation(IntPtr token,int type,out int value,int size,out int returned);
- [DllImport("advapi32.dll")] static extern int RegOverridePredefKey(IntPtr key,IntPtr replacement);
  public static bool IsElevated(IntPtr token){int value,size;if(!GetTokenInformation(token,20,out value,4,out size))throw new Win32Exception();return value!=0;}
- public static void OverrideMachineRegistry(IntPtr replacement){int error=RegOverridePredefKey(new IntPtr(unchecked((int)0x80000002)),replacement);if(error!=0)throw new Win32Exception(error);}
 }
 '@
  $identity=[Security.Principal.WindowsIdentity]::GetCurrent()
  try{if([ToolkitTestElevation]::IsElevated($identity.Token)){throw 'Native test token still reports elevation.'}}finally{$identity.Dispose()}
  if(Test-Path -LiteralPath (Join-Path $PackageDirectory '.dotnet')){throw 'Native test requires a missing private runtime.'}
- # Isolate only this PowerShell process's registry view. A fake registered
- # location forces the missing-runtime UI path even if the runner has .NET.
- # No real HKLM setting changes, and the launched application is unaffected.
- $fixtureName='Software\LocalDeviceToolkit\RuntimeTest-'+[Guid]::NewGuid().ToString('N')
- $fixture=[Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($fixtureName)
- $registered=$fixture.CreateSubKey('SOFTWARE\dotnet\Setup\InstalledVersions\x64')
- try{$registered.SetValue('InstallLocation',(Join-Path $PackageDirectory 'absent-global'))}finally{$registered.Dispose()}
- try{
-  [ToolkitTestElevation]::OverrideMachineRegistry($fixture.Handle)
-  $global:LASTEXITCODE=0;$env:DOTNET_ROLL_FORWARD='Disable'
-  & (Join-Path $PackageDirectory 'Start.ps1') -SmokeOutput (Join-Path $OutputDirectory 'first-run-views')
-  if($LASTEXITCODE -ne 0){throw 'Missing-runtime installation through the native startup UI failed.'}
- }finally{[ToolkitTestElevation]::OverrideMachineRegistry([IntPtr]::Zero);$fixture.Dispose();[Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree($fixtureName)}
+ # Control only global discovery in this UI fixture; the runtime download,
+ # checksum verification, extraction, restricted token and app launch are real.
+ . (Join-Path $PackageDirectory 'Start.ps1')
+ function Get-ToolkitGlobalRuntimeRoot {return (Join-Path $PackageDirectory 'absent-global')}
+ $env:DOTNET_ROLL_FORWARD='Disable'
+ if((Show-ToolkitStartup $PackageDirectory (Join-Path $OutputDirectory 'first-run-views') '') -ne 0){throw 'Missing-runtime installation through the native startup UI failed.'}
  if(-not (Test-ToolkitRuntime (Join-Path $PackageDirectory '.dotnet'))){throw 'The actual runtime download is incomplete.'}
  Install-ToolkitRuntime $PackageDirectory {throw 'A complete installation must not download again.'}
  foreach($mode in @('--startup-preview','--smoke-output')){
