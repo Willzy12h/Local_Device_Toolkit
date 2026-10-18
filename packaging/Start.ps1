@@ -16,7 +16,7 @@ $stream=New-Object IO.FileStream($logPath,[IO.FileMode]::CreateNew,[IO.FileAcces
 $script:log=New-Object IO.StreamWriter($stream,(New-Object Text.UTF8Encoding($false)))
 $script:log.AutoFlush=$true
 [xml]$xaml=@'
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="Local Device Toolkit" Width="620" Height="300" WindowStartupLocation="CenterScreen" ResizeMode="NoResize" FontFamily="Segoe UI" FontSize="14" Background="White">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="Local Device Toolkit" Width="620" Height="340" WindowStartupLocation="CenterScreen" ResizeMode="NoResize" FontFamily="Segoe UI" FontSize="14" Background="White">
  <StackPanel Margin="24">
   <TextBlock Text="Starting Local Device Toolkit" FontSize="23" FontWeight="SemiBold" Margin="0,0,0,16"/>
   <TextBlock Name="Status" Text="Checking .NET 10 Desktop Runtime..." TextWrapping="Wrap" Height="72"/>

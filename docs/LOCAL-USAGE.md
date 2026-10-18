@@ -115,3 +115,5 @@ The lightweight startup UI shows checks, download/install progress and errors, w
 The pinned first-use Core and Desktop archives total approximately **76 MB**, expanding to approximately **180 MB** once, shared by the UI and worker. Private runtime servicing is part of toolkit maintenance: update the release pins and distribute a tested package; this is not a machine-wide installation serviced automatically by Windows Update. Copying the lightweight ZIP does not copy an already-installed private runtime. Keep the extracted folder for reuse.
 
 Administrator prompts still apply to the individual device actions that require them. Vendor installers and settings may report their own restart requirements; those are separate from runtime startup. Interactive same/alternate-user UAC and physical Windows 11 acceptance remain pending.
+
+To service an existing private runtime, close the toolkit, move its `.dotnet` folder aside, and start the newly approved package. It will install that package's pinned runtime. Compatible global runtimes remain managed by your organisation; startup does not silently upgrade them.
