@@ -11,7 +11,7 @@ public sealed class PortablePackageTests : IDisposable
  const string Commit = "0123456789abcdef0123456789abcdef01234567";
  public void Dispose() { if (Directory.Exists(root)) Directory.Delete(root, true); }
  static string Script([System.Runtime.CompilerServices.CallerFilePath] string source = "") => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(source)!, "..", "..", "build", "Test-Portable.ps1"));
- string Fixture(string defect = "")
+ string Fixture(string defect = "", bool lightweight = false)
  {
   Directory.CreateDirectory(root); var path = Path.Combine(root, Guid.NewGuid() + ".zip"); var files = new Dictionary<string, byte[]>();
   foreach (var prefix in new[] { "", "worker/" })
@@ -19,10 +19,12 @@ public sealed class PortablePackageTests : IDisposable
    var name = prefix.Length == 0 ? "LocalDeviceToolkit.App" : "LocalDeviceToolkit.Worker";
    var pe = new byte[256]; pe[0] = 0x4d; pe[1] = 0x5a; pe[0x3c] = 0x80; pe[0x80] = 0x50; pe[0x81] = 0x45; pe[0x84] = 0x64; pe[0x85] = 0x86;
    files[prefix + name + ".exe"] = pe;
-   foreach (var dll in new[] { name + ".dll", "coreclr.dll", "PresentationFramework.dll", "System.Private.CoreLib.dll", "hostfxr.dll", "hostpolicy.dll" }) files[prefix + dll] = [];
-   files[prefix + name + ".runtimeconfig.json"] = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { runtimeOptions = new { tfm = "net10.0", includedFrameworks = new[] { new { name = "Microsoft.NETCore.App", version = "10.0.0" }, new { name = "Microsoft.WindowsDesktop.App", version = "10.0.0" } } } }));
+   foreach (var dll in lightweight ? new[]{name+".dll"} : new[] { name + ".dll", "coreclr.dll", "PresentationFramework.dll", "System.Private.CoreLib.dll", "hostfxr.dll", "hostpolicy.dll" }) files[prefix + dll] = [];
+   var frameworks=new[] { new { name = "Microsoft.NETCore.App", version = "10.0.0" }, new { name = "Microsoft.WindowsDesktop.App", version = "10.0.0" } };
+   files[prefix + name + ".runtimeconfig.json"] = Encoding.UTF8.GetBytes(lightweight ? JsonSerializer.Serialize(new{runtimeOptions=new{tfm="net10.0",frameworks}}) : JsonSerializer.Serialize(new { runtimeOptions = new { tfm = "net10.0", includedFrameworks = frameworks } }));
   }
   var repository = Path.GetDirectoryName(Path.GetDirectoryName(Script())!)!;
+  if(lightweight){foreach(var leaf in new[]{"Start.cmd","Start.ps1","Runtime.ps1"}){Assert.True(File.Exists(Path.Combine(repository,"packaging",leaf)),"Runtime startup asset missing: "+leaf);files[leaf]=File.ReadAllBytes(Path.Combine(repository,"packaging",leaf));}files["Start.exe"]=files["LocalDeviceToolkit.App.exe"].ToArray();}
   foreach (var relative in new[] { "NOTICE.md", "docs/LOCAL-USAGE.md", "provenance/import-manifest.json", "catalogue/reference.json", "catalogue/local-windows.json", "catalogue/tasks.json", "catalogue/workflows.json", "catalogue/pins.json", "catalogue/local-probes.json", "catalogue/windows-support.json" }) files[relative] = File.ReadAllBytes(Path.Combine(repository, relative));
   foreach(var tool in new[]{"New-DeploymentProfile.ps1","Test-Portable.ps1"})files["tools/"+tool]=File.ReadAllBytes(Path.Combine(repository,"build",tool));
   foreach (var relative in new[]{"registry.json"}.Concat(LocalDeviceToolkit.Windows.Inspection.RegisteredScripts.Manifest.Scripts.Select(s=>s.Path)))
@@ -36,8 +38,9 @@ public sealed class PortablePackageTests : IDisposable
   if (defect == "unsafe-path") files["../outside.txt"] = [1];
   if (defect == "wrong-machine") files["worker/LocalDeviceToolkit.Worker.exe"][0x84] = 0xaa;
   if (defect == "framework-dependent") files["LocalDeviceToolkit.App.runtimeconfig.json"] = Encoding.UTF8.GetBytes("{\"runtimeOptions\":{\"framework\":{\"name\":\"Microsoft.NETCore.App\",\"version\":\"10.0.0\"}}}");
+  if(defect=="missing-launcher")files.Remove("Start.ps1");
   var entries = files.Select(f => new { path = f.Key, bytes = f.Value.Length, sha256 = Convert.ToHexString(SHA256.HashData(f.Value)).ToLowerInvariant() }).ToArray();
-  var manifest = JsonSerializer.SerializeToUtf8Bytes(new { schemaVersion = 1, commit = Commit, builtAt = "2026-10-15T00:00:00.0000000+00:00", runtime = "win-x64", selfContained = true, workingTreeDirty = defect == "dirty", files = entries });
+  var manifest = JsonSerializer.SerializeToUtf8Bytes(new { schemaVersion = 1, commit = Commit, builtAt = "2026-10-15T00:00:00.0000000+00:00", runtime = "win-x64", selfContained = !lightweight, workingTreeDirty = defect == "dirty", files = entries });
   if (defect == "duplicate-manifest-key") manifest = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(manifest).Replace("\"schemaVersion\":1", "\"schemaVersion\":1,\"schemaVersion\":1"));
   if (defect == "unknown-manifest-field") manifest = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(manifest).Replace("\"schemaVersion\":1", "\"schemaVersion\":1,\"unexpected\":true"));
   if (defect == "oversized-manifest") manifest = new byte[8 * 1024 * 1024 + 1];
@@ -68,6 +71,16 @@ public sealed class PortablePackageTests : IDisposable
   var zip = Fixture(); var original = await File.ReadAllBytesAsync(zip); var result = Path.Combine(root, "result.json");
   var verification = await Verify(zip, result, "-ExpectedCommit", Commit, "-ExpectedSha256", Convert.ToHexString(SHA256.HashData(original)).ToLowerInvariant()); Assert.True(verification.Exit == 0, verification.Output);
   using var json = JsonDocument.Parse(await File.ReadAllBytesAsync(result)); Assert.False(json.RootElement.GetProperty("NativeLaunchVerified").GetBoolean()); Assert.Equal(Commit, json.RootElement.GetProperty("Commit").GetString()); Assert.Equal(original, await File.ReadAllBytesAsync(zip)); Assert.False(Directory.Exists(Path.Combine(root, "worker")));
+ }
+ [Fact] public async Task Lightweight_package_declares_runtime_requirement_and_checks_all_files()
+ {
+  var zip=Fixture(lightweight:true);var result=Path.Combine(root,"result.json");var verification=await Verify(zip,result);
+  Assert.True(verification.Exit==0,verification.Output);using var json=JsonDocument.Parse(await File.ReadAllBytesAsync(result));Assert.False(json.RootElement.GetProperty("SelfContained").GetBoolean());Assert.False(json.RootElement.GetProperty("NativeLaunchVerified").GetBoolean());
+ }
+ [Fact] public async Task Lightweight_package_without_launcher_is_refused()
+ {
+  var zip=Fixture("missing-launcher",lightweight:true);var result=Path.Combine(root,"result.json");var verification=await Verify(zip,result);
+  Assert.NotEqual(0,verification.Exit);Assert.Contains("Lightweight startup asset is missing",verification.Output);Assert.False(File.Exists(result));
  }
  [Theory] [InlineData("missing-worker")] [InlineData("hash-mismatch")] [InlineData("unsafe-path")] [InlineData("wrong-machine")] [InlineData("framework-dependent")] [InlineData("duplicate-manifest-key")] [InlineData("missing-notice")] [InlineData("rehashed-script")] [InlineData("case-collision")] [InlineData("too-many-entries")] [InlineData("unknown-manifest-field")] [InlineData("oversized-manifest")] [InlineData("extra-file")] [InlineData("reparse-entry")] [InlineData("uncompressed-limit")]
  public async Task Invalid_package_refused_without_result_or_extract(string defect)

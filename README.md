@@ -2,6 +2,8 @@
 
 A native Windows WPF toolkit for engineers to assess the current device, review local changes and application deployments, and verify their results.
 
+The lightweight edition starts with **Start.exe**: a native progress window checks .NET 10 and silently installs verified private runtime components when missing, then opens the app. Runtime setup needs no administrator rights or reboot. A self-contained offline edition remains available. See [local usage](docs/LOCAL-USAGE.md) for download, servicing and policy requirements.
+
 The toolkit includes setup and diagnostics workspaces, shared checks and queue, current-user settings, selective elevation, recorded restoration, reviewed MSI/OneDrive/MSIX/Office deployments and evidence-based reports. Native device and vendor acceptance remains pending; see the measured status below.
 
 The selected direction is a new WPF application adapted from the relevant parts of [M365 Buildstandards](https://github.com/Willzy12h/M365-Buildstandards). It runs as the current Windows user and requests UAC elevation only for operations that require it.
