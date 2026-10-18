@@ -17,6 +17,8 @@ Add-Type -TypeDefinition @'
 using System;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Text;
 public static class ToolkitRestrictedStartup {
  [StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)] struct Startup {public int cb;public string reserved,desktop,title;public int x,y,xSize,ySize,xChars,yChars,fill,flags;public short show,reservedBytes;public IntPtr reserved2,input,output,error;}
@@ -25,6 +27,12 @@ public static class ToolkitRestrictedStartup {
  [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
  [DllImport("user32.dll")] static extern IntPtr GetProcessWindowStation();
  [DllImport("user32.dll")] static extern IntPtr GetThreadDesktop(uint thread);
+ [DllImport("user32.dll",CharSet=CharSet.Unicode,SetLastError=true)] static extern IntPtr OpenWindowStation(string name,bool inherit,uint access);
+ [DllImport("user32.dll",CharSet=CharSet.Unicode,SetLastError=true)] static extern IntPtr OpenDesktop(string name,uint flags,bool inherit,uint access);
+ [DllImport("user32.dll")] static extern bool CloseWindowStation(IntPtr handle);
+ [DllImport("user32.dll")] static extern bool CloseDesktop(IntPtr handle);
+ [DllImport("user32.dll",SetLastError=true)] static extern bool GetUserObjectSecurity(IntPtr handle,ref uint information,byte[] descriptor,uint bytes,out uint needed);
+ [DllImport("user32.dll",SetLastError=true)] static extern bool SetUserObjectSecurity(IntPtr handle,ref uint information,byte[] descriptor);
  [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern bool GetUserObjectInformation(IntPtr handle,int index,StringBuilder text,int bytes,out int needed);
  [DllImport("advapi32.dll",SetLastError=true)] static extern bool GetTokenInformation(IntPtr token,int kind,out int value,int bytes,out int returned);
  [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr handle);
@@ -35,21 +43,48 @@ public static class ToolkitRestrictedStartup {
  [DllImport("kernel32.dll",SetLastError=true)] static extern bool GetExitCodeProcess(IntPtr process,out uint code);
  [DllImport("kernel32.dll",SetLastError=true)] static extern bool TerminateProcess(IntPtr process,uint code);
  static string ObjectName(IntPtr handle){int needed;var text=new StringBuilder(1024);return GetUserObjectInformation(handle,2,text,2048,out needed)?text.ToString():"unknown";}
+ static byte[] AllowCurrentUser(IntPtr handle,int rights){
+  uint information=4,needed;GetUserObjectSecurity(handle,ref information,null,0,out needed);
+  if(needed==0||needed>65536)throw new Win32Exception();var original=new byte[needed];
+  if(!GetUserObjectSecurity(handle,ref information,original,needed,out needed))throw new Win32Exception();
+  var descriptor=new RawSecurityDescriptor(original,0);
+  if(descriptor.DiscretionaryAcl!=null){
+   using(var identity=WindowsIdentity.GetCurrent())descriptor.DiscretionaryAcl.InsertAce(descriptor.DiscretionaryAcl.Count,new CommonAce(AceFlags.None,AceQualifier.AccessAllowed,rights,identity.User,false,null));
+   var updated=new byte[descriptor.BinaryLength];descriptor.GetBinaryForm(updated,0);
+   if(!SetUserObjectSecurity(handle,ref information,updated))throw new Win32Exception();
+  }
+  return original;
+ }
+ static void Restore(IntPtr handle,byte[] original){if(handle!=IntPtr.Zero&&original!=null){uint information=4;if(!SetUserObjectSecurity(handle,ref information,original))throw new Win32Exception();}}
  public static int Run(string executable,string arguments,string directory) {
-  IntPtr original=IntPtr.Zero,limited=IntPtr.Zero;ProcessInfo process=new ProcessInfo();
+  IntPtr original=IntPtr.Zero,limited=IntPtr.Zero,station=IntPtr.Zero,desktop=IntPtr.Zero;byte[] stationAcl=null,desktopAcl=null;ProcessInfo process=new ProcessInfo();
   try{
    if(!OpenProcessToken(GetCurrentProcess(),0x02000000,out original))throw new Win32Exception();
    // DISABLE_MAX_PRIVILEGE | LUA_TOKEN: same user, without an administrator token.
    if(!CreateRestrictedToken(original,5,0,IntPtr.Zero,0,IntPtr.Zero,0,IntPtr.Zero,out limited))throw new Win32Exception();
    int elevated,returned;if(!GetTokenInformation(limited,20,out elevated,4,out returned))throw new Win32Exception();
    Console.WriteLine("Restricted token elevation="+elevated+"; desktop="+ObjectName(GetProcessWindowStation())+"\\"+ObjectName(GetThreadDesktop(GetCurrentThreadId())));
-   var startup=new Startup();startup.cb=Marshal.SizeOf(typeof(Startup));
+   // CI's desktop grants its elevated runner access through Administrators.
+   // Give the SAME user explicit access while its filtered child runs, then
+   // restore both original DACLs. This is test infrastructure, not app setup.
+   var stationName=ObjectName(GetProcessWindowStation());var desktopName=ObjectName(GetThreadDesktop(GetCurrentThreadId()));
+   station=OpenWindowStation(stationName,false,0x00060000);if(station==IntPtr.Zero)throw new Win32Exception();
+   desktop=OpenDesktop(desktopName,0,false,0x00060000);if(desktop==IntPtr.Zero)throw new Win32Exception();
+   stationAcl=AllowCurrentUser(station,0x000F037F);desktopAcl=AllowCurrentUser(desktop,0x000F01FF);
+   var startup=new Startup();startup.cb=Marshal.SizeOf(typeof(Startup));startup.desktop=stationName+"\\"+desktopName;
    if(!CreateProcessAsUser(limited,executable,new StringBuilder("\""+executable+"\" "+arguments),IntPtr.Zero,IntPtr.Zero,false,0x08000000,IntPtr.Zero,directory,ref startup,out process))throw new Win32Exception();
    if(WaitForSingleObject(process.process,600000)!=0){TerminateProcess(process.process,1);throw new TimeoutException("Restricted native startup timed out.");}
    uint code;if(!GetExitCodeProcess(process.process,out code))throw new Win32Exception();
    if(code!=0)throw new InvalidOperationException("Restricted startup exited with Windows status 0x"+code.ToString("X8")+"; inspect startup-native.log if present.");
    return 0;
-  }finally{if(process.thread!=IntPtr.Zero)CloseHandle(process.thread);if(process.process!=IntPtr.Zero)CloseHandle(process.process);if(limited!=IntPtr.Zero)CloseHandle(limited);if(original!=IntPtr.Zero)CloseHandle(original);}
+  }finally{
+   try{Restore(desktop,desktopAcl);}finally{
+    try{Restore(station,stationAcl);}finally{
+     if(desktop!=IntPtr.Zero)CloseDesktop(desktop);if(station!=IntPtr.Zero)CloseWindowStation(station);
+     if(process.thread!=IntPtr.Zero)CloseHandle(process.thread);if(process.process!=IntPtr.Zero)CloseHandle(process.process);if(limited!=IntPtr.Zero)CloseHandle(limited);if(original!=IntPtr.Zero)CloseHandle(original);
+    }
+   }
+  }
  }
 }
 '@
