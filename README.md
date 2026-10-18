@@ -9,6 +9,7 @@ The toolkit includes setup and diagnostics workspaces, shared checks and queue, 
 The selected direction is a new WPF application adapted from the relevant parts of [M365 Buildstandards](https://github.com/Willzy12h/M365-Buildstandards). It runs as the current Windows user and requests UAC elevation only for operations that require it.
 
 - [Local engineer usage and building](docs/LOCAL-USAGE.md)
+- [Simple text guide and copy-and-paste examples](packaging/HOW-TO-USE.txt) (included as HOW-TO-USE.txt beside Start.exe in both packages)
 - [Created work and outstanding implementation](docs/IMPLEMENTATION-STATUS.md)
 - [Windows acceptance record](docs/WINDOWS-ACCEPTANCE.md)
 - [Engineer readiness expansion and measured results](docs/superpowers/2026-10-16-engineer-readiness-execution.md)

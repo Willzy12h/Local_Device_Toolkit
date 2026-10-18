@@ -24,7 +24,7 @@ public sealed class PortablePackageTests : IDisposable
    files[prefix + name + ".runtimeconfig.json"] = Encoding.UTF8.GetBytes(lightweight ? JsonSerializer.Serialize(new{runtimeOptions=new{tfm="net10.0",frameworks}}) : JsonSerializer.Serialize(new { runtimeOptions = new { tfm = "net10.0", includedFrameworks = frameworks } }));
   }
   var repository = Path.GetDirectoryName(Path.GetDirectoryName(Script())!)!;
-  foreach(var leaf in new[]{"Start.cmd","Start.ps1","Runtime.ps1","Run-Silent.cmd","Diagnostics.config.example","ProbeInputs.json.example"})files[leaf]=File.ReadAllBytes(Path.Combine(repository,"packaging",leaf));
+  foreach(var leaf in new[]{"Start.cmd","Start.ps1","Runtime.ps1","Run-Silent.cmd","Diagnostics.config.example","ProbeInputs.json.example","HOW-TO-USE.txt"})files[leaf]=File.ReadAllBytes(Path.Combine(repository,"packaging",leaf));
   files["Start.exe"]=files["LocalDeviceToolkit.App.exe"].ToArray();
   foreach (var relative in new[] { "NOTICE.md", "docs/LOCAL-USAGE.md", "provenance/import-manifest.json", "catalogue/reference.json", "catalogue/local-windows.json", "catalogue/tasks.json", "catalogue/workflows.json", "catalogue/pins.json", "catalogue/local-probes.json", "catalogue/windows-support.json" }) files[relative] = File.ReadAllBytes(Path.Combine(repository, relative));
   foreach(var tool in new[]{"New-DeploymentProfile.ps1","Test-Portable.ps1"})files["tools/"+tool]=File.ReadAllBytes(Path.Combine(repository,"build",tool));

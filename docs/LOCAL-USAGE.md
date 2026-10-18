@@ -1,5 +1,7 @@
 # Local engineer usage
 
+For a short plain-text guide with copy-and-paste examples, open **HOW-TO-USE.txt** beside **Start.exe** in either package ([source copy](../packaging/HOW-TO-USE.txt)).
+
 The target is Windows 11 x64. Open the application as your normal Windows account. Current-user actions configure that engineer's profile, not a future end user's profile. Machine operations request UAC separately and record the actual administrator without replacing the original engineer.
 
 ## Start and assess
