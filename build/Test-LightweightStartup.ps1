@@ -22,6 +22,11 @@ public static class ToolkitRestrictedStartup {
  [StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)] struct Startup {public int cb;public string reserved,desktop,title;public int x,y,xSize,ySize,xChars,yChars,fill,flags;public short show,reservedBytes;public IntPtr reserved2,input,output,error;}
  [StructLayout(LayoutKind.Sequential)] struct ProcessInfo {public IntPtr process,thread;public int pid,tid;}
  [DllImport("kernel32.dll")] static extern IntPtr GetCurrentProcess();
+ [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
+ [DllImport("user32.dll")] static extern IntPtr GetProcessWindowStation();
+ [DllImport("user32.dll")] static extern IntPtr GetThreadDesktop(uint thread);
+ [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern bool GetUserObjectInformation(IntPtr handle,int index,StringBuilder text,int bytes,out int needed);
+ [DllImport("advapi32.dll",SetLastError=true)] static extern bool GetTokenInformation(IntPtr token,int kind,out int value,int bytes,out int returned);
  [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr handle);
  [DllImport("advapi32.dll",SetLastError=true)] static extern bool OpenProcessToken(IntPtr process,uint access,out IntPtr token);
  [DllImport("advapi32.dll",SetLastError=true)] static extern bool CreateRestrictedToken(IntPtr token,uint flags,uint disabled,IntPtr sids,uint privileges,IntPtr deleted,uint restricted,IntPtr restricting,out IntPtr result);
@@ -29,16 +34,21 @@ public static class ToolkitRestrictedStartup {
  [DllImport("kernel32.dll",SetLastError=true)] static extern uint WaitForSingleObject(IntPtr handle,uint milliseconds);
  [DllImport("kernel32.dll",SetLastError=true)] static extern bool GetExitCodeProcess(IntPtr process,out uint code);
  [DllImport("kernel32.dll",SetLastError=true)] static extern bool TerminateProcess(IntPtr process,uint code);
+ static string ObjectName(IntPtr handle){int needed;var text=new StringBuilder(1024);return GetUserObjectInformation(handle,2,text,2048,out needed)?text.ToString():"unknown";}
  public static int Run(string executable,string arguments,string directory) {
   IntPtr original=IntPtr.Zero,limited=IntPtr.Zero;ProcessInfo process=new ProcessInfo();
   try{
    if(!OpenProcessToken(GetCurrentProcess(),0x02000000,out original))throw new Win32Exception();
    // DISABLE_MAX_PRIVILEGE | LUA_TOKEN: same user, without an administrator token.
    if(!CreateRestrictedToken(original,5,0,IntPtr.Zero,0,IntPtr.Zero,0,IntPtr.Zero,out limited))throw new Win32Exception();
+   int elevated,returned;if(!GetTokenInformation(limited,20,out elevated,4,out returned))throw new Win32Exception();
+   Console.WriteLine("Restricted token elevation="+elevated+"; desktop="+ObjectName(GetProcessWindowStation())+"\\"+ObjectName(GetThreadDesktop(GetCurrentThreadId())));
    var startup=new Startup();startup.cb=Marshal.SizeOf(typeof(Startup));
    if(!CreateProcessAsUser(limited,executable,new StringBuilder("\""+executable+"\" "+arguments),IntPtr.Zero,IntPtr.Zero,false,0x08000000,IntPtr.Zero,directory,ref startup,out process))throw new Win32Exception();
    if(WaitForSingleObject(process.process,600000)!=0){TerminateProcess(process.process,1);throw new TimeoutException("Restricted native startup timed out.");}
-   uint code;if(!GetExitCodeProcess(process.process,out code))throw new Win32Exception();return checked((int)code);
+   uint code;if(!GetExitCodeProcess(process.process,out code))throw new Win32Exception();
+   if(code!=0)throw new InvalidOperationException("Restricted startup exited with Windows status 0x"+code.ToString("X8")+"; inspect startup-native.log if present.");
+   return 0;
   }finally{if(process.thread!=IntPtr.Zero)CloseHandle(process.thread);if(process.process!=IntPtr.Zero)CloseHandle(process.process);if(limited!=IntPtr.Zero)CloseHandle(limited);if(original!=IntPtr.Zero)CloseHandle(original);}
  }
 }
