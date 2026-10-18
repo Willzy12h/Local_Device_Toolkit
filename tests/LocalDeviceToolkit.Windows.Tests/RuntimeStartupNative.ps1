@@ -1,4 +1,4 @@
-param([string]$PackageDirectory,[string]$OutputDirectory)
+param([string]$PackageDirectory,[string]$OutputDirectory,[string]$ExpectedUserSid)
 $ErrorActionPreference='Stop'
 Start-Transcript -LiteralPath (Join-Path $OutputDirectory 'startup-native.log') | Out-Null
 try{
@@ -14,10 +14,10 @@ public static class ToolkitTestElevation {
 }
 '@
  $identity=[Security.Principal.WindowsIdentity]::GetCurrent()
- try{if([ToolkitTestElevation]::IsElevated($identity.Token)){throw 'Native test token still reports elevation.'}}finally{$identity.Dispose()}
+ try{if([ToolkitTestElevation]::IsElevated($identity.Token)){throw 'Native test token still reports elevation.'};$userSid=$identity.User.Value;if($userSid -ne $ExpectedUserSid){throw 'Native startup did not run as the standard test account.'}}finally{$identity.Dispose()}
  if(Test-Path -LiteralPath (Join-Path $PackageDirectory '.dotnet')){throw 'Native test requires a missing private runtime.'}
  # Control only global discovery in this UI fixture; the runtime download,
- # checksum verification, extraction, restricted token and app launch are real.
+ # checksum verification, extraction, standard account and app launch are real.
  . (Join-Path $PackageDirectory 'Start.ps1')
  function Get-ToolkitGlobalRuntimeRoot {return (Join-Path $PackageDirectory 'absent-global')}
  $env:DOTNET_ROLL_FORWARD='Disable'
@@ -44,7 +44,7 @@ public static class ToolkitTestElevation {
   if($blocked.HasExited -or $blocked.MainWindowTitle -ne 'Local Device Toolkit startup'){throw 'A pre-UI failure did not produce native error feedback.'}
   if(-not $blocked.CloseMainWindow() -or -not $blocked.WaitForExit(10000) -or $blocked.ExitCode -eq 0){throw 'Blocked startup did not fail closed.'}
  }finally{if(-not $blocked.HasExited){$blocked.Kill()};$blocked.Dispose()}
- $result=[ordered]@{Elevated=$false;PrivateRuntimeVerified=$true;MissingRuntimeUiVerified=$true;NativeLaunchVerified=$true;BlockedStartupFeedbackVerified=$true;RuntimeVersion=$script:ToolkitRuntimeVersion;NativeViews=37;StartupPreview=$true;RelaunchRequired=$false;RebootRequired=$false;InteractiveUacAcceptance=$false}
+ $result=[ordered]@{Elevated=$false;UserSid=$userSid;PrivateRuntimeVerified=$true;MissingRuntimeUiVerified=$true;NativeLaunchVerified=$true;BlockedStartupFeedbackVerified=$true;RuntimeVersion=$script:ToolkitRuntimeVersion;NativeViews=37;StartupPreview=$true;RelaunchRequired=$false;RebootRequired=$false;InteractiveUacAcceptance=$false}
  $result|ConvertTo-Json | Set-Content -LiteralPath (Join-Path $OutputDirectory 'startup-verification.json') -Encoding UTF8
 }catch{Write-Output $_.Exception.ToString();exit 1}finally{
  $logs=Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)) 'LocalDeviceToolkit/logs'
