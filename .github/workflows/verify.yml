@@ -82,12 +82,21 @@ jobs:
             $image=Get-Item (Join-Path $render ($page+'.png'))
             if ($image.Length -lt 1024) { throw "Native render is empty: $page" }
           }
+          $config=Join-Path $render 'silent-empty.config'
+          [IO.File]::WriteAllText($config,'# Every diagnostic explicitly omitted; no checks or writes requested.')
+          $start.FileName=Join-Path $extract 'Start.exe'
+          $start.Arguments='--silent --preset fast --config "'+$config+'"'
+          $start.CreateNoWindow=$true
+          $silent=[Diagnostics.Process]::Start($start)
+          try {
+            if (-not $silent.WaitForExit(60000) -or $silent.ExitCode -ne 0) { throw 'Offline silent startup did not complete without an external runtime.' }
+          } finally { if (-not $silent.HasExited) { $silent.Kill() }; $silent.Dispose() }
       - name: Build and verify lightweight package
         shell: powershell
         run: |
           ./build/Publish-Portable.ps1 -Lightweight -OutputDirectory "$env:GITHUB_WORKSPACE/dist/LocalDeviceToolkit-lightweight-win-x64"
           ./build/Test-Portable.ps1 -ZipPath "$env:GITHUB_WORKSPACE/dist/LocalDeviceToolkit-lightweight-win-x64.zip" -ResultPath "$env:GITHUB_WORKSPACE/dist/lightweight-package-verification.json" -ExpectedCommit $env:GITHUB_SHA
-      - name: Install missing runtime and launch WPF without administrator rights
+      - name: Verify native startup and silent diagnostic EXE/CMD as a standard user
         shell: powershell
         run: ./build/Test-LightweightStartup.ps1 -ZipPath "$env:GITHUB_WORKSPACE/dist/LocalDeviceToolkit-lightweight-win-x64.zip" -OutputDirectory "$env:GITHUB_WORKSPACE/dist/lightweight-evidence"
       - name: Upload small engineer download

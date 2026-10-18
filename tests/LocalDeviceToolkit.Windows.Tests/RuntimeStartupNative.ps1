@@ -44,7 +44,8 @@ public static class ToolkitTestElevation {
   if($blocked.HasExited -or $blocked.MainWindowTitle -ne 'Local Device Toolkit startup'){throw 'A pre-UI failure did not produce native error feedback.'}
   if(-not $blocked.CloseMainWindow() -or -not $blocked.WaitForExit(10000) -or $blocked.ExitCode -eq 0){throw 'Blocked startup did not fail closed.'}
  }finally{if(-not $blocked.HasExited){$blocked.Kill()};$blocked.Dispose()}
- $result=[ordered]@{Elevated=$false;UserSid=$userSid;PrivateRuntimeVerified=$true;MissingRuntimeUiVerified=$true;NativeLaunchVerified=$true;BlockedStartupFeedbackVerified=$true;RuntimeVersion=$script:ToolkitRuntimeVersion;NativeViews=37;StartupPreview=$true;RelaunchRequired=$false;RebootRequired=$false;InteractiveUacAcceptance=$false}
+ & (Join-Path $PackageDirectory 'SilentDiagnosticNative.ps1') -PackageDirectory $PackageDirectory -OutputDirectory (Join-Path $OutputDirectory 'silent') -ExpectedUserSid $userSid
+ $result=[ordered]@{Elevated=$false;UserSid=$userSid;PrivateRuntimeVerified=$true;MissingRuntimeUiVerified=$true;NativeLaunchVerified=$true;BlockedStartupFeedbackVerified=$true;SilentDiagnosticsVerified=$true;RuntimeVersion=$script:ToolkitRuntimeVersion;NativeViews=37;StartupPreview=$true;RelaunchRequired=$false;RebootRequired=$false;InteractiveUacAcceptance=$false}
  $result|ConvertTo-Json | Set-Content -LiteralPath (Join-Path $OutputDirectory 'startup-verification.json') -Encoding UTF8
 }catch{Write-Output $_.Exception.ToString();exit 1}finally{
  $logs=Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)) 'LocalDeviceToolkit/logs'

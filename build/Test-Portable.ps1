@@ -192,10 +192,9 @@ try{
    if((Get-EntryDigest $files[$scriptPath]) -cne $registered['sha256']){throw "Script registry pin mismatch: $scriptPath"}
   }
  }
- if(-not $manifest['selfContained']){
-  foreach($leaf in @('Start.exe','Start.cmd','Start.ps1','Runtime.ps1')){if(-not $files.ContainsKey($leaf)){throw "Lightweight startup asset is missing: $leaf"}}
-  Assert-Amd64 $files['Start.exe']
- }
+ foreach($leaf in @('Run-Silent.cmd','Diagnostics.config.example','ProbeInputs.json.example')){if(-not $files.ContainsKey($leaf)){throw "Silent diagnostic asset is missing: $leaf"}}
+ foreach($leaf in @('Start.exe','Start.cmd','Start.ps1','Runtime.ps1')){if(-not $files.ContainsKey($leaf)){if(-not $manifest['selfContained']){throw "Lightweight startup asset is missing: $leaf"};throw "Startup asset is missing: $leaf"}}
+ Assert-Amd64 $files['Start.exe']
  foreach($prefix in @('','worker/')){
   $name=if($prefix.Length -eq 0){'LocalDeviceToolkit.App'}else{'LocalDeviceToolkit.Worker'}
   $requiredRuntime=@(($name+'.exe'),($name+'.dll'),($name+'.runtimeconfig.json'))

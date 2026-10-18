@@ -26,6 +26,7 @@ try{
  [IO.Compression.ZipFile]::ExtractToDirectory([IO.Path]::GetFullPath($ZipPath),$root)
  $fixture=Join-Path $root 'startup-native-fixture.ps1'
  Copy-Item -LiteralPath (Join-Path (Split-Path $PSScriptRoot -Parent) 'tests/LocalDeviceToolkit.Windows.Tests/RuntimeStartupNative.ps1') -Destination $fixture
+ Copy-Item -LiteralPath (Join-Path (Split-Path $PSScriptRoot -Parent) 'tests/LocalDeviceToolkit.Windows.Tests/SilentDiagnosticNative.ps1') -Destination (Join-Path $root 'SilentDiagnosticNative.ps1')
  foreach($path in @($root,$OutputDirectory,$fixture)){if($path.Contains('"')){throw 'Unsupported test path.'}}
  $start=New-Object Diagnostics.ProcessStartInfo
  $start.FileName=Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'

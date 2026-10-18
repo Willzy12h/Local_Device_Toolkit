@@ -16,6 +16,8 @@ No real device settings or client applications have been changed by this cloud t
 
 Use a dedicated authorized Windows 11 x64 workstation and record the exact portable ZIP SHA-256, commit, Windows build, accounts, before/after evidence IDs and outcome for each case.
 
+For silent diagnostics, run both `all` and `fast` through the EXE and CMD, confirm no toolkit windows/UAC, inspect fresh JSON/HTML/log files and verify monitored settings remain unchanged. Test an already elevated engineer account separately, missing probe targets, empty/all-disabled config, 0/2 selections, duplicate/unknown keys, refused `=1`, restricted script policy and a missing-runtime first launch without pop-ups. The current CI covers a Windows Server standard account and the shared runtime installer; it does not replace physical Windows 11 or fully silent first-install acceptance. Config-driven device changes remain unimplemented.
+
 | Case | Status |
 | --- | --- |
 | Extracted package without SDK, spaces/Unicode path | Earlier CI passed; final package/render outcome is recorded in the workflow run |

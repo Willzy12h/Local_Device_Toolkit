@@ -1,6 +1,12 @@
 # Implementation status
 
-Updated 15 October 2026. Implemented source and observed automation are separate from real-device acceptance.
+Updated 18 October 2026. Implemented source and observed automation are separate from real-device acceptance.
+
+## Silent diagnostics
+
+Both packages include `Start.exe --silent --preset all|fast`, `Run-Silent.cmd`, a commented itemised `Diagnostics.config.example` and closed-schema `ProbeInputs.json.example`. The existing diagnostic/evidence runner checks 63 rows without dispatching changes, repairs, deployments or UAC. Each run writes a fresh dated log, JSON and readable HTML report. Config values are 0=skip and 2=report; 1=change is explicitly refused. A separate config-driven change mode is not implemented.
+
+Fast mode retains ordinary short waits and excludes only explicitly marked timed performance tests; none currently ship. Missing targets, admin-only checks, manual verification and incomplete coverage remain visible. Capture/evidence persistence failures force exit 1 even if a direct setting read succeeds. New tests bring the Linux suite to **508: 354 engine and 154 adapter tests**, with zero failures/skips. This count does not establish native Windows acceptance. The Windows CI gate additionally checks actual EXE/CMD runs as a standard user, exit codes, literal CMD path characters, no toolkit windows, blocked-script-policy behaviour and unchanged monitored settings. Authorized physical Windows 11 acceptance remains pending.
 
 ## Created
 

@@ -38,7 +38,10 @@ public sealed record ActionResult(Guid ActionId, ActionOutcome Outcome, Executio
 }
 public sealed record RunRecord(Guid Id, Guid PlanId, DeviceContext Context, DateTimeOffset StartedAt, DateTimeOffset? FinishedAt, IReadOnlyList<ActionResult> Results, bool EvidenceComplete);
 public sealed record LocalControl(string Id, string Name, string ExpectedDescription, CoverageMode Coverage, string[] CheckIds, string[] OperationIds, string ManualInstructions);
-public sealed record TaskDefinition(string Id, string Title, string[] ControlIds, string[] CheckIds, string? OperationId);
+public sealed record TaskDefinition(string Id, string Title, string[] ControlIds, string[] CheckIds, string? OperationId)
+{
+ [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public bool TimedPerformanceTest{get;init;}
+}
 public sealed record WorkflowStage(string Id, string Title, string[] TaskIds);
 public sealed record WorkflowDefinition(string Id, string Title, WorkflowStage[] Stages);
 public sealed record LocalCatalogue(CatalogueIdentity Identity, IReadOnlyList<LocalControl> Controls);

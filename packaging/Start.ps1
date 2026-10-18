@@ -1,9 +1,42 @@
 # This small WPF startup window uses Windows' built-in .NET Framework.
 # The main application starts only after both .NET 10 runtimes are available.
-param([string]$SmokeOutput,[string]$PreviewOutput)
+param([string]$SmokeOutput,[string]$PreviewOutput,[switch]$Silent,[string]$Preset='all',[string]$ConfigPath,[string]$InputsPath)
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Runtime.ps1')
+function Initialize-ToolkitRuntime([string]$Root,[scriptblock]$Progress){
+ if(Test-Path -LiteralPath (Join-Path $Root 'coreclr.dll')){& $Progress 'Using the bundled offline runtime.';return}
+ $runtime=Find-ToolkitRuntime $Root
+ if(-not $runtime){Install-ToolkitRuntime $Root $Progress;$runtime=Find-ToolkitRuntime $Root}
+ if(-not $runtime){throw 'A complete .NET 10 Desktop Runtime could not be verified.'}
+}
+function Invoke-ToolkitSilent([string]$Root,[string]$Preset,[string]$ConfigPath,[string]$InputsPath){
+ $log=$null
+ try{
+  $logs=Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)) 'LocalDeviceToolkit/logs'
+  Assert-ToolkitRuntimePath $logs
+  [void][IO.Directory]::CreateDirectory($logs)
+  $path=Join-Path $logs ('startup-silent-'+[DateTime]::UtcNow.ToString('yyyyMMdd-HHmmssfff')+'-'+[Guid]::NewGuid().ToString('N')+'.log')
+  $log=New-Object IO.StreamWriter((New-Object IO.FileStream($path,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::Read)),(New-Object Text.UTF8Encoding($false)))
+  $log.AutoFlush=$true
+  if($Preset -cnotin @('all','fast')){$log.WriteLine('Invalid preset. Use all or fast.');return 64}
+  if([IntPtr]::Size -ne 8){throw 'Use 64-bit Windows PowerShell.'}
+  $arguments='--silent --preset '+$Preset
+  foreach($item in @(@('--config',$ConfigPath),@('--inputs',$InputsPath))){
+   if($item[1]){if($item[1] -match '["\x00-\x1f]'){return 64};$arguments+=' '+$item[0]+' "'+[IO.Path]::GetFullPath($item[1]).TrimEnd('\')+'"'}
+  }
+  Initialize-ToolkitRuntime $Root {param($text) $log.WriteLine([DateTimeOffset]::UtcNow.ToString('o')+' '+$text)}
+  $start=New-Object Diagnostics.ProcessStartInfo
+  $start.FileName=Join-Path $Root 'LocalDeviceToolkit.App.exe';$start.WorkingDirectory=$Root;$start.UseShellExecute=$false;$start.CreateNoWindow=$true
+  $start.Arguments=$arguments;$start.EnvironmentVariables['DOTNET_DISABLE_GUI_ERRORS']='1'
+  foreach($variable in @('DOTNET_ROOT','DOTNET_ROOT_X64','DOTNET_ROLL_FORWARD','DOTNET_ROLL_FORWARD_TO_PRERELEASE','DOTNET_ROLL_FORWARD_ON_NO_CANDIDATE_FX')){$start.EnvironmentVariables.Remove($variable)}
+  $log.WriteLine([DateTimeOffset]::UtcNow.ToString('o')+' Starting read-only diagnostics: '+$Preset)
+  $app=[Diagnostics.Process]::Start($start);if($null -eq $app){throw 'Windows did not start diagnostic checks.'}
+  try{$app.WaitForExit();$code=$app.ExitCode}finally{$app.Dispose()}
+  $log.WriteLine([DateTimeOffset]::UtcNow.ToString('o')+' Diagnostics exit='+$code);return $code
+ }catch{if($null -ne $log){$log.WriteLine([DateTimeOffset]::UtcNow.ToString('o')+' ERROR '+$_.Exception.ToString())};return 1}
+ finally{if($null -ne $log){$log.Dispose()}}
+}
 function Show-ToolkitStartup([string]$Root,[string]$SmokeOutput,[string]$PreviewOutput){
 Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName PresentationCore
@@ -49,9 +82,7 @@ $window.Add_ContentRendered({
   }
   if([IntPtr]::Size -ne 8){throw 'Start.cmd must run 64-bit Windows PowerShell.'}
   Update-ToolkitStartup 'Checking .NET 10 Desktop and Core runtimes...'
-  $runtime=Find-ToolkitRuntime $Root
-  if(-not $runtime){Install-ToolkitRuntime $Root {param($text) Update-ToolkitStartup $text};$runtime=Find-ToolkitRuntime $Root}
-  if(-not $runtime){throw 'A complete .NET 10 Desktop Runtime could not be verified.'}
+  Initialize-ToolkitRuntime $Root {param($text) Update-ToolkitStartup $text}
   Update-ToolkitStartup 'Runtime ready. Opening the toolkit; no restart is required.'
   $start=New-Object Diagnostics.ProcessStartInfo
   $start.FileName=Join-Path $Root 'LocalDeviceToolkit.App.exe';$start.WorkingDirectory=$Root;$start.UseShellExecute=$false
@@ -77,4 +108,7 @@ try{[void]$window.ShowDialog()}finally{$script:log.Dispose()}
 if($script:failed){return 2} # An error was already displayed in the startup window.
 return 0
 }
-if($MyInvocation.InvocationName -ne '.'){exit (Show-ToolkitStartup $PSScriptRoot $SmokeOutput $PreviewOutput)}
+if($MyInvocation.InvocationName -ne '.'){
+ if($Silent){if($SmokeOutput -or $PreviewOutput){exit 64};exit (Invoke-ToolkitSilent $PSScriptRoot $Preset $ConfigPath $InputsPath)}
+ exit (Show-ToolkitStartup $PSScriptRoot $SmokeOutput $PreviewOutput)
+}

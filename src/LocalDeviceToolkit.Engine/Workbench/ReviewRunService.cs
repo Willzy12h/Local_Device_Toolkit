@@ -44,14 +44,20 @@ public sealed class ReviewRunService(OperationRegistry operations,PlanService pl
  }
  async Task CloseAsync(ReviewRun run)
  {if(run.Closed)return;run.Closed=true;await run.Log.DisposeAsync();}
- public async Task<ReviewRun> CheckAsync(IReadOnlyList<ReviewSelection> selection,CancellationToken ct,Guid? parentRun=null,RunLabels? labels=null)
+ public Task<ReviewRun> CheckAsync(IReadOnlyList<ReviewSelection> selection,CancellationToken ct,Guid? parentRun=null,RunLabels? labels=null)=>CheckCoreAsync(selection,ct,parentRun,labels,false);
+ internal Task<ReviewRun> CheckSilentAsync(IReadOnlyList<ReviewSelection> selection,CancellationToken ct)
+ {
+  if(selection.Any(s=>s.ChangeRequested||s.Request is not null))throw new PlanValidationException("Silent diagnostics cannot request changes.");
+  return CheckCoreAsync(selection,ct,null,null,true);
+ }
+ async Task<ReviewRun> CheckCoreAsync(IReadOnlyList<ReviewSelection> selection,CancellationToken ct,Guid? parentRun,RunLabels? labels,bool allowEmptyChecks)
  {
   if(!await gate.WaitAsync(0,ct))throw new PlanValidationException("A check or change is already running.");
   ReviewRun? run=null;
   try
   {
    if(labels is not null&&(labels.Client.Length>128||labels.Ticket.Length>128||labels.Client.Any(char.IsControl)||labels.Ticket.Any(char.IsControl)))throw new PlanValidationException("Client and ticket labels must be plain text up to 128 characters.");
-   if(selection is null||selection.Count is <1 or >100)throw new PlanValidationException("Select between 1 and 100 tasks.");
+   if(selection is null||selection.Count>(100)||selection.Count<(allowEmptyChecks?0:1))throw new PlanValidationException("Select between 1 and 100 tasks.");
    var selected=selection.Select(s=>s with{Origin=s.Origin with{},Request=s.Request is null?null:s.Request with{Parameters=s.Request.Parameters.Clone()}}).ToArray();
    foreach(var item in selected)
    {
@@ -229,6 +235,16 @@ public sealed class ReviewRunService(OperationRegistry operations,PlanService pl
     try{await AppendAsync(review,"stop","The review/run stopped. Inspect the recorded results before retrying; no automatic retry will occur.",CancellationToken.None);}catch(Exception){}finally{await CloseAsync(review);}
    }
    throw;
+  }
+  finally{gate.Release();}
+ }
+ public async Task CompleteChecksAsync(ReviewRun review,CancellationToken ct)
+ {
+  if(!await gate.WaitAsync(0,ct))throw new PlanValidationException("A check or change is already running.");
+  try
+  {
+   if(!ReferenceEquals(review,Current)||review.Closed||review.Plan is not null||review.Rows.Any(r=>r.ChangeRequested))throw new PlanValidationException("Only a live check-only review can finish without approval.");
+   await AppendAsync(review,"finish","Check-only run finished. No changes were approved or dispatched.",ct);review.State="Finished";await CloseAsync(review);
   }
   finally{gate.Release();}
  }

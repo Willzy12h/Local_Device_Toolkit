@@ -24,7 +24,8 @@ public sealed class PortablePackageTests : IDisposable
    files[prefix + name + ".runtimeconfig.json"] = Encoding.UTF8.GetBytes(lightweight ? JsonSerializer.Serialize(new{runtimeOptions=new{tfm="net10.0",frameworks}}) : JsonSerializer.Serialize(new { runtimeOptions = new { tfm = "net10.0", includedFrameworks = frameworks } }));
   }
   var repository = Path.GetDirectoryName(Path.GetDirectoryName(Script())!)!;
-  if(lightweight){foreach(var leaf in new[]{"Start.cmd","Start.ps1","Runtime.ps1"}){Assert.True(File.Exists(Path.Combine(repository,"packaging",leaf)),"Runtime startup asset missing: "+leaf);files[leaf]=File.ReadAllBytes(Path.Combine(repository,"packaging",leaf));}files["Start.exe"]=files["LocalDeviceToolkit.App.exe"].ToArray();}
+  foreach(var leaf in new[]{"Start.cmd","Start.ps1","Runtime.ps1","Run-Silent.cmd","Diagnostics.config.example","ProbeInputs.json.example"})files[leaf]=File.ReadAllBytes(Path.Combine(repository,"packaging",leaf));
+  files["Start.exe"]=files["LocalDeviceToolkit.App.exe"].ToArray();
   foreach (var relative in new[] { "NOTICE.md", "docs/LOCAL-USAGE.md", "provenance/import-manifest.json", "catalogue/reference.json", "catalogue/local-windows.json", "catalogue/tasks.json", "catalogue/workflows.json", "catalogue/pins.json", "catalogue/local-probes.json", "catalogue/windows-support.json" }) files[relative] = File.ReadAllBytes(Path.Combine(repository, relative));
   foreach(var tool in new[]{"New-DeploymentProfile.ps1","Test-Portable.ps1"})files["tools/"+tool]=File.ReadAllBytes(Path.Combine(repository,"build",tool));
   foreach (var relative in new[]{"registry.json"}.Concat(LocalDeviceToolkit.Windows.Inspection.RegisteredScripts.Manifest.Scripts.Select(s=>s.Path)))
@@ -39,6 +40,7 @@ public sealed class PortablePackageTests : IDisposable
   if (defect == "wrong-machine") files["worker/LocalDeviceToolkit.Worker.exe"][0x84] = 0xaa;
   if (defect == "framework-dependent") files["LocalDeviceToolkit.App.runtimeconfig.json"] = Encoding.UTF8.GetBytes("{\"runtimeOptions\":{\"framework\":{\"name\":\"Microsoft.NETCore.App\",\"version\":\"10.0.0\"}}}");
   if(defect=="missing-launcher")files.Remove("Start.ps1");
+  if(defect=="missing-silent")files.Remove("Run-Silent.cmd");
   var entries = files.Select(f => new { path = f.Key, bytes = f.Value.Length, sha256 = Convert.ToHexString(SHA256.HashData(f.Value)).ToLowerInvariant() }).ToArray();
   var manifest = JsonSerializer.SerializeToUtf8Bytes(new { schemaVersion = 1, commit = Commit, builtAt = "2026-10-15T00:00:00.0000000+00:00", runtime = "win-x64", selfContained = !lightweight, workingTreeDirty = defect == "dirty", files = entries });
   if (defect == "duplicate-manifest-key") manifest = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(manifest).Replace("\"schemaVersion\":1", "\"schemaVersion\":1,\"schemaVersion\":1"));
@@ -76,6 +78,11 @@ public sealed class PortablePackageTests : IDisposable
  {
   var zip=Fixture(lightweight:true);var result=Path.Combine(root,"result.json");var verification=await Verify(zip,result);
   Assert.True(verification.Exit==0,verification.Output);using var json=JsonDocument.Parse(await File.ReadAllBytesAsync(result));Assert.False(json.RootElement.GetProperty("SelfContained").GetBoolean());Assert.False(json.RootElement.GetProperty("NativeLaunchVerified").GetBoolean());
+ }
+ [Theory] [InlineData(false)] [InlineData(true)] public async Task Package_without_silent_command_is_refused(bool lightweight)
+ {
+  var zip=Fixture("missing-silent",lightweight);var verification=await Verify(zip,Path.Combine(root,"result.json"));
+  Assert.NotEqual(0,verification.Exit);Assert.Contains("Silent diagnostic asset is missing",verification.Output);
  }
  [Fact] public async Task Lightweight_package_without_launcher_is_refused()
  {

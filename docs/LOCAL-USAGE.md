@@ -75,6 +75,57 @@ User evidence is under `%LOCALAPPDATA%\LocalDeviceToolkit\evidence`. Protected m
 
 PowerShell execution policy and downloaded-file markings are preserved. If approved scripts cannot run, the result remains unavailable/uncertain. Use the organization's approved signing/distribution process; there is no automatic policy bypass, module installation or file unblocking.
 
+## Silent diagnostics: EXE or CMD
+
+Silent mode checks and reports only. It never applies settings, runs repairs, installs applications, accepts manual reviews or requests UAC. Both package editions include the same launcher and diagnostic templates. The lightweight edition can still download its verified private .NET runtime if needed; that prerequisite does not require a restart. An already elevated process with a missing runtime must first provision the runtime as a standard user. Device diagnostics can create local evidence, dated logs and short temporary battery reports, and explicitly targeted network checks can send network requests.
+
+```cmd
+Run-Silent.cmd all
+Run-Silent.cmd fast
+Start.exe --silent --preset all
+Start.exe --silent --preset fast
+```
+
+The EXE shows no toolkit or console window. The CMD wrapper does not open another window, prompt or pause; Windows may briefly show the calling console if you double-click a CMD file. Use the EXE when no console flash is wanted. From another batch file, use `call Run-Silent.cmd ...`; from PowerShell use `Start-Process -Wait -PassThru` when you need a windowed EXE's exit code. Launch as the engineer account. Already elevated runs can collect admin-only evidence for that account; ordinary runs report **Requires administrator** and continue without UAC.
+
+`all` includes every diagnostic row. Change-only tasks are excluded. `fast` skips only tasks explicitly marked as deliberate timed performance tests. It keeps short battery reports, event collection and DNS/TCP checks. There are currently no timed performance tests, so both presets cover the same diagnostics. Provider timeouts remain bounded; an unavailable provider can still take up to 30 seconds. This is not a guarantee of instant completion.
+
+Copy `Diagnostics.config.example` to `Diagnostics.config` and edit it with Notepad. Each line independently selects one diagnostic:
+
+```ini
+# 0 = skip; 2 = report current value without changing it.
+# 1 would request a change. Diagnostics REFUSES it; no change command is included.
+longfilepaths=2
+showfileextensions=0
+local.restart.reasons=2
+```
+
+```cmd
+Run-Silent.cmd fast "C:\Engineer\Diagnostics.config"
+Start.exe --silent --preset all --config "C:\Engineer\Diagnostics.config"
+```
+
+Omitted items in a supplied config are skipped and listed as **Excluded by config**. Without `--config`, every diagnostic is selected. Config keys may use the full diagnostic task ID; `longfilepaths` and `showfileextensions` are convenient aliases. Unknown keys, duplicate aliases/IDs and values other than 0/2 fail before checking. A config cannot supply registry paths, commands, installer switches or elevation approval.
+
+Checks requiring a volume, network endpoint, printer, incident window or approved application profile report **Needs input** until supplied explicitly. Copy/edit `ProbeInputs.json.example`; its `C:` drives and reserved `.invalid` hostnames are examples to replace with approved targets. Input keys use the existing closed probe schemas. No network target, incident window or application profile is guessed.
+
+```cmd
+Run-Silent.cmd all "C:\Engineer\Diagnostics.config" "C:\Engineer\ProbeInputs.json"
+Start.exe --silent --preset fast --config "C:\Engineer\Diagnostics.config" --inputs "C:\Engineer\ProbeInputs.json"
+```
+
+Each run creates a new dated `.log`, `.json` and `.html` under `%LOCALAPPDATA%\LocalDeviceToolkit\logs`, sharing a unique basename. The HTML is an at-a-glance current/expected/status table; JSON supports automation. Reports are local operator records and can contain device paths and network details. Review them before sharing; use the interactive minimized report export for wider disclosure. Startup/runtime failures use separate dated `startup-silent-*`, `startup-launcher-*` or `app-error-*` logs. Existing files are preserved. Evidence remains in the normal evidence store; companion reports are not approval or execution authority.
+
+| Exit | Meaning |
+| --- | --- |
+| 0 | Selected checks finished with no reported differences or incomplete results; explicitly excluded tasks were not checked. An empty config also returns 0. |
+| 1 | Startup, provider orchestration, evidence or report I/O failed; inspect logs. |
+| 2 | Results include missing inputs, admin-only, manual, unreadable or unknown evidence. This takes precedence over differences. |
+| 3 | Checks completed and observed a different or missing expected value. No changes were made. |
+| 64 | Invalid arguments or config/input schema, including any `=1` change request. |
+
+Application inventory can establish observed packages; it does not certify deployment completion, licensing, sign-in or client enrollment. Manual tasks remain manual. A separate config-driven change mode is not implemented; interactive changes continue to require selection, fresh before/expected review and engineer confirmation.
+
 ## Build and verify
 
 On Windows, use the SDK pinned by `global.json`, locked restore, warning-as-error build and solution tests. Run `build/Publish-Portable.ps1` from a clean working tree with a new output directory. `-AllowDirty` creates an explicitly labelled local review artifact. Use `-Lightweight` to build the smaller download with its native startup window; omit it for the existing self-contained offline package. Windows’ built-in .NET Framework compiler builds the tiny windowed launcher. No third-party installer media is bundled.

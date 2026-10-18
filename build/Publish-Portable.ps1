@@ -73,12 +73,10 @@ try{
   if($LASTEXITCODE -ne 0){throw 'Build provenance could not be recorded.'}
  }finally{Pop-Location}
  foreach($name in @('README.md','NOTICE.md','docs','provenance','catalogue')){Copy-Item -LiteralPath (Join-Path $repository $name) -Destination $stage -Recurse}
- if($Lightweight){
-  foreach($name in @('Start.cmd','Start.ps1','Runtime.ps1')){Copy-Item -LiteralPath (Join-Path $repository ('packaging/'+$name)) -Destination (Join-Path $stage $name)}
+  foreach($name in @('Start.cmd','Start.ps1','Runtime.ps1','Run-Silent.cmd','Diagnostics.config.example','ProbeInputs.json.example')){Copy-Item -LiteralPath (Join-Path $repository ('packaging/'+$name)) -Destination (Join-Path $stage $name)}
   $compiler=Join-Path $env:SystemRoot 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
   & $compiler /nologo /target:winexe /platform:x64 /warnaserror (('/out:')+(Join-Path $stage 'Start.exe')) (('/win32manifest:')+(Join-Path $repository 'src/LocalDeviceToolkit.App/app.manifest')) (Join-Path $repository 'packaging/Start.cs')
   if($LASTEXITCODE -ne 0){throw 'Native startup launcher compilation failed.'}
- }
  [void][IO.Directory]::CreateDirectory((Join-Path $stage 'tools'))
  foreach($tool in @('New-DeploymentProfile.ps1','Test-Portable.ps1')){Copy-Item -LiteralPath (Join-Path $PSScriptRoot $tool) -Destination (Join-Path $stage ('tools/'+$tool))}
  $inventory=@(Get-PortablePackageFiles -Directory $stage | Sort-Object FullName | ForEach-Object {
