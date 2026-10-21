@@ -6,6 +6,11 @@ START HERE
 2. Open Start.exe using your normal engineer account.
 3. Choose New device setup or Diagnostics. Select each task you want.
 
+If Start.exe is blocked because Start.ps1 is unsigned, open Start.cmd.
+Start.cmd uses a process-only execution-policy bypass for startup. It does
+not change saved user/machine policy or override organisation Group Policy.
+Diagnostics and changes still use their ordinary script policy checks.
+
 The first lightweight launch may download its required runtime into the
 toolkit folder. That runtime install needs no admin rights or restart.
 Use the offline package if the device cannot download the runtime.
