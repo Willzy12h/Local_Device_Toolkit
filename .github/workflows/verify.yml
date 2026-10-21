@@ -3,6 +3,12 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      native_runtime_acceptance:
+        description: 'Authorize disposable Windows account creation and real private-runtime installation acceptance'
+        type: boolean
+        required: false
+        default: false
 permissions:
   contents: read
 jobs:
@@ -15,6 +21,12 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
+      - name: Activate runner PowerShell for script fixtures
+        shell: bash
+        run: |
+          toolkit_test_pwsh=$(command -v pwsh)
+          test -x "$toolkit_test_pwsh"
+          echo "TOOLKIT_TEST_PWSH=$toolkit_test_pwsh" >> "$GITHUB_ENV"
       - run: dotnet restore LocalDeviceToolkit.sln --locked-mode
       - run: dotnet build LocalDeviceToolkit.sln -c Release --no-restore -warnaserror
       - run: dotnet test LocalDeviceToolkit.sln -c Release --no-restore -warnaserror --logger trx --results-directory TestResults
@@ -39,7 +51,7 @@ jobs:
         shell: powershell
         run: |
           if ($PSVersionTable.PSVersion.Major -ne 5) { throw 'Expected Windows PowerShell 5.1.' }
-          Get-ChildItem build,scripts -Recurse -Filter *.ps1 | ForEach-Object {
+          Get-ChildItem build,scripts,packaging -Recurse -Filter *.ps1 | ForEach-Object {
             $tokens=$null; $errors=$null
             [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName,[ref]$tokens,[ref]$errors)
             if (@($errors).Count) { throw ($errors -join '; ') }
@@ -72,10 +84,36 @@ jobs:
           $app=[Diagnostics.Process]::Start($start)
           if (-not $app.WaitForExit(60000)) { $app.Kill(); throw 'Read-only native render timed out.' }
           if ($app.ExitCode -ne 0) { throw "Packaged application failed: $($app.ExitCode)" }
-          foreach ($page in @('home','setup','diagnostics','deployments','reports','setup-compact','diagnostics-compact','deployments-compact','reports-compact','saved-reports','deployment-inputs','recorded-restoration','manual-review','setting-inputs','saved-reports-compact','deployment-inputs-compact','recorded-restoration-compact','manual-review-compact','setting-inputs-compact')) {
+          foreach ($page in @('home','setup','diagnostics','deployments','reports','setup-compact','diagnostics-compact','deployments-compact','reports-compact','saved-reports','deployment-inputs','recorded-restoration','manual-review','setting-inputs','saved-reports-compact','deployment-inputs-compact','recorded-restoration-compact','manual-review-compact','setting-inputs-compact','task-review','task-review-compact','incident-inputs','incident-inputs-compact','network-inputs','network-inputs-compact','power-timeout','power-timeout-compact','dns-refresh','dns-refresh-compact','defender-request','defender-request-compact','engineer-handover','engineer-handover-compact','setup-local','setup-local-compact','diagnostics-local','diagnostics-local-compact')) {
             $image=Get-Item (Join-Path $render ($page+'.png'))
             if ($image.Length -lt 1024) { throw "Native render is empty: $page" }
           }
+          $config=Join-Path $render 'silent-empty.config'
+          [IO.File]::WriteAllText($config,'# Every diagnostic explicitly omitted; no checks or writes requested.')
+          $start.FileName=Join-Path $extract 'Start.exe'
+          $start.Arguments='--silent --preset fast --config "'+$config+'"'
+          $start.CreateNoWindow=$true
+          $silent=[Diagnostics.Process]::Start($start)
+          try {
+            if (-not $silent.WaitForExit(60000) -or $silent.ExitCode -ne 0) { throw 'Offline silent startup did not complete without an external runtime.' }
+          } finally { if (-not $silent.HasExited) { $silent.Kill() }; $silent.Dispose() }
+      - name: Build and verify lightweight package
+        shell: powershell
+        run: |
+          ./build/Publish-Portable.ps1 -Lightweight -OutputDirectory "$env:GITHUB_WORKSPACE/dist/LocalDeviceToolkit-lightweight-win-x64"
+          ./build/Test-Portable.ps1 -ZipPath "$env:GITHUB_WORKSPACE/dist/LocalDeviceToolkit-lightweight-win-x64.zip" -ResultPath "$env:GITHUB_WORKSPACE/dist/lightweight-package-verification.json" -ExpectedCommit $env:GITHUB_SHA
+      - name: Verify native startup and silent diagnostic EXE/CMD as a standard user
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.native_runtime_acceptance }}
+        shell: powershell
+        run: ./build/Test-LightweightStartup.ps1 -ZipPath "$env:GITHUB_WORKSPACE/dist/LocalDeviceToolkit-lightweight-win-x64.zip" -OutputDirectory "$env:GITHUB_WORKSPACE/dist/lightweight-evidence"
+      - name: Upload small engineer download
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: engineer-lightweight-win-x64
+          path: |
+            dist/LocalDeviceToolkit-lightweight-win-x64.zip
+            dist/LocalDeviceToolkit-lightweight-win-x64.zip.sha256
+          if-no-files-found: error
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -84,5 +122,8 @@ jobs:
             dist/*.zip
             dist/*.sha256
             dist/package-verification.json
+            dist/lightweight-package-verification.json
+            dist/lightweight-evidence/**
             dist/native-renders/*.png
+            dist/native-renders/*.log
             TestResults

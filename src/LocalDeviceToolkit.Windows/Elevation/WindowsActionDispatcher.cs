@@ -14,7 +14,7 @@ public sealed class WindowsActionDispatcher(OperationRegistry operations,IExecut
   if(!valid.IsValid||!readiness.CanExecute||readiness.Scope!=action.Readiness.Scope||readiness.Privilege!=action.Readiness.Privilege)return new(action.Id,ActionOutcome.Failed,null,"Not started: this machine action requires a fresh review.",[]);
   try
   {
-   var response=await new UacWorkerBroker(workerPath).RequestAsync(new(1,WorkerMode.ExecuteAction,plan.Context,null,plan,action.Id),ct);
+   var response=await new UacWorkerBroker(workerPath).RequestAsync(new(2,WorkerMode.ExecuteAction,plan.Context,null,plan,action.Id),ct);
    if(!response.Success)return new(action.Id,ActionOutcome.CancelledBeforeExecution,null,response.Message,[]);
    return response.Result is { } result&&result.ActionId==action.Id?result:new(action.Id,ActionOutcome.OutcomeUnknown,null,"The protected worker did not return this action's outcome. Reconcile before retrying.",[]);
   }

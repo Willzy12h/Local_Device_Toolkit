@@ -119,9 +119,13 @@
       "keyboard.uk"
     ],
     "operationIds": [
-      "settings.uk-region-keyboard"
+      "settings.uk-formats",
+      "settings.uk-home-country",
+      "settings.uk-input-language",
+      "settings.uk-keyboard",
+      "settings.uk-default-keyboard"
     ],
-    "manualInstructions": "Verify UK formats and keyboard for the current engineer. Welcome-screen, default-user and other-user language settings require separate review."
+    "manualInstructions": "Select UK formats, home country, input language, keyboard and default keyboard separately. Add the UK input language before adding its keyboard; add its keyboard before selecting the default. Existing language order, input methods and preferences are preserved. Verify the current engineer; Welcome-screen, default-user and other-user settings require separate review."
   },
   {
     "id": "CFG-WIN-011",

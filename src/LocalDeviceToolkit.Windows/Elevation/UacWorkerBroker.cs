@@ -28,10 +28,11 @@ public sealed class UacWorkerBroker(string workerPath)
   }
   var peer=NativePeer.Observe(NativePeer.PipeClient(pipe.SafePipeHandle));
   if(peer.Actor!=expected.Actor||!string.Equals(peer.ImagePath,expected.ImagePath,StringComparison.OrdinalIgnoreCase))throw new IOException("The connected process is not the worker launched through UAC.");
+  if(request.Plan is {} plan&&(plan.Lifetime is null||!plan.Lifetime.Matches(parent.Actor)||plan.Lifetime.IsExpired(Environment.TickCount64)))throw new InvalidDataException("The review elapsed limit expired during elevation. Check and review again.");
   request=request with {ToolkitBuild=ToolkitBuildIdentity.Current};
   await WorkerFrames.WriteAsync(pipe,request,ct);
   var response=await WorkerFrames.ReadAsync<WorkerResponse>(pipe,ct);
-  if(response.SchemaVersion!=1||response.Actor!=peer.Actor||response.Capture is not null&&response.Capture.CapturedBy!=peer.Actor||response.Result?.Actor is not null&&response.Result.Actor!=peer.Actor)throw new InvalidDataException("Worker response identity did not match the OS-observed process.");
+  if(response.SchemaVersion!=2||response.Actor!=peer.Actor||response.Capture is not null&&response.Capture.CapturedBy!=peer.Actor||response.Result?.Actor is not null&&response.Result.Actor!=peer.Actor)throw new InvalidDataException("Worker response identity did not match the OS-observed process.");
   return response;
  }
 }

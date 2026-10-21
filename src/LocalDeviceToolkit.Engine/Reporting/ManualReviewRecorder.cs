@@ -3,7 +3,14 @@ using LocalDeviceToolkit.Engine.Evidence;
 namespace LocalDeviceToolkit.Engine.Reporting;
 public static class ReportingEvidenceSchemas
 {
- public static void Register(EvidenceSchemaRegistry schemas) => schemas.Register<ManualReview>("manual-review", Validate);
+ public static void Register(EvidenceSchemaRegistry schemas)
+ {
+  schemas.Register<ManualReview>("manual-review",Validate);
+  schemas.Register<ManualCheck>("manual-check.v2",(m,r)=>
+  {
+   if(m.Id!=r.Id||m.Context!=r.Context||m.At!=r.RecordedAt||m.Actor.Sid!=m.Context.OriginalUserSid||m.At.Offset!=TimeSpan.Zero||!HandoverService.ManualItems.ContainsKey(m.ItemId)||m.TargetDigest.Length!=64||!m.TargetDigest.All(Uri.IsHexDigit)||string.IsNullOrWhiteSpace(m.Note)||m.Note.Length>2000||m.TargetReference?.Length>256||!Enum.IsDefined(m.Outcome))throw new EvidenceValidationException("Invalid manual check; original engineer, target, time and note are required.");
+  });
+ }
  internal static void Validate(ManualReview review, EvidenceRecord record)
  {
   if (review is null || review.Context is null || review.Id == Guid.Empty || review.Id != record.Id || review.Context != record.Context || review.ReviewedAt != record.RecordedAt ||

@@ -6,6 +6,7 @@ using LocalDeviceToolkit.Engine.Planning;
 namespace LocalDeviceToolkit.Engine.Settings;
 
 public sealed record RecordedSettingRestorationParameters(Guid SourcePlanId,Guid SourceActionId,Guid SourceRunId,bool ConfirmManagedPolicyReview,SettingId? ExpectedSetting=null);
+public sealed record RecordedRestorationReviewState(SettingId Setting,JsonElement Current,JsonElement Target);
 public sealed record RecordedSettingSource(Guid SourcePlanId,Guid SourceActionId,Guid SourceRunId,DeviceContext Context,CatalogueIdentity Catalogue,SettingId Setting,OperationScope Scope,PrivilegeRequirement Privilege,SettingSnapshot Before,SettingSnapshot VerifiedAfter,ExecutionActor Actor,ActionOutcome Outcome,bool ProtectedJournal);
 /// <summary>Adapters must validate original plan/action/run/result linkage before returning a source. Presentation adapters may classify protected sources but cannot authorize a write.</summary>
 public interface IRecordedSettingSource
@@ -28,18 +29,19 @@ public sealed class RecordedSettingRestorationOperation(IRecordedSettingSource s
   {
    var value=StrictJson.Read<RecordedSettingRestorationParameters>(StrictJson.Bytes(parameters),4096);
    if(value.SourcePlanId==Guid.Empty||value.SourceActionId==Guid.Empty||value.SourceRunId==Guid.Empty)throw new PlanValidationException("Original plan, action and run identities are required.");
-   if(value.ExpectedSetting is not SettingId setting||!FixedSettingOperation.Definitions.Any(d=>d.Setting==setting))throw new PlanValidationException("A supported recorded setting identity is required.");
+   if(value.ExpectedSetting is not SettingId setting||!FixedSettingOperation.RestorableDefinitions.Any(d=>d.Setting==setting))throw new PlanValidationException("A supported recorded setting identity is required.");
    return value;
   }
   catch(Exception e) when(e is JsonException or InvalidDataException or InvalidOperationException){throw new PlanValidationException("Restoration accepts only original evidence identities, a supported setting identity and policy review confirmation.");}
  }
  public string GetTargetKey(DeviceContext context,JsonElement parameters)
- {var p=ReadParameters(parameters);var definition=FixedSettingOperation.Definitions.Single(d=>d.Setting==p.ExpectedSetting);return (definition.Scope==OperationScope.CurrentUser?context.OriginalUserSid:context.DeviceId)+"/"+definition.Setting;}
+ {var p=ReadParameters(parameters);var definition=FixedSettingOperation.RestorableDefinitions.Single(d=>d.Setting==p.ExpectedSetting);if(PowerTimeoutOperation.IsSetting(definition.Setting))return PowerTimeoutOperation.TargetKey(context,PowerTimeoutOperation.Slot(definition.Setting));return (definition.Scope==OperationScope.CurrentUser?context.OriginalUserSid:context.DeviceId)+"/"+definition.Setting;}
  static T State<T>(SettingSnapshot snapshot)=>StrictJson.Read<T>(StrictJson.Bytes(snapshot.Value),4096);
  static bool SameValue(SettingSnapshot a,SettingSnapshot b)=>a.Setting==b.Setting&&CanonicalJson.Digest(a.Value)==CanonicalJson.Digest(b.Value);
  static void ValidateSnapshot(SettingSnapshot snapshot,SettingId setting)
  {
   if(snapshot.Setting!=setting||string.IsNullOrWhiteSpace(snapshot.Source)||snapshot.Source.Length>512||snapshot.Source.Any(char.IsControl)||snapshot.CapturedAt.Offset!=TimeSpan.Zero)throw new PlanValidationException("Invalid setting snapshot provenance.");
+  if(PowerTimeoutOperation.IsSetting(setting)){if(State<PowerTimeoutState>(snapshot).ActiveScheme==Guid.Empty)throw new PlanValidationException("Missing recorded power scheme.");return;}
   switch(setting)
   {
    case SettingId.ShowFileExtensions:case SettingId.LongPaths:case SettingId.DisableFastStartup:
@@ -56,13 +58,13 @@ public sealed class RecordedSettingRestorationOperation(IRecordedSettingSource s
   var record=await source.LoadAsync(parameters,ct);
   if(record.Setting!=parameters.ExpectedSetting)throw new PlanValidationException("The recorded source does not match the selected setting identity.");
   if(record.SourcePlanId!=parameters.SourcePlanId||record.SourceActionId!=parameters.SourceActionId||record.SourceRunId!=parameters.SourceRunId||record.Context!=context||record.Catalogue!=catalogue||record.Outcome!=ActionOutcome.AppliedVerified)throw new PlanValidationException("Original verified evidence does not match this device, catalogue and source identities.");
-  var definition=FixedSettingOperation.Definitions.SingleOrDefault(d=>d.Setting==record.Setting)??throw new PlanValidationException("Unsupported restoration setting.");
+  var definition=FixedSettingOperation.RestorableDefinitions.SingleOrDefault(d=>d.Setting==record.Setting)??throw new PlanValidationException("Unsupported restoration setting.");
   if(record.Scope!=definition.Scope||!Enum.IsDefined(record.Privilege)||record.Actor is null||record.Actor.ProcessId<=0||record.Actor.ProcessStartedAt.Offset!=TimeSpan.Zero)throw new PlanValidationException("Original execution scope or actor is invalid.");
   if(record.Privilege==PrivilegeRequirement.Administrator)
   {if(record.Scope!=OperationScope.Machine||!record.ProtectedJournal||!record.Actor.IsElevated)throw new PlanValidationException("Original machine writes require independently protected source evidence.");}
   else if(record.Actor.Sid!=context.OriginalUserSid||record.Scope==OperationScope.Machine&&record.Setting!=SettingId.UkTimeZone)throw new PlanValidationException("Original execution identity cannot authorize this restoration.");
   ValidateSnapshot(record.Before,record.Setting);ValidateSnapshot(record.VerifiedAfter,record.Setting);
-  var verified=record.Setting switch
+  var verified=PowerTimeoutOperation.IsSetting(record.Setting)?State<PowerTimeoutState>(record.Before).With(PowerTimeoutOperation.Slot(record.Setting),State<PowerTimeoutState>(record.VerifiedAfter).Get(PowerTimeoutOperation.Slot(record.Setting)))==State<PowerTimeoutState>(record.VerifiedAfter):record.Setting switch
   {
    SettingId.NoAcSleep=>State<AcSleepState>(record.VerifiedAfter) is {Seconds:0} power&&power.ActiveScheme==State<AcSleepState>(record.Before).ActiveScheme&&power.DcSeconds==State<AcSleepState>(record.Before).DcSeconds,
    SettingId.UkTimeZone=>State<TimeZoneState>(record.VerifiedAfter) is {KeyName:"GMT Standard Time"} zone&&zone.DynamicDaylightTimeDisabled==State<TimeZoneState>(record.Before).DynamicDaylightTimeDisabled,
@@ -76,7 +78,7 @@ public sealed class RecordedSettingRestorationOperation(IRecordedSettingSource s
   ActionReadiness Result(bool ready,string reason)=>new(ready,record.Scope,record.Privilege,reason);
   if(!reviewed)return Result(false,"Review effective GPO/MDM policy before restoring recorded values.");
   var actor=await backend.GetActorAsync(ct);
-  if(record.Privilege==PrivilegeRequirement.CurrentUser&&actor.Sid!=context.OriginalUserSid)return Result(false,"Restoration must execute as the original engineer.");
+  if((record.Privilege==PrivilegeRequirement.CurrentUser||record.Setting==SettingId.NoAcSleep||PowerTimeoutOperation.IsSetting(record.Setting))&&actor.Sid!=context.OriginalUserSid)return Result(false,"Restoration must execute as the original engineer.");
   var privilege=await backend.GetPrivilegeAsync(record.Setting,context,ct);
   if(privilege!=record.Privilege)return Result(false,"Original execution privilege cannot be preserved; review trusted original evidence before proceeding.");
   var policy=await backend.InspectPolicyAsync(record.Setting,ct);
@@ -92,9 +94,9 @@ public sealed class RecordedSettingRestorationOperation(IRecordedSettingSource s
  }
  static ProbeObservation Observation(RecordedSettingSource record,SettingSnapshot current)
  {
-  var definition=FixedSettingOperation.Definitions.Single(d=>d.Setting==record.Setting);
+  var definition=FixedSettingOperation.RestorableDefinitions.Single(d=>d.Setting==record.Setting);
   // The source digest binds the target and original provenance to the fresh plan. UI and protected worker must derive identical source records.
-  return new(definition.ControlId,"setting.restore."+record.Setting,ObservationState.Known,current.Value.Clone(),"Recorded source SHA256 "+CanonicalJson.Digest(record)+"; current: "+current.Source,current.CapturedAt,"Exact current state and independently resolved recorded restoration target.");
+  return new(definition.ControlId,"setting.restore."+record.Setting,ObservationState.Known,StrictJson.Value(new RecordedRestorationReviewState(record.Setting,current.Value.Clone(),record.Before.Value.Clone())),"Recorded source SHA256 "+CanonicalJson.Digest(record)+"; current: "+current.Source,current.CapturedAt,"Exact current state and independently resolved recorded restoration target.");
  }
  public async Task<IReadOnlyList<ProbeObservation>> CaptureBeforeAsync(DeviceContext context,JsonElement parameters,CancellationToken ct)
  {

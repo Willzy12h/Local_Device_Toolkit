@@ -16,6 +16,72 @@
     "operationId": null
   },
   {
+    "id": "readiness.os-version",
+    "title": "Windows version",
+    "controlIds": [
+      "CMP-WIN-001"
+    ],
+    "checkIds": [
+      "os.version"
+    ],
+    "operationId": null
+  },
+  {
+    "id": "readiness.secure-boot",
+    "title": "Secure Boot",
+    "controlIds": [
+      "CMP-WIN-001"
+    ],
+    "checkIds": [
+      "secureboot.enabled"
+    ],
+    "operationId": null
+  },
+  {
+    "id": "readiness.tpm",
+    "title": "TPM readiness",
+    "controlIds": [
+      "CMP-WIN-001"
+    ],
+    "checkIds": [
+      "tpm.ready"
+    ],
+    "operationId": null
+  },
+  {
+    "id": "readiness.bitlocker",
+    "title": "BitLocker protection",
+    "controlIds": [
+      "CMP-WIN-001"
+    ],
+    "checkIds": [
+      "bitlocker.protected"
+    ],
+    "operationId": null
+  },
+  {
+    "id": "readiness.code-integrity",
+    "title": "Code integrity",
+    "controlIds": [
+      "CMP-WIN-001"
+    ],
+    "checkIds": [
+      "codeintegrity.enforced"
+    ],
+    "operationId": null
+  },
+  {
+    "id": "readiness.antivirus",
+    "title": "Antivirus protection",
+    "controlIds": [
+      "CMP-WIN-001"
+    ],
+    "checkIds": [
+      "antivirus.active"
+    ],
+    "operationId": null
+  },
+  {
     "id": "control.cfg-win-001",
     "title": "BitLocker and recovery escrow",
     "controlIds": [
@@ -107,16 +173,53 @@
     "operationId": null
   },
   {
-    "id": "control.cfg-win-010",
-    "title": "UK region and keyboard",
+    "id": "control.cfg-win-010-formats",
+    "title": "UK regional formats",
     "controlIds": [
       "CFG-WIN-010"
     ],
     "checkIds": [
-      "region.culture",
+      "region.culture"
+    ],
+    "operationId": "settings.uk-formats"
+  },
+  {
+    "id": "control.cfg-win-010-home-country",
+    "title": "UK home country",
+    "controlIds": [
+      "CFG-WIN-010"
+    ],
+    "checkIds": [],
+    "operationId": "settings.uk-home-country"
+  },
+  {
+    "id": "control.cfg-win-010-input-language",
+    "title": "Add UK input language",
+    "controlIds": [
+      "CFG-WIN-010"
+    ],
+    "checkIds": [],
+    "operationId": "settings.uk-input-language"
+  },
+  {
+    "id": "control.cfg-win-010-keyboard",
+    "title": "Add UK keyboard",
+    "controlIds": [
+      "CFG-WIN-010"
+    ],
+    "checkIds": [
       "keyboard.uk"
     ],
-    "operationId": "settings.uk-region-keyboard"
+    "operationId": "settings.uk-keyboard"
+  },
+  {
+    "id": "control.cfg-win-010-default-keyboard",
+    "title": "Use UK keyboard by default",
+    "controlIds": [
+      "CFG-WIN-010"
+    ],
+    "checkIds": [],
+    "operationId": "settings.uk-default-keyboard"
   },
   {
     "id": "control.cfg-win-011",
@@ -244,6 +347,94 @@
       "APP-WIN-005",
       "APP-WIN-006",
       "APP-WIN-007",
+      "APP-WIN-008"
+    ],
+    "checkIds": [
+      "apps.inventory"
+    ],
+    "operationId": "packages.install"
+  },
+  {
+    "id": "apps.app-win-001",
+    "title": "Microsoft 365 Apps",
+    "controlIds": [
+      "APP-WIN-001"
+    ],
+    "checkIds": [
+      "apps.inventory"
+    ],
+    "operationId": "packages.install"
+  },
+  {
+    "id": "apps.app-win-002",
+    "title": "Company Portal",
+    "controlIds": [
+      "APP-WIN-002"
+    ],
+    "checkIds": [
+      "apps.inventory"
+    ],
+    "operationId": "packages.install"
+  },
+  {
+    "id": "apps.app-win-003",
+    "title": "Google Chrome",
+    "controlIds": [
+      "APP-WIN-003"
+    ],
+    "checkIds": [
+      "apps.inventory"
+    ],
+    "operationId": "packages.install"
+  },
+  {
+    "id": "apps.app-win-004",
+    "title": "Adobe Acrobat Reader",
+    "controlIds": [
+      "APP-WIN-004"
+    ],
+    "checkIds": [
+      "apps.inventory"
+    ],
+    "operationId": "packages.install"
+  },
+  {
+    "id": "apps.app-win-005",
+    "title": "OneDrive application",
+    "controlIds": [
+      "APP-WIN-005"
+    ],
+    "checkIds": [
+      "apps.inventory"
+    ],
+    "operationId": "packages.install"
+  },
+  {
+    "id": "apps.app-win-006",
+    "title": "Microsoft Teams",
+    "controlIds": [
+      "APP-WIN-006"
+    ],
+    "checkIds": [
+      "apps.inventory"
+    ],
+    "operationId": "packages.install"
+  },
+  {
+    "id": "apps.app-win-007",
+    "title": "Remote management agent",
+    "controlIds": [
+      "APP-WIN-007"
+    ],
+    "checkIds": [
+      "apps.inventory"
+    ],
+    "operationId": "packages.install"
+  },
+  {
+    "id": "apps.app-win-008",
+    "title": "ESET endpoint protection (client package)",
+    "controlIds": [
       "APP-WIN-008"
     ],
     "checkIds": [

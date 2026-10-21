@@ -1,0 +1,127 @@
+LOCAL DEVICE TOOLKIT - QUICK GUIDE
+================================
+
+START HERE
+1. Extract the whole ZIP to a local folder. Keep all files and subfolders.
+2. Open Start.exe using your normal engineer account.
+3. Choose New device setup or Diagnostics. Select each task you want.
+
+The first lightweight launch may download its required runtime into the
+toolkit folder. That runtime install needs no admin rights or restart.
+Use the offline package if the device cannot download the runtime.
+Current-user settings affect the account running the toolkit.
+
+USING THE APP
+- Choose Check and review to inspect the selected tasks.
+- Read Current, Expected and Status before deciding to change anything.
+- Already correct: no change is needed. Missing: no stored value was found.
+- Unreadable or Unknown: the toolkit could not confirm the setting.
+- To make a change, configure that task's change action, check and review
+  again, confirm the company policy review, then choose Run changes.
+- Windows may ask for admin approval for individual machine changes.
+- Review the result and readback. The toolkit does not restart the device.
+- Use Deployments for approved local application media and profiles.
+- Use Reports & history to review saved work and create reports.
+
+SILENT DIAGNOSTICS - NO SETTINGS OR APPLICATIONS ARE CHANGED
+Open the toolkit folder in File Explorer. Type cmd in the address bar and
+press Enter. Copy one of these commands into that Command Prompt:
+
+  Run-Silent.cmd all
+  Run-Silent.cmd fast
+
+For an EXE run with no toolkit or console window:
+
+  Start.exe --silent --preset all
+  Start.exe --silent --preset fast
+
+Silent runs do not request admin approval. Checks needing admin rights are
+reported as Requires administrator when the process is not elevated.
+Reports, logs and temporary diagnostic files are still created locally.
+
+Fast keeps normal checks and short waits. It skips deliberate timed
+performance tests, such as a 60-second sample. None currently ship, so
+all and fast currently cover the same diagnostics. A slow or unavailable
+provider can still take up to its normal 30-second timeout.
+
+CHOOSE INDIVIDUAL CHECKS WITH A CONFIG FILE
+1. Copy Diagnostics.config.example to Diagnostics.config.
+2. Open Diagnostics.config in Notepad. Use these values:
+
+   0 = skip this item.
+   2 = report its current value. Do not change it.
+   1 = request a change. REFUSED by silent diagnostics.
+
+For a small run, replace the file contents with this example. It reports
+long paths and restart reasons, and skips file extensions:
+
+  # Each line controls one item.
+  longfilepaths=2
+  showfileextensions=0
+  local.restart.reasons=2
+
+When using a config, omitted items are skipped. Without a config, all
+diagnostic items are selected. Do not repeat a key or its full task ID.
+
+Run the file from the same toolkit folder:
+
+  Run-Silent.cmd fast "Diagnostics.config"
+
+Or use the EXE:
+
+  Start.exe --silent --preset all --config "Diagnostics.config"
+
+SUPPLY A CHECK TARGET WHEN NEEDED
+Needs input means a check needs a drive, hostname, port, printer, incident
+window or approved application profile. No target is guessed.
+Copy ProbeInputs.json.example to ProbeInputs.json and edit the targets.
+Replace its example drive letters and hostnames with approved values.
+
+Example ProbeInputs.json: check free space on C: only.
+
+  {
+    "local.storage.capacity": { "volumeId": "C:" }
+  }
+
+Set this line in Diagnostics.config (do not add it twice):
+
+  local.storage.capacity=2
+
+Then run:
+
+  Run-Silent.cmd all "Diagnostics.config" "ProbeInputs.json"
+
+Or:
+
+  Start.exe --silent --preset all --config "Diagnostics.config" --inputs "ProbeInputs.json"
+
+FIND THE RESULTS
+Paste this folder path into File Explorer:
+
+  %LOCALAPPDATA%\LocalDeviceToolkit\logs
+
+Each run has new dated files with the same unique name:
+  .html = readable summary. Open this first.
+  .log  = dated checks, values and full details. Times are UTC.
+  .json = results for automation.
+
+Missing inputs, admin-only checks and manual tasks stay visible.
+If no report appears, read the latest startup-* or app-error-* log.
+Local reports can contain device and network details; review before sharing.
+
+RETURN CODES FOR SCRIPTS
+  0  Selected checks completed with no reported differences/incomplete results.
+     Skipped items were not checked. An empty config also returns 0.
+  1  Run failed. Read the log.
+  2  Some results need input, admin rights, manual review or more evidence.
+  3  A checked value differs from the expected value or is missing.
+  64 Invalid command, config or input, including any =1 change request.
+
+From another batch file, use call Run-Silent.cmd ... to return to your script.
+Double-clicking a CMD file may show a console. Use the EXE for no window.
+
+CONFIG-DRIVEN CHANGES
+A separate config-apply command is pending. It is not available in this
+package. Use the app's checked, reviewed and confirmed change actions.
+
+More detail: docs\LOCAL-USAGE.md

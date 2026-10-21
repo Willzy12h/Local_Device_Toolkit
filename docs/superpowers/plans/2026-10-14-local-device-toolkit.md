@@ -1,5 +1,7 @@
 # Local Device Toolkit Implementation Plan
 
+Historical implementation plan. For delivered source, measured verification and remaining acceptance, use [implementation status](../../IMPLEMENTATION-STATUS.md) and [Windows acceptance](../../WINDOWS-ACCEPTANCE.md). The original drafting checkboxes below are not the current completion ledger.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox syntax for tracking.
 
 **Goal:** Build a native engineer toolkit that assesses the current Windows device, applies reviewed local changes with appropriate privilege, and records independently verified outcomes.

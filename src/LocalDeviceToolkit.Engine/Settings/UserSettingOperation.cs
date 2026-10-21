@@ -3,7 +3,7 @@ using LocalDeviceToolkit.Engine.Execution;
 using System.Text.Json;
 using LocalDeviceToolkit.Engine.Planning;
 namespace LocalDeviceToolkit.Engine.Settings;
-public enum UserSettingId { UkRegionKeyboard,RemoveConsumerCopilot }
+public enum UserSettingId { UkRegionKeyboard,RemoveConsumerCopilot,UkFormats,UkHomeCountry,UkInputLanguage,UkKeyboard,UkDefaultKeyboard }
 public sealed record UserLanguageState(string LanguageTag,string[] InputMethodTips,bool Handwriting,bool Spellchecking);
 public sealed record RegionState(string Culture,int HomeGeoId,string? DefaultInputMethodOverride,UserLanguageState[] Languages);
 public sealed record ConsumerPackage(string PackageFullName,string PackageFamilyName,string PublisherId,string Version);
@@ -18,8 +18,8 @@ public interface IUserSettingsBackend
 }
 public sealed class UserSettingOperation(UserSettingId setting,IUserSettingsBackend backend):ILocalOperation
 {
- public string Id=>setting==UserSettingId.UkRegionKeyboard?"settings.uk-region-keyboard":"apps.remove-consumer-copilot";
- string ControlId=>setting==UserSettingId.UkRegionKeyboard?"CFG-WIN-010":"CFG-WIN-021";
+ public string Id=>setting switch {UserSettingId.UkRegionKeyboard=>"settings.uk-region-keyboard",UserSettingId.RemoveConsumerCopilot=>"apps.remove-consumer-copilot",UserSettingId.UkFormats=>"settings.uk-formats",UserSettingId.UkHomeCountry=>"settings.uk-home-country",UserSettingId.UkInputLanguage=>"settings.uk-input-language",UserSettingId.UkKeyboard=>"settings.uk-keyboard",UserSettingId.UkDefaultKeyboard=>"settings.uk-default-keyboard",_=>throw new PlanValidationException("Unknown current-user setting.")};
+ string ControlId=>setting==UserSettingId.RemoveConsumerCopilot?"CFG-WIN-021":"CFG-WIN-010";
  string CheckId=>"setting."+setting;
  public void ValidateParameters(JsonElement p)
  {
@@ -42,8 +42,8 @@ public sealed class UserSettingOperation(UserSettingId setting,IUserSettingsBack
  ProbeObservation Observe(UserSettingSnapshot snapshot)
  {
   if(snapshot.Setting!=setting||!Text(snapshot.Source,512)||snapshot.CapturedAt.Offset!=TimeSpan.Zero)throw new PlanValidationException("Invalid original-user setting evidence.");
-  if(setting==UserSettingId.UkRegionKeyboard)ValidateRegion(Read<RegionState>(snapshot.Value));else ValidateConsumerIdentity(Read<ConsumerCopilotState>(snapshot.Value));
-  return new(ControlId,CheckId,ObservationState.Known,snapshot.Value.Clone(),snapshot.Source,snapshot.CapturedAt,"Exact original-user settings; other users and Microsoft 365 Copilot are not targets.");
+  if(setting!=UserSettingId.RemoveConsumerCopilot)ValidateRegion(Read<RegionState>(snapshot.Value));else ValidateConsumerIdentity(Read<ConsumerCopilotState>(snapshot.Value));
+  return new(ControlId,CheckId,ObservationState.Known,Project(snapshot.Value),snapshot.Source,snapshot.CapturedAt,"Exact original-user settings; other users and Microsoft 365 Copilot are not targets.");
  }
  public async Task<IReadOnlyList<ProbeObservation>> CaptureBeforeAsync(DeviceContext c,JsonElement p,CancellationToken ct)
  {ValidateParameters(p);if((await backend.GetActorAsync(ct)).Sid!=c.OriginalUserSid)throw new PlanValidationException("Original-user identity changed.");return new[]{Observe(await backend.ReadAsync(setting,c,ct))};}
@@ -53,15 +53,50 @@ public sealed class UserSettingOperation(UserSettingId setting,IUserSettingsBack
   if(!readiness.CanExecute||action.Request.OperationId!=Id||action.Readiness.Scope!=OperationScope.CurrentUser||action.Readiness.Privilege!=PrivilegeRequirement.CurrentUser)return new(action.Id,ActionOutcome.Failed,null,"Not started: current-user prerequisites or scope changed. "+readiness.Reason,[]);
   var before=await backend.ReadAsync(setting,c,ct);var observed=Observe(before);
   if(action.Before.Count!=1||action.Before[0].CheckId!=CheckId||ObservationFingerprint.Of(new[]{observed})!=action.BeforeDigest)return new(action.Id,ActionOutcome.Failed,null,"Not started: current-user settings changed after review.",[]);
+  if(setting is UserSettingId.UkKeyboard or UserSettingId.UkDefaultKeyboard)
+  {
+   var uk=Read<RegionState>(before.Value).Languages.SingleOrDefault(l=>l.LanguageTag.Equals("en-GB",StringComparison.OrdinalIgnoreCase));
+   if(uk is null||setting==UserSettingId.UkDefaultKeyboard&&!uk.InputMethodTips.Contains("0809:00000809",StringComparer.OrdinalIgnoreCase))return new(action.Id,ActionOutcome.Failed,null,"Not started: prerequisite missing. "+(setting==UserSettingId.UkKeyboard?"Add the UK input language first.":"Add the UK keyboard first."),[]);
+  }
   ct.ThrowIfCancellationRequested();
   try
   {
    await backend.ApplyAsync(setting,c,before,ct);var after=await backend.ReadAsync(setting,c,CancellationToken.None);var observation=Observe(after);
-   var verified=setting==UserSettingId.UkRegionKeyboard?RegionVerified(Read<RegionState>(before.Value),Read<RegionState>(after.Value)):Read<ConsumerCopilotState>(after.Value).Packages.Length==0;
+   var verified=setting==UserSettingId.RemoveConsumerCopilot?Read<ConsumerCopilotState>(after.Value).Packages.Length==0:setting==UserSettingId.UkRegionKeyboard?RegionVerified(Read<RegionState>(before.Value),Read<RegionState>(after.Value)):AtomicRegionVerified(setting,Read<RegionState>(before.Value),Read<RegionState>(after.Value));
    return new(action.Id,verified?ActionOutcome.AppliedVerified:ActionOutcome.AppliedUnverified,actor,verified?"Current-user readback confirmed the requested change and required preserved values. Complete manual verification; a new session may be needed for regional UI changes.":"Current-user readback did not confirm every requested/preserved value. Inspect before retrying.",[observation]);
   }
   catch(UserChangeUncertainException error){return new(action.Id,ActionOutcome.OutcomeUnknown,actor,error.Message,[new(ControlId,"process.user-setting",ObservationState.Known,error.ProcessEvidence.Clone(),"Owned PowerShell process observation",DateTimeOffset.UtcNow,"Process metadata is not proof of the setting outcome.")]);}
   catch(Exception){return new(action.Id,ActionOutcome.OutcomeUnknown,actor,"Current-user execution/readback was interrupted or unavailable. State may be partial; reconcile before another attempt.",[]);}
+ }
+ // Reviewed evidence covers only the selected target. Fresh full snapshots still guard the
+ // script's write and verify every preserved preference, allowing ordered selected actions.
+ JsonElement Project(JsonElement value)
+ {
+  if(setting is UserSettingId.RemoveConsumerCopilot or UserSettingId.UkRegionKeyboard)return value.Clone();
+  var region=Read<RegionState>(value);var uk=region.Languages.SingleOrDefault(l=>l.LanguageTag.Equals("en-GB",StringComparison.OrdinalIgnoreCase));
+  return setting switch {
+   UserSettingId.UkFormats=>StrictJson.Value(new {region.Culture}),
+   UserSettingId.UkHomeCountry=>StrictJson.Value(new {region.HomeGeoId}),
+   UserSettingId.UkInputLanguage=>StrictJson.Value(new {LanguageTag="en-GB",Present=uk is not null}),
+   UserSettingId.UkKeyboard=>StrictJson.Value(new {LanguageTag="en-GB",InputMethodTips=uk?.InputMethodTips??[]}),
+   UserSettingId.UkDefaultKeyboard=>StrictJson.Value(new {region.DefaultInputMethodOverride}),
+   _=>throw new PlanValidationException("Unknown region target.")};
+ }
+ public static bool AtomicRegionVerified(UserSettingId target,RegionState before,RegionState after)
+ {
+  ValidateRegion(before);ValidateRegion(after);
+  var uk=before.Languages.SingleOrDefault(l=>l.LanguageTag.Equals("en-GB",StringComparison.OrdinalIgnoreCase));
+  var expected=target switch {
+   UserSettingId.UkFormats=>before with {Culture="en-GB"},
+   UserSettingId.UkHomeCountry=>before with {HomeGeoId=242},
+   UserSettingId.UkInputLanguage=>uk is null?before with {Languages=[..before.Languages,new("en-GB",[],false,true)]}:before,
+   UserSettingId.UkKeyboard when uk is not null=>before with {Languages=before.Languages.Select(l=>l==uk?l with {InputMethodTips=l.InputMethodTips.Contains("0809:00000809",StringComparer.OrdinalIgnoreCase)?l.InputMethodTips:[..l.InputMethodTips,"0809:00000809"]}:l).ToArray()},
+   UserSettingId.UkDefaultKeyboard when uk?.InputMethodTips.Contains("0809:00000809",StringComparer.OrdinalIgnoreCase)==true=>before with {DefaultInputMethodOverride="0809:00000809"},
+   _=>null};
+  // Windows chooses preferences for a new language; only its empty keyboard list is fixed.
+  if(target==UserSettingId.UkInputLanguage&&uk is null&&after.Languages.Length==before.Languages.Length+1)
+   expected=expected! with {Languages=[..before.Languages,after.Languages[^1] with {LanguageTag="en-GB",InputMethodTips=[]}]};
+  return expected is not null&&StrictJson.Value(expected).GetRawText()==StrictJson.Value(after).GetRawText();
  }
  static void ValidateRegion(RegionState state)
  {
