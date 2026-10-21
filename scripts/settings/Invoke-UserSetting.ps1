@@ -7,7 +7,7 @@ $WarningPreference='Stop'
 if($PSVersionTable.PSVersion.Major -ne 5){throw 'Windows PowerShell 5.1 is required.'}
 if((Get-Item -LiteralPath $RequestFile).Length -gt 65536){throw 'Request exceeds the supported size.'}
 $request=Get-Content -LiteralPath $RequestFile -Raw -Encoding UTF8 | ConvertFrom-Json
-if($request.schemaVersion -ne 1 -or @($request.PSObject.Properties).Count -ne 4 -or @('ReadRegion','ApplyRegion','ReadConsumerCopilot','RemoveConsumerCopilot') -cnotcontains $request.action){throw 'Unregistered current-user request.'}
+if($request.schemaVersion -ne 1 -or @($request.PSObject.Properties).Count -ne 4 -or @('ReadRegion','ApplyUkFormats','ApplyUkHomeCountry','ApplyUkInputLanguage','ApplyUkKeyboard','ApplyUkDefaultKeyboard','ReadConsumerCopilot','RemoveConsumerCopilot') -cnotcontains $request.action){throw 'Unregistered current-user request.'}
 $sid=([Security.Principal.WindowsIdentity]::GetCurrent()).User.Value
 if($sid -cne $request.originalUserSid){throw 'The original user SID does not match this Windows process.'}
 function Read-Region {
@@ -33,7 +33,7 @@ function Read-ConsumerCopilot {
  })}
 }
 function Confirm-PolicySources {
- $paths=if($request.action -eq 'ApplyRegion'){@('SOFTWARE\Policies\Microsoft\Control Panel\International','SOFTWARE\Policies\Microsoft\MUI\Settings','SOFTWARE\Microsoft\PolicyManager\current\device\TimeLanguageSettings')}else{@('SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot','SOFTWARE\Microsoft\PolicyManager\current\device\WindowsAI')}
+ $paths=if($request.action -like 'ApplyUk*'){@('SOFTWARE\Policies\Microsoft\Control Panel\International','SOFTWARE\Policies\Microsoft\MUI\Settings','SOFTWARE\Microsoft\PolicyManager\current\device\TimeLanguageSettings')}else{@('SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot','SOFTWARE\Microsoft\PolicyManager\current\device\WindowsAI')}
  foreach($hive in @([Microsoft.Win32.RegistryHive]::LocalMachine,[Microsoft.Win32.RegistryHive]::CurrentUser)){
   $base=[Microsoft.Win32.RegistryKey]::OpenBaseKey($hive,[Microsoft.Win32.RegistryView]::Registry64)
   try{foreach($path in $paths){$key=$base.OpenSubKey($path,$false);if($null -ne $key){try{if($key.ValueCount -gt 0 -or $key.SubKeyCount -gt 0){throw 'A related management policy source is present.'}}finally{$key.Dispose()}}}}finally{$base.Dispose()}
@@ -48,20 +48,47 @@ try{
  switch -CaseSensitive ($request.action){
   'ReadRegion' {if($null -ne $request.expectedBefore){throw 'Read requests cannot contain mutation inputs.'};$value=Read-Region}
   'ReadConsumerCopilot' {if($null -ne $request.expectedBefore){throw 'Read requests cannot contain mutation inputs.'};$value=Read-ConsumerCopilot}
-  'ApplyRegion' {
+  'ApplyUkFormats' {
+   Confirm-PolicySources
+   Confirm-Before (Read-Region)
+   Set-Culture -CultureInfo en-GB -WarningAction SilentlyContinue
+  }
+  'ApplyUkHomeCountry' {
+   Confirm-PolicySources
+   Confirm-Before (Read-Region)
+   Set-WinHomeLocation -GeoId 242 -WarningAction SilentlyContinue
+  }
+  'ApplyUkInputLanguage' {
    Confirm-PolicySources
    Confirm-Before (Read-Region)
    $languages=Get-WinUserLanguageList
    $uk=@($languages | Where-Object {$_.LanguageTag -ieq 'en-GB'})
-   if($uk.Count -eq 0){$languages.Add((New-WinUserLanguageList -Language en-GB)[0]);$uk=@($languages | Where-Object {$_.LanguageTag -ieq 'en-GB'})}
-   if($uk.Count -ne 1){throw 'The UK language entry is ambiguous.'}
-   if($uk[0].InputMethodTips -notcontains '0809:00000809'){$uk[0].InputMethodTips.Add('0809:00000809')}
-   # International cmdlets may warn about a new sign-in; fresh readback, not warning text, determines success.
+   if($uk.Count -gt 1){throw 'The UK language entry is ambiguous.'}
+   if($uk.Count -eq 0){
+    $newLanguage=(New-WinUserLanguageList -Language en-GB)[0]
+    # New-WinUserLanguageList supplies a keyboard by default. Language selection
+    # alone must not select that separately reviewable keyboard change.
+    $newLanguage.InputMethodTips.Clear()
+    $languages.Add($newLanguage)
+   }
    Set-WinUserLanguageList -LanguageList $languages -Force -WarningAction SilentlyContinue
+  }
+  'ApplyUkKeyboard' {
+   Confirm-PolicySources
+   Confirm-Before (Read-Region)
+   $languages=Get-WinUserLanguageList
+   $uk=@($languages | Where-Object {$_.LanguageTag -ieq 'en-GB'})
+   if($uk.Count -ne 1){throw 'Prerequisite missing: add the UK input language first.'}
+   if($uk[0].InputMethodTips -notcontains '0809:00000809'){$uk[0].InputMethodTips.Add('0809:00000809')}
+   Set-WinUserLanguageList -LanguageList $languages -Force -WarningAction SilentlyContinue
+  }
+  'ApplyUkDefaultKeyboard' {
+   Confirm-PolicySources
+   $current=Read-Region
+   Confirm-Before $current
+   $uk=@($current.languages | Where-Object {$_.languageTag -ieq 'en-GB'})
+   if($uk.Count -ne 1 -or $uk[0].inputMethodTips -notcontains '0809:00000809'){throw 'Prerequisite missing: add the UK keyboard first.'}
    Set-WinDefaultInputMethodOverride -InputTip '0809:00000809' -WarningAction SilentlyContinue
-   Set-Culture -CultureInfo en-GB -WarningAction SilentlyContinue
-   Set-WinHomeLocation -GeoId 242 -WarningAction SilentlyContinue
-   # Never change system locale, welcome/default-user profiles or remove existing languages.
   }
   'RemoveConsumerCopilot' {
    Confirm-PolicySources

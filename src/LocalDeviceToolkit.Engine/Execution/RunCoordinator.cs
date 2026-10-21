@@ -6,11 +6,12 @@ public sealed class RunCoordinator(PlanService plans,OperationRegistry operation
 {
  readonly SemaphoreSlim gate=new(1,1);
  readonly HashSet<Guid> consumed=[];
- public async Task<RunRecord> ExecuteAsync(ReviewedPlan plan,CancellationToken stop)
+ public async Task<RunRecord> ExecuteAsync(ReviewedPlan plan,CancellationToken stop,IRunProgressSink? progress=null)
  {
   if(!await gate.WaitAsync(0,CancellationToken.None))throw new PlanValidationException("An operation is already running.");
   try
   {
+   if(plan.Lifetime is not {} lifetime||lifetime.IsExpired(Environment.TickCount64)||lifetime.ParentProcessId!=Environment.ProcessId||lifetime.ParentProcessStartedAt!=ReviewLifetime.Start().ParentProcessStartedAt)throw new PlanValidationException("A new review in this app session is required.");
    if(consumed.Contains(plan.Id))throw new PlanValidationException("This plan has already been used; review a fresh plan.");
    stop.ThrowIfCancellationRequested();var context=await contexts.GetCurrentAsync(stop);
    var initial=plans.Validate(plan,context,catalogue.Identity,plan.Actions.ToDictionary(a=>a.Id,a=>a.BeforeDigest),clock.GetUtcNow());
@@ -20,7 +21,7 @@ public sealed class RunCoordinator(PlanService plans,OperationRegistry operation
    var runId=Guid.NewGuid();var started=clock.GetUtcNow();var results=new List<ActionResult>();bool halted=false,complete=true;
    foreach(var action in plan.Actions)
    {
-    ActionResult result;
+    ActionResult result;bool notifyResult=false;
     if(halted||stop.IsCancellationRequested)
      result=new(action.Id,ActionOutcome.CancelledBeforeExecution,null,"Not started: the queue was stopped.",[]);
     else
@@ -39,6 +40,17 @@ public sealed class RunCoordinator(PlanService plans,OperationRegistry operation
       stop.ThrowIfCancellationRequested();
       validation=plans.ValidateAction(plan,action,context,catalogue.Identity,before,clock.GetUtcNow());
       if(!validation.IsValid)throw new PlanValidationException(string.Join(" ",validation.Reasons));
+      if(progress is not null)
+      {
+       try{await progress.BeforeActionAsync(plan,action,stop);}
+       catch(Exception)
+       {
+        complete=false;halted=true;
+        throw new PlanValidationException("The companion run log could not be saved; execution was blocked.");
+       }
+      }
+      stop.ThrowIfCancellationRequested();
+      notifyResult=true;
       dispatched=true;
       result=await dispatcher.DispatchAsync(plan,action,stop);
       ToolkitEvidenceSchemas.ValidateResult(result);
@@ -52,14 +64,24 @@ public sealed class RunCoordinator(PlanService plans,OperationRegistry operation
      }
      catch(Exception) when(dispatched){result=new(action.Id,ActionOutcome.OutcomeUnknown,null,"The execution outcome could not be confirmed; reconcile before retrying.",[]);}
     }
+    bool resultSaved=true;
     try
     {
      await evidence.SaveNewAsync(EvidenceRecord.Create(Guid.NewGuid(),"result",plan.Context,clock.GetUtcNow(),StrictJson.Value(new ResultRecord(runId,plan.Id,result))),CancellationToken.None);
     }
     catch(Exception e) when(e is IOException or UnauthorizedAccessException or EvidenceValidationException)
     {
-     complete=false;
+     complete=false;resultSaved=false;halted=true;
      if(result.Actor is not null)result=result with { Outcome=ActionOutcome.OutcomeUnknown,Reason="A result was observed but could not be durably saved; reconcile before retrying." };
+    }
+    if(progress is not null&&notifyResult&&resultSaved)
+    {
+     try{await progress.AfterActionAsync(plan,action,result,CancellationToken.None);}
+     catch(Exception)
+     {
+      complete=false;halted=true;
+      result=result with { Reason=result.Reason+" Companion run log unavailable after execution; remaining actions were stopped." };
+     }
     }
     results.Add(result);
     if(result.Outcome!=ActionOutcome.AppliedVerified)halted=true;
@@ -84,7 +106,7 @@ public sealed class LocalActionDispatcher(OperationRegistry registry,IExecutionC
   var validation=new PlanService(registry,clock??TimeProvider.System).ValidateAction(plan,action,context,plan.Catalogue,before,(clock??TimeProvider.System).GetUtcNow());
   if(!validation.IsValid)return new(action.Id,ActionOutcome.Failed,null,"Not started: "+string.Join(" ",validation.Reasons),[]);
   ct.ThrowIfCancellationRequested();
-  try{return await operation.ExecuteAsync(context,action,ct);}
+  try{return await operation.ExecuteAsync(context,Settings.PowerPlanSequence.AtDispatch(plan,action),ct);}
   catch(Exception){return new(action.Id,ActionOutcome.OutcomeUnknown,null,"The action's completion could not be confirmed; reconcile before retrying.",[]);}
  }
 }

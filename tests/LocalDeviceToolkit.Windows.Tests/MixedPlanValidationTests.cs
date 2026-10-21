@@ -19,8 +19,8 @@ public sealed class MixedPlanValidationTests
    var context=new DeviceContext("device","PC","S-1-5-21-123","engineer",false,new Version(10,0,26200),"x64",true);var now=DateTimeOffset.UtcNow;
    var before=new ProbeObservation[]{new("CFG-WIN-007","setting.LongPaths",ObservationState.Known,StrictJson.Value(new{exists=false,value=(int?)null}),"fixture",now,"fixture")};
    var machine=new PlannedAction(Guid.NewGuid(),new("control.cfg-win-007","settings.long-paths",StrictJson.Value(new{confirmManagedPolicyReview=true}),new("setup","windows")),new(true,OperationScope.Machine,PrivilegeRequirement.Administrator,"fixture"),before,ObservationFingerprint.Of(before));
-   var user=machine with{Id=Guid.NewGuid(),Request=new("apps.installation","packages.install",StrictJson.Value(new DeploymentParameters(profile.Id,Path.GetFullPath("media"))),new("setup","applications")),Readiness=new(true,OperationScope.CurrentUser,PrivilegeRequirement.CurrentUser,"fixture")};
-   var catalogue=CatalogueLoader.LoadShipped();var plan=new ReviewedPlan(Guid.NewGuid(),context,catalogue.Identity,now,now.AddMinutes(10),[machine,user],"");plan=plan with{Digest=CanonicalJson.Digest(plan)};
+   var user=machine with{Id=Guid.NewGuid(),Request=new("apps.app-win-002","packages.install",StrictJson.Value(new DeploymentParameters(profile.Id,Path.GetFullPath("media"))),new("setup","applications")),Readiness=new(true,OperationScope.CurrentUser,PrivilegeRequirement.CurrentUser,"fixture")};
+   var catalogue=CatalogueLoader.LoadShipped();var plan=new ReviewedPlan(Guid.NewGuid(),context,catalogue.Identity,now,now.AddMinutes(10),[machine,user],""){Lifetime=ReviewLifetime.Start()};plan=plan with{Digest=CanonicalJson.Digest(plan)};
    var registry=new OperationRegistry(WorkflowCatalogue.LoadShipped(),[new MachineOperation(),package]);var validation=new PlanService(registry,TimeProvider.System).ValidateAction(plan,machine,context,catalogue.Identity,before,now);
    Assert.True(validation.IsValid,string.Join(" ",validation.Reasons));
    Assert.False((await package.InspectAsync(context,user.Request.Parameters,default)).CanExecute);

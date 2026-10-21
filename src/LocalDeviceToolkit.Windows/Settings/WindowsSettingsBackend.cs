@@ -24,11 +24,12 @@ public sealed class WindowsSettingsBackend(int? originalProcessId=null):ISetting
  {
   var current=await identity.GetCurrentAsync(ct);
   if(current.DeviceId!=context.DeviceId||!PlanService.SupportedTarget(current))throw new PlanValidationException("The device is not the reviewed supported Windows workstation.");
-  if(setting==SettingId.ShowFileExtensions&&current.OriginalUserSid!=context.OriginalUserSid)throw new UnauthorizedAccessException("This action cannot read or change another engineer's profile.");
+  if((setting is SettingId.ShowFileExtensions or SettingId.NoAcSleep||PowerTimeoutOperation.IsSetting(setting))&&current.OriginalUserSid!=context.OriginalUserSid)throw new UnauthorizedAccessException("This action cannot read or change another engineer's profile.");
  }
  public async Task<SettingSnapshot> ReadAsync(SettingId setting,DeviceContext context,CancellationToken ct)
  {
   await ValidateContext(setting,context,ct);
+  if(PowerTimeoutOperation.IsSetting(setting))return new(setting,StrictJson.Value(await new WindowsPowerTimeoutBackend().ReadAsync(context,ct)),"Windows power APIs / active scheme / four timeout indices",DateTimeOffset.UtcNow);
   if(setting==SettingId.UkTimeZone)return new(setting,StrictJson.Value(TimeZoneSettings.Read()),"Windows dynamic time-zone API",DateTimeOffset.UtcNow);
   if(setting==SettingId.NoAcSleep)return new(setting,StrictJson.Value(PowerSettings.Read()),"Windows active power scheme / AC standby timeout",DateTimeOffset.UtcNow);
   var spec=RegistrySetting(setting);using var root=RegistryKey.OpenBaseKey(spec.Hive,RegistryView.Registry64);using var key=root.OpenSubKey(spec.Path,false);
@@ -43,6 +44,7 @@ public sealed class WindowsSettingsBackend(int? originalProcessId=null):ISetting
  }
  public Task<SettingPolicy> InspectPolicyAsync(SettingId setting,CancellationToken ct)
  {
+  if(PowerTimeoutOperation.IsSetting(setting))return new WindowsPowerTimeoutBackend().InspectPolicyAsync(ct);
   if(!OperatingSystem.IsWindows())throw new PlatformNotSupportedException();ct.ThrowIfCancellationRequested();
   try
   {
@@ -106,6 +108,12 @@ public sealed class WindowsSettingsBackend(int? originalProcessId=null):ISetting
   var policy=await InspectPolicyAsync(setting,ct);if(!policy.Available||policy.ConflictObserved)throw new PlanValidationException(policy.Reason);
   if(await GetPrivilegeAsync(setting,context,ct)==PrivilegeRequirement.Administrator&&!(await GetActorAsync(ct)).IsElevated)throw new UnauthorizedAccessException("Restoration requires an authenticated elevated token.");
   ct.ThrowIfCancellationRequested();
+  if(PowerTimeoutOperation.IsSetting(setting))
+  {
+   var expected=StrictJson.Read<PowerTimeoutState>(StrictJson.Bytes(expectedCurrent.Value));var target=StrictJson.Read<PowerTimeoutState>(StrictJson.Bytes(recordedTarget.Value));var slot=PowerTimeoutOperation.Slot(setting);
+   if(expected.ActiveScheme!=target.ActiveScheme||expected.With(slot,target.Get(slot))!=target)throw new PlanValidationException("Restoration would change another power index or scheme.");
+   await new WindowsPowerTimeoutBackend().WriteAsync(context,slot,target.Get(slot),expected,ct);return;
+  }
   if(setting==SettingId.UkTimeZone){TimeZoneSettings.Set(StrictJson.Read<TimeZoneState>(StrictJson.Bytes(recordedTarget.Value)));return;}
   if(setting==SettingId.NoAcSleep)
   {
@@ -134,7 +142,7 @@ static class PowerSettings
  public static void SetAc(Guid expectedPlan,uint seconds)
  {
   if(Read().ActiveScheme!=expectedPlan)throw new PlanValidationException("The active power scheme changed.");
-  var plan=expectedPlan;var sub=SleepSubgroup;var setting=StandbyIdle;Check(PowerWriteACValueIndex(IntPtr.Zero,ref plan,ref sub,ref setting,seconds));Check(PowerSetActiveScheme(IntPtr.Zero,ref plan));
+  var plan=expectedPlan;var sub=SleepSubgroup;var setting=StandbyIdle;Check(PowerWriteACValueIndex(IntPtr.Zero,ref plan,ref sub,ref setting,seconds));if(Read().ActiveScheme!=expectedPlan)throw new PlanValidationException("The active power scheme changed before activation.");Check(PowerSetActiveScheme(IntPtr.Zero,ref plan));
  }
  static void Check(uint result){if(result!=0)throw new Win32Exception(checked((int)result));}
  [DllImport("powrprof.dll")]static extern uint PowerGetActiveScheme(IntPtr root,out IntPtr scheme);

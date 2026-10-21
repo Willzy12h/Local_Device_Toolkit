@@ -1,6 +1,8 @@
 {
-  "local-windows.json": "184c5cbafdfa8023d89ef4f5c95949a71bcaf6a1a65482bddc0e21b85b98e400",
+  "local-windows.json": "a5dbbff9f2b3f24a77bb05362650e204ae7dcf569b0361c41c39f481c94591f3",
   "reference.json": "a652cc026d4407cdc8a2a9666a891da77267a6591f41f038d6002253f4541a2e",
-  "tasks.json": "853449830c5272cf26d5724895e57e328f6c70164d2d4911895a3a07c6e9d495",
-  "workflows.json": "559ecd268eead9148d44e2197629dfbc07b8e54b52b5d032f9351721a068adb9"
+  "tasks.json": "03c442f2ac0f749b43b5b82d17684f7d7ca65f08f2988ef69556235416fccbf7",
+  "workflows.json": "951b0bfba3486740908d7d574e492243f70004a85ed6565adad5c8671ad68db2",
+  "local-probes.json": "ee6f0c06b54c5a523158bbf48251bcf917982a32af2ea85f04aacbda61d7abc2",
+  "windows-support.json": "20a6b7ba1ab27e7bc47206a25bfea7e4e9bfce96b6dd23fb1b2b410e0785bbd5"
 }

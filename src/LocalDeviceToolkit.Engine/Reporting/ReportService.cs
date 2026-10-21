@@ -10,7 +10,11 @@ public sealed class ReportService(IEvidenceStore store, LocalCatalogue catalogue
  readonly EvidenceSchemaRegistry schemas = CreateSchemas();
  static EvidenceSchemaRegistry CreateSchemas() { var schemas = ToolkitEvidenceSchemas.Create(); ReportingEvidenceSchemas.Register(schemas); LocalDeviceToolkit.Engine.Deployments.DeploymentEvidenceSchemas.Register(schemas); return schemas; }
  public Task<EvidenceRecord> ReadRecordAsync(Guid id,CancellationToken ct)=>LoadAsync(id,ct);
- public Task<HistoryPage> ReadHistoryAsync(string? cursor, CancellationToken ct) => store.ReadHistoryAsync(cursor, ct);
+ public async Task<HistoryPage> ReadHistoryAsync(string? cursor, CancellationToken ct)
+ {
+  var page=await store.ReadHistoryAsync(cursor,ct);
+  return page with {Entries=page.Entries.OrderByDescending(r=>r.RecordedAt).ThenBy(r=>r.Id).ToArray()};
+ }
  async Task<EvidenceRecord> LoadAsync(Guid id, CancellationToken ct)
  {
   var record = await store.LoadAsync(id, ct);

@@ -46,13 +46,13 @@ public sealed class ProtectedWorkspace
   var path=Path.Combine(Root,name);CreateOrValidate(path);if(name=="profiles")GrantRead(path,FileSystemRights.ReadAndExecute,true);return path;
  }
  public FileStream AcquireWriter()=>new(Path.Combine(Root,"device-writer.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None);
- public string StageReadOnlyScripts()
+ public string StageScripts(bool includeMutation=false)
  {
   var parent=Directory("scripts");var manifest=RegisteredScripts.Manifest;
-  var root=Path.Combine(parent,ScriptStageIdentity.For(manifest));CreateOrValidate(root);
+  var root=Path.Combine(parent,ScriptStageIdentity.For(manifest,includeMutation));CreateOrValidate(root);
   foreach(var pin in manifest.Scripts)
   {
-   if(!pin.ReadOnly)continue;
+   if(!pin.ReadOnly&&!includeMutation)continue;
    var resources=typeof(RegisteredScripts).Assembly.GetManifestResourceNames();
    var name=resources.Single(n=>n.Replace('\\','/')=="scripts/"+pin.Path);
    using var stream=typeof(RegisteredScripts).Assembly.GetManifestResourceStream(name)??throw new InvalidDataException("Missing registered script.");
@@ -68,7 +68,7 @@ public sealed class ProtectedWorkspace
    {
     using var file=new FileStream(destination,FileMode.CreateNew,FileAccess.Write,FileShare.None,4096,FileOptions.WriteThrough);file.Write(bytes);file.Flush(true);
    }
-   using var verified=RegisteredScripts.OpenVerified(root,pin.Id);
+   using var verified=RegisteredScripts.OpenVerified(root,pin.Id,pin.ReadOnly);
   }
   return root;
  }
