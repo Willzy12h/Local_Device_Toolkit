@@ -29,10 +29,18 @@ public sealed class EvidenceRecordedSettingSource(IEvidenceStore store,bool prot
    if(run.Id!=p.SourceRunId||run.PlanId!=plan.Id||run.Context!=plan.Context||!run.EvidenceComplete)throw new EvidenceValidationException("The original run does not match the reviewed plan.");
    result=run.Results.SingleOrDefault(r=>r.ActionId==action.Id)??throw new EvidenceValidationException("There is no recorded result for that action.");
   }
-  var definition=FixedSettingOperation.Definitions.SingleOrDefault(d=>d.OperationId==action.Request.OperationId)??throw new EvidenceValidationException("The original operation does not support recorded restoration.");
+  var definition=FixedSettingOperation.RestorableDefinitions.SingleOrDefault(d=>d.OperationId==action.Request.OperationId)??throw new EvidenceValidationException("The original operation does not support recorded restoration.");
   if(result.ActionId!=action.Id||result.Outcome!=ActionOutcome.AppliedVerified||result.Actor is null||action.Readiness.Scope!=definition.Scope||action.Before.Count!=1||result.After.Count!=1||action.BeforeDigest!=Planning.ObservationFingerprint.Of(action.Before))throw new EvidenceValidationException("Only a complete verified fixed-setting action can be restored.");
-  var before=action.Before[0];var after=result.After[0];var expectedCheck="setting."+definition.Setting;
+  var before=action.Before[0];var after=result.After[0];var expectedCheck=PowerTimeoutOperation.IsSetting(definition.Setting)?"power.timeout-state":"setting."+definition.Setting;
   if(before.ControlId!=definition.ControlId||after.ControlId!=definition.ControlId||before.CheckId!=expectedCheck||after.CheckId!=expectedCheck||before.State!=ObservationState.Known||after.State!=ObservationState.Known||!before.Value.HasValue||!after.Value.HasValue)throw new EvidenceValidationException("The original setting before/after evidence is incomplete.");
+  if(PowerTimeoutOperation.IsSetting(definition.Setting))
+  {
+   var slot=PowerTimeoutOperation.Slot(definition.Setting);var dispatch=PowerPlanSequence.AtDispatch(plan,action);
+   if(protectedAuthority)await PowerPlanSequence.VerifyProtectedPrefixAsync(plan,action,store,ct);
+   var actualBefore=StrictJson.Read<PowerTimeoutState>(StrictJson.Bytes(dispatch.Before[0].Value!.Value));var actualAfter=StrictJson.Read<PowerTimeoutState>(StrictJson.Bytes(after.Value!.Value));
+   if(actualAfter!=actualBefore.With(slot,PowerTimeoutOperation.Seconds(PowerTimeoutOperation.Input(action.Request.Parameters).Minutes))||result.Actor.Sid!=plan.Context.OriginalUserSid)throw new EvidenceValidationException("Original power change lacks exact verified state.");
+   before=before with{Value=StrictJson.Value(actualBefore)};
+  }
   // For preview this flag classifies the source. The worker independently loads its own protected records before any elevated write.
   var requiresProtected=action.Readiness.Scope==OperationScope.Machine&&action.Readiness.Privilege==PrivilegeRequirement.Administrator;
   if(protectedAuthority&&!requiresProtected)throw new EvidenceValidationException("User-privilege evidence cannot authorize elevated restoration.");

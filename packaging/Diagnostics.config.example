@@ -1,0 +1,201 @@
+# Local Device Toolkit: diagnostic selection only. UTF-8 text.
+# No device settings, repairs or deployments are changed.
+# Copy to Diagnostics.config, edit, then pass --config Diagnostics.config.
+# 0 = ignore/skip this item.
+# 2 = report its current value; do not change it.
+# 1 = request a change: REFUSED by diagnostics. No apply command is included.
+# Items omitted from a supplied config are skipped. Without a config, all diagnostics run.
+# Unknown keys, duplicate items and other values fail with exit 64.
+# all/fast keep ordinary short waits. fast skips only marked timed performance tests.
+# No such timed performance tests are currently shipped.
+# Check targets are separate: --inputs ProbeInputs.json (see example).
+# Reports/logs remain local under %LOCALAPPDATA%/LocalDeviceToolkit/logs.
+
+# Windows version
+readiness.os-version=2
+
+# Secure Boot
+readiness.secure-boot=2
+
+# TPM readiness
+readiness.tpm=2
+
+# BitLocker protection
+readiness.bitlocker=2
+
+# Code integrity
+readiness.code-integrity=2
+
+# Antivirus protection
+readiness.antivirus=2
+
+# BitLocker and recovery escrow
+control.cfg-win-001=2
+
+# Windows LAPS
+control.cfg-win-002=2
+
+# Windows Hello for Business
+control.cfg-win-003=2
+
+# Windows core restrictions
+control.cfg-win-004=2
+
+# Windows web sign-in
+control.cfg-win-008=2
+
+# Microsoft 365 Apps
+apps.app-win-001=2
+
+# Company Portal
+apps.app-win-002=2
+
+# Google Chrome
+apps.app-win-003=2
+
+# Adobe Acrobat Reader
+apps.app-win-004=2
+
+# OneDrive application
+apps.app-win-005=2
+
+# Microsoft Teams
+apps.app-win-006=2
+
+# Remote management agent
+apps.app-win-007=2
+
+# ESET endpoint protection (client package)
+apps.app-win-008=2
+
+# OneDrive sign-in and Known Folder Move
+control.cfg-win-005=2
+
+# Microsoft Edge configuration
+control.cfg-win-006=2
+
+# Long paths
+longfilepaths=2
+
+# Chrome single sign-on
+control.cfg-win-009=2
+
+# UK regional formats
+control.cfg-win-010-formats=2
+
+# UK home country
+control.cfg-win-010-home-country=2
+
+# Add UK input language
+control.cfg-win-010-input-language=2
+
+# Add UK keyboard
+control.cfg-win-010-keyboard=2
+
+# Use UK keyboard by default
+control.cfg-win-010-default-keyboard=2
+
+# UK time zone
+control.cfg-win-011=2
+
+# Show file extensions
+showfileextensions=2
+
+# OneDrive Files On-Demand
+control.cfg-win-013=2
+
+# Storage Sense
+control.cfg-win-014=2
+
+# Hide consumer features
+control.cfg-win-015=2
+
+# Taskbar starting layout
+control.cfg-win-016=2
+
+# Microsoft Store available
+control.cfg-win-017=2
+
+# Windows settings backup and restore (ESR successor)
+control.cfg-win-018=2
+
+# Fast startup off
+control.cfg-win-019=2
+
+# No sleep on mains
+windows.power-ac-sleep=2
+
+# Remove consumer Copilot app
+control.cfg-win-021=2
+
+# Windows release and support
+local.os.support=2
+
+# Local work-account context
+local.identity.context=2
+
+# Restart reasons
+local.restart.reasons=2
+
+# Update history
+local.update.history=2
+
+# Windows recovery
+local.recovery.winre=2
+
+# Drive protection
+local.bitlocker.state=2
+
+# Free space
+local.storage.capacity=2
+
+# Disk-health evidence
+local.storage.health=2
+
+# Manufacturer and firmware identity
+local.hardware.identity=2
+
+# Present device problems
+local.hardware.problems=2
+
+# Sleep capabilities
+local.power.capabilities=2
+
+# Battery capacity
+local.battery.capacity=2
+
+# Defender protection
+local.defender.protection=2
+
+# Defender signatures
+local.defender.signatures=2
+
+# Adapter and route
+local.network.adapter=2
+
+# DNS lookup
+local.network.dns=2
+
+# TCP connection
+local.network.tcp=2
+
+# User proxy configuration
+local.proxy.user=2
+
+# System WinHTTP proxy
+local.proxy.winhttp=2
+
+# Windows time status
+local.time.status=2
+
+# Print Spooler state
+local.print.spooler=2
+
+# Selected printer queue
+local.print.queue=2
+
+# Incident events
+local.events.incident=2
+
+# Selected application verification
+local.app.verification=2

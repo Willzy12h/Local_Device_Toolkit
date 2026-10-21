@@ -19,6 +19,12 @@ public sealed class RegisteredScriptTests
   var changed=first with {Scripts=[first.Scripts[0] with {Sha256=new string('b',64)}]};Assert.NotEqual(ScriptStageIdentity.For(first),ScriptStageIdentity.For(changed));
   Assert.Equal(ScriptStageIdentity.For(first),ScriptStageIdentity.For(first with {Scripts=[..first.Scripts,new("settings.user","settings/Invoke-UserSetting.ps1",new string('c',64),false)]}));
  }
+ [Fact] public void Mutation_staging_tracks_mutation_content_without_changing_read_only_stages()
+ {
+  var first=new ScriptManifest(1,[new("repair.defender","diagnostics/Invoke-DefenderSignatureUpdate.ps1",new string('a',64),false)]);
+  var changed=first with{Scripts=[first.Scripts[0] with{Sha256=new string('b',64)}]};
+  Assert.Equal(ScriptStageIdentity.For(first),ScriptStageIdentity.For(changed));Assert.NotEqual(ScriptStageIdentity.For(first,true),ScriptStageIdentity.For(changed,true));
+ }
  [Fact] public void Unregistered_script_id_is_not_a_command_channel()=>Assert.Throws<InvalidDataException>(()=>RegisteredScripts.OpenVerified(Path.GetTempPath(),"cmd.exe"));
  [Fact] public async Task Native_source_does_not_invent_data_on_non_windows()
  {

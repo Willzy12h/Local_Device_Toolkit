@@ -1,10 +1,12 @@
 # Local engineer usage
 
+For a short plain-text guide with copy-and-paste examples, open **HOW-TO-USE.txt** beside **Start.exe** in either package ([source copy](../HOW-TO-USE.txt)).
+
 The target is Windows 11 x64. Open the application as your normal Windows account. Current-user actions configure that engineer's profile, not a future end user's profile. Machine operations request UAC separately and record the actual administrator without replacing the original engineer.
 
 ## Start and assess
 
-1. Extract the entire portable ZIP into a local folder, retaining `worker`, `scripts`, `tools`, `catalogue` and documentation. Open `LocalDeviceToolkit.App.exe` normally. The package includes .NET and Windows Desktop runtimes; no SDK, browser, service or tenant login is required.
+1. Extract the entire ZIP into a local folder owned by your current account, retaining its subfolders. For the **lightweight** package, open **Start.exe** normally. Its native startup window checks both x64 .NET 10 Core and Desktop runtimes. If missing, it silently downloads pinned Microsoft ZIPs, verifies SHA-512 and installs a shared private `.dotnet` folder beside the toolkit. It opens the main app automatically: no app relaunch, Windows reboot, administrator prompt or system PATH/registry change is needed for this runtime installation. Use `Start.cmd` as a console fallback. The **self-contained offline** package instead opens `LocalDeviceToolkit.App.exe` and already includes its runtime. Neither edition needs an SDK, browser, service or tenant login.
 2. Choose **New device setup** for the task table or **Diagnostics** for the task list and details. Both use the same underlying operations. Tick each task you want; navigation runs nothing. UK formats, home country, input language, keyboard and default keyboard are separate choices. Applications also have individual rows.
 3. Choose **Check selected only** to inspect without changes, or review the selected changes. Choose an approved application profile or recorded restoration input when required. No dependent task is selected automatically.
 4. Review **Current**, **Expected**, **Status** and **Account**. **Already correct** is skipped. **Different** shows the observed value. **Missing** means no stored value was found; it does not assume a Windows default. **Unreadable** means the state could not be established and blocks changes. Select a row to read or copy the full source, including long registry paths.
@@ -67,7 +69,9 @@ Use **Restore a recorded local setting** under Windows configuration to select a
 
 Open **Reports & history → Open saved reports & history**. Select saved records with Ctrl/Shift and create a setup handover, diagnostic ticket or deployment audit. A deployment run loads its actual reviewed plan. Read-only reports need no fabricated deployment run.
 
-History is paged by record ID, not globally by date; use **Next history page** beyond the first 100 files. Corrupt/unavailable records remain visible as notices. **View saved record JSON** reopens a verified original record, including older catalogue versions, for inspection/copying. Projected compliance reports require a matching reference catalogue.
+History is paged by record ID, not globally by date; use **Next history page** beyond the first 100 files. Within each loaded page, records appear newest first. **Search loaded history page** matches record kind, device, original engineer, record ID or UTC date, ignoring case. Search examines only the loaded page; a page with no matches does not establish that no matching evidence exists elsewhere. The matching/loaded counts and history diagnostics remain visible. Clear the search or move to another page as needed.
+
+Changing the search, selected records, report purpose or history page clears the previous report preview; build a report again before export. **Select session captures** and recording a manual review clear the search so the selected records remain visible. Corrupt/unavailable records remain visible as notices. **View saved record JSON** reopens a verified original record, including older catalogue versions, for inspection/copying. Projected compliance reports require a matching reference catalogue.
 
 Record explicit manual reviews with source/note and an exclusion or applicability reason where appropriate. They cannot override missing, malformed, denied or failing automatic evidence. Reports retain source IDs, original requester, actual actors, dates, before/after values and limitations. Evidence older than ten minutes is a dated snapshot, not current compliance. Export HTML, CSV or JSON deliberately; existing exports are preserved.
 
@@ -75,9 +79,62 @@ User evidence is under `%LOCALAPPDATA%\LocalDeviceToolkit\evidence`. Protected m
 
 PowerShell execution policy and downloaded-file markings are preserved. If approved scripts cannot run, the result remains unavailable/uncertain. Use the organization's approved signing/distribution process; there is no automatic policy bypass, module installation or file unblocking.
 
+## Silent diagnostics: EXE or CMD
+
+Silent mode checks and reports only. It never applies settings, runs repairs, installs applications, accepts manual reviews or requests UAC. Both package editions include the same launcher and diagnostic templates. The lightweight edition can still download its verified private .NET runtime if needed; that prerequisite does not require a restart. An already elevated process with a missing runtime must first provision the runtime as a standard user. Device diagnostics can create local evidence, dated logs and short temporary battery reports, and explicitly targeted network checks can send network requests.
+
+```cmd
+Run-Silent.cmd all
+Run-Silent.cmd fast
+Start.exe --silent --preset all
+Start.exe --silent --preset fast
+```
+
+The EXE shows no toolkit or console window. The CMD wrapper does not open another window, prompt or pause; Windows may briefly show the calling console if you double-click a CMD file. Use the EXE when no console flash is wanted. From another batch file, use `call Run-Silent.cmd ...`; from PowerShell use `Start-Process -Wait -PassThru` when you need a windowed EXE's exit code. Launch as the engineer account. Already elevated runs can collect admin-only evidence for that account; ordinary runs report **Requires administrator** and continue without UAC.
+
+`all` includes every diagnostic row. Change-only tasks are excluded. `fast` skips only tasks explicitly marked as deliberate timed performance tests. It keeps short battery reports, event collection and DNS/TCP checks. There are currently no timed performance tests, so both presets cover the same diagnostics. Provider timeouts remain bounded; an unavailable provider can still take up to 30 seconds. This is not a guarantee of instant completion.
+
+Copy `Diagnostics.config.example` to `Diagnostics.config` and edit it with Notepad. Each line independently selects one diagnostic:
+
+```ini
+# 0 = skip; 2 = report current value without changing it.
+# 1 would request a change. Diagnostics REFUSES it; no change command is included.
+longfilepaths=2
+showfileextensions=0
+local.restart.reasons=2
+```
+
+```cmd
+Run-Silent.cmd fast "C:\Engineer\Diagnostics.config"
+Start.exe --silent --preset all --config "C:\Engineer\Diagnostics.config"
+```
+
+Omitted items in a supplied config are skipped and listed as **Excluded by config**. Without `--config`, every diagnostic is selected. Config keys may use the full diagnostic task ID; `longfilepaths` and `showfileextensions` are convenient aliases. Unknown keys, duplicate aliases/IDs and values other than 0/2 fail before checking. A config cannot supply registry paths, commands, installer switches or elevation approval.
+
+Checks requiring a volume, network endpoint, printer, incident window or approved application profile report **Needs input** until supplied explicitly. Copy/edit `ProbeInputs.json.example`; its `C:` drives and reserved `.invalid` hostnames are examples to replace with approved targets. Input keys use the existing closed probe schemas. No network target, incident window or application profile is guessed.
+
+```cmd
+Run-Silent.cmd all "C:\Engineer\Diagnostics.config" "C:\Engineer\ProbeInputs.json"
+Start.exe --silent --preset fast --config "C:\Engineer\Diagnostics.config" --inputs "C:\Engineer\ProbeInputs.json"
+```
+
+Each run creates a new dated `.log`, `.json` and `.html` under `%LOCALAPPDATA%\LocalDeviceToolkit\logs`, sharing a unique basename. The HTML is an at-a-glance current/expected/status table; JSON supports automation. Reports are local operator records and can contain device paths and network details. Review them before sharing; use the interactive minimized report export for wider disclosure. Startup/runtime failures use separate dated `startup-silent-*`, `startup-launcher-*` or `app-error-*` logs. Existing files are preserved. Evidence remains in the normal evidence store; companion reports are not approval or execution authority.
+
+The HTML and log also summarize requested, completed, different, incomplete and excluded tasks. Completed tasks include checks that found differences; this is not a count of compliant tasks. Missing inputs, denied access, manual work and incomplete saved evidence remain incomplete. Excluded tasks were not requested. If a config excludes every task, an explicit notice explains that exit 0 does not establish device readiness. Reports also explain that `fast` and `all` currently include the same diagnostics because no timed performance tests ship. Exit codes and the JSON schema remain unchanged.
+
+| Exit | Meaning |
+| --- | --- |
+| 0 | Selected checks finished with no reported differences or incomplete results; explicitly excluded tasks were not checked. An empty config also returns 0. |
+| 1 | Startup, provider orchestration, evidence or report I/O failed; inspect logs. |
+| 2 | Results include missing inputs, admin-only, manual, unreadable or unknown evidence. This takes precedence over differences. |
+| 3 | Checks completed and observed a different or missing expected value. No changes were made. |
+| 64 | Invalid arguments or config/input schema, including any `=1` change request. |
+
+Application inventory can establish observed packages; it does not certify deployment completion, licensing, sign-in or client enrollment. Manual tasks remain manual. A separate config-driven change mode is not implemented; interactive changes continue to require selection, fresh before/expected review and engineer confirmation.
+
 ## Build and verify
 
-On Windows, use the SDK pinned by `global.json`, locked restore, warning-as-error build and solution tests. Run `build/Publish-Portable.ps1` from a clean working tree with a new output directory. `-AllowDirty` creates an explicitly labelled local review artifact. No third-party installer media is bundled.
+On Windows, use the SDK pinned by `global.json`, locked restore, warning-as-error build and solution tests. Run `build/Publish-Portable.ps1` from a clean working tree with a new output directory. `-AllowDirty` creates an explicitly labelled local review artifact. Use `-Lightweight` to build the smaller download with its native startup window; omit it for the existing self-contained offline package. Windows’ built-in .NET Framework compiler builds the tiny windowed launcher. No third-party installer media is bundled.
 
 `build/Test-Portable.ps1 -ZipPath <zip> -ResultPath <new-json> -ExpectedCommit <full-sha>` verifies archive/file hashes, required runtime/source assets, raw catalogue/script pins and AMD64 headers without extracting or executing the package. It does not prove native launch, publisher authenticity or device behavior. CI separately extracts and renders the actual application without an SDK on its runtime path. Use the extracted apphost for worker acceptance; `dotnet run` does not establish that boundary.
 
@@ -91,3 +148,29 @@ dotnet test LocalDeviceToolkit.sln -c Release --no-restore -warnaserror
 ```
 
 Setup pins SDK 10.0.401 and PowerShell 7.6.0, verifies their artifacts and restores locked dependencies. PS7 runs read-only package integrity tests on Linux; it is not Windows PowerShell 5.1 acceptance. No application service needs starting. WPF, UAC and real Windows/vendor operations require an authorized Windows host.
+
+## Engineer checks and repairs
+
+Both setup and diagnostics include **Device checks** and **All tasks**. Suggestions filter the list; they do not tick anything. Configure a volume, hostname/port, literal printer name, incident UTC interval or approved profile where required. A changed input clears the previous target's displayed status. Each check collects only its selected provider; check failures remain Unknown, with coverage limitations.
+
+Choose individual rows → **Check and review** → inspect current/expected values, account and disclosed effects → confirm the selected changes → run and verify. The new dated companion log retains selection, permitted evidence, confirmation and readback in the same file. A new review/page creates a new file. Reviews expire after ten minutes, including elapsed time while waiting for elevation; restarting the app requires a fresh review.
+
+Four separate power rows set AC/battery sleep/display timeouts: 0 means Never; otherwise enter 1–1440 whole minutes. All four measured indices and the active scheme are shown. Unselected indices are preserved. Power changes and restoration require elevation **as the original engineer**; alternate administrator credentials are refused. Restoration uses verified saved evidence and blocks subsequent drift.
+
+DNS cache refresh requires an externally verified expected IP address, a supported stale-cache hypothesis and separate whole-device effect confirmation. Round-robin differences alone are insufficient. It clears the entire client cache once and checks only the selected hostname through the system resolver. No exact cache restoration is available. Defender signatures use configured/default Windows sources without overrides. Passive/unknown Defender blocks the request. Unknown process completion retains a persistent guard; use the action's protected reconciliation controls, review completion explicitly, then create a new review. No automatic retry or updater termination occurs.
+
+Incident collection supports a maximum seven-day window and 200 projected records per explicit page. It excludes event messages and dumps. The default view explains up to three groups; **Task details** retains permitted records and IDs. **Collect next event page** is an explicit new read, logged with its parent run. Gaps, denied channels and continuation coverage remain visible. Event 41 means an unclean shutdown; it does not establish a hardware cause. Only documented identifier combinations receive the DCOM explanation.
+
+Application verification uses an approved profile's inventory without downloading or installing. Installation does not prove configuration, sign-in, licensing or restart completion. Engineer handover offers eleven separate manual tests and eight fixed Settings destinations. Opening Settings is recorded as a launch, never a verified configuration change. Record a nonsecret tested target and scope for every manual result. Client checklist JSON supplies expectations/requirements only; loading it grants no execution permission and selects no tasks. The manual checklist is explicitly scoped; complete local and unresolved-action checks separately.
+
+Saved reports default to a minimized export projection with an identifying-details opt-in and visible preview. Raw immutable evidence remains local and can be inspected explicitly. Two selected captures can be compared; different targets, catalogues, contexts or incomplete coverage show **Not comparable**. Bundled support dates are offline references, not client approval or automatic upgrade recommendations; unmatched/stale references remain Unknown.
+
+## Private runtime startup
+
+The lightweight startup UI shows checks, download/install progress and errors, with a new UTC-dated `startup-*.log` in the existing user log folder. Runtime installation is automatic when missing, and refuses to install if startup was elevated: start normally instead. A compatible complete private runtime is reused, then the registered global x64 installation is considered. Incomplete private folders stop startup with guidance instead of being overwritten. SHA-512 failures, offline/proxy failures, cancellation or missing write access stop before app launch; retries do not run an EXE installer or bypass Windows script policy. Use the approved self-contained edition when downloads or scripts are blocked.
+
+The pinned first-use Core and Desktop archives total approximately **76 MB**, expanding to approximately **180 MB** once, shared by the UI and worker. Private runtime servicing is part of toolkit maintenance: update the release pins and distribute a tested package; this is not a machine-wide installation serviced automatically by Windows Update. Copying the lightweight ZIP does not copy an already-installed private runtime. Keep the extracted folder for reuse.
+
+Administrator prompts still apply to the individual device actions that require them. Vendor installers and settings may report their own restart requirements; those are separate from runtime startup. Interactive same/alternate-user UAC and physical Windows 11 acceptance remain pending.
+
+To service an existing private runtime, close the toolkit, move its `.dotnet` folder aside, and start the newly approved package. It will install that package's pinned runtime. Compatible global runtimes remain managed by your organisation; startup does not silently upgrade them.

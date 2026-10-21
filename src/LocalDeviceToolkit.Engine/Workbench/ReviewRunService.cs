@@ -7,12 +7,15 @@ using LocalDeviceToolkit.Engine.Logging;
 using LocalDeviceToolkit.Engine.Planning;
 namespace LocalDeviceToolkit.Engine.Workbench;
 
+public sealed record RunLabels(string Client,string Ticket);
 public sealed record ReviewSelection(string TaskId,WorkflowOrigin Origin,bool ChangeRequested,ActionRequest? Request=null);
 public sealed record ReviewRow(TaskDefinition Task,ActionRequest? Request,WorkflowOrigin Origin,bool ChangeRequested,ActionPreview Preview,IReadOnlyList<ProbeObservation> Before,ActionReadiness? Readiness,ActionPreview? AfterPreview=null,DateTimeOffset? AfterCapturedAt=null);
 public sealed class ReviewRun
 {
  internal ReviewRun(RunTextLog log,long generation,DateTimeOffset createdAt){Log=log;Generation=generation;CreatedAt=createdAt;}
  internal RunTextLog Log{get;}internal long Generation{get;}internal DateTimeOffset CreatedAt{get;}internal ReviewedPlan? Plan{get;set;}internal bool Closed{get;set;}
+ internal long InputRevision{get;set;}
+ internal long StartedTimestamp{get;set;}internal long StartedUptime{get;set;}
  internal readonly List<ReviewRow> Items=[];
  public IReadOnlyList<ReviewRow> Rows=>Items.AsReadOnly();
  public string FilePath=>Log.FilePath;public Guid RunId=>Log.RunId;public string LogText{get;internal set;}="";public string State{get;internal set;}="Checking";
@@ -41,13 +44,20 @@ public sealed class ReviewRunService(OperationRegistry operations,PlanService pl
  }
  async Task CloseAsync(ReviewRun run)
  {if(run.Closed)return;run.Closed=true;await run.Log.DisposeAsync();}
- public async Task<ReviewRun> CheckAsync(IReadOnlyList<ReviewSelection> selection,CancellationToken ct)
+ public Task<ReviewRun> CheckAsync(IReadOnlyList<ReviewSelection> selection,CancellationToken ct,Guid? parentRun=null,RunLabels? labels=null)=>CheckCoreAsync(selection,ct,parentRun,labels,false);
+ internal Task<ReviewRun> CheckSilentAsync(IReadOnlyList<ReviewSelection> selection,CancellationToken ct)
+ {
+  if(selection.Any(s=>s.ChangeRequested||s.Request is not null))throw new PlanValidationException("Silent diagnostics cannot request changes.");
+  return CheckCoreAsync(selection,ct,null,null,true);
+ }
+ async Task<ReviewRun> CheckCoreAsync(IReadOnlyList<ReviewSelection> selection,CancellationToken ct,Guid? parentRun,RunLabels? labels,bool allowEmptyChecks)
  {
   if(!await gate.WaitAsync(0,ct))throw new PlanValidationException("A check or change is already running.");
   ReviewRun? run=null;
   try
   {
-   if(selection is null||selection.Count is <1 or >100)throw new PlanValidationException("Select between 1 and 100 tasks.");
+   if(labels is not null&&(labels.Client.Length>128||labels.Ticket.Length>128||labels.Client.Any(char.IsControl)||labels.Ticket.Any(char.IsControl)))throw new PlanValidationException("Client and ticket labels must be plain text up to 128 characters.");
+   if(selection is null||selection.Count>(100)||selection.Count<(allowEmptyChecks?0:1))throw new PlanValidationException("Select between 1 and 100 tasks.");
    var selected=selection.Select(s=>s with{Origin=s.Origin with{},Request=s.Request is null?null:s.Request with{Parameters=s.Request.Parameters.Clone()}}).ToArray();
    foreach(var item in selected)
    {
@@ -61,8 +71,10 @@ public sealed class ReviewRunService(OperationRegistry operations,PlanService pl
     try{await AppendAsync(previous,"review","Superseded by a new review. No further actions can run from this review.",CancellationToken.None);}finally{previous.State="Superseded";await CloseAsync(previous);}
    }
    var version=Interlocked.Increment(ref generation);
-   run=new(await RunTextLog.CreateAsync(logDirectory,session.Context,clock,ct),version,clock.GetUtcNow());Current=run;
+   run=new(await RunTextLog.CreateAsync(logDirectory,session.Context,clock,ct),version,clock.GetUtcNow());Current=run;run.InputRevision=session.InputRevision;run.StartedTimestamp=clock.GetTimestamp();run.StartedUptime=Environment.TickCount64;
    run.LogText=await run.Log.ReadAsync(ct);
+   if(labels is not null)await AppendAsync(run,"run-details","Client="+labels.Client+"; Ticket="+labels.Ticket,ct);
+   if(parentRun is not null)await AppendAsync(run,"parent-run","Explicit continuation of review/run "+parentRun.Value.ToString("D")+". This page has separate coverage.",ct);
    await AppendAsync(run,"selection",string.Join("; ",selected.Select(s=>$"{s.TaskId}: {(s.ChangeRequested?"Review change":"Check only")}")),ct);
    var facts=new Dictionary<WorkflowOrigin,IReadOnlyList<ProbeObservation>>();
    foreach(var group in selected.Where(s=>!s.ChangeRequested).GroupBy(s=>s.Origin))
@@ -70,7 +82,13 @@ public sealed class ReviewRunService(OperationRegistry operations,PlanService pl
     try
     {
      await AppendAsync(run,"check","Reading selected checks: "+string.Join(", ",group.Select(s=>s.TaskId)),ct);
-     var capture=await session.CaptureAtOriginAsync(group.Select(s=>s.TaskId).ToArray(),group.Key,ct);facts[group.Key]=capture.Observations;
+     var collected=new List<ProbeObservation>();
+     foreach(var item in group)
+     {
+      try{var capture=await session.CaptureAtOriginAsync([item.TaskId],group.Key,ct);collected.AddRange(capture.Observations);}
+      catch(Exception e) when(e is not OperationCanceledException){var task=session.Workflows.ResolveTask(item.TaskId);collected.AddRange(task.ControlIds.Select(id=>new ProbeObservation(id,"read.failure",ObservationState.Unavailable,null,"Registered check",clock.GetUtcNow(),"The selected provider could not be read. Configure its inputs and check again.")));}
+     }
+     facts[group.Key]=collected;
     }
     catch(Exception error) when(error is not OperationCanceledException)
     {
@@ -133,7 +151,7 @@ public sealed class ReviewRunService(OperationRegistry operations,PlanService pl
       if(ObservationFingerprint.Of(row.Before)!=action.BeforeDigest)throw new PlanValidationException("A value changed during review. Check again before confirming.");
      }
      // Expiry starts with the first review, never after time spent reading the page.
-     var plan=run.Plan with{CreatedAt=run.CreatedAt,ExpiresAt=run.CreatedAt.AddMinutes(10),Digest=""};run.Plan=plan with{Digest=CanonicalJson.Digest(plan)};
+     var plan=run.Plan with{CreatedAt=run.CreatedAt,ExpiresAt=run.CreatedAt.AddMinutes(10),Lifetime=run.Plan.Lifetime! with {StartedUptimeMilliseconds=run.StartedUptime},Digest=""};run.Plan=plan with{Digest=CanonicalJson.Digest(plan)};
      run.State="Ready";
     }
     catch(PlanValidationException error)
@@ -187,9 +205,9 @@ public sealed class ReviewRunService(OperationRegistry operations,PlanService pl
   if(!await gate.WaitAsync(0,ct))throw new PlanValidationException("A check or change is already running.");
   try
   {
-   if(!ReferenceEquals(review,Current)||review.Closed||review.Generation!=Volatile.Read(ref generation))throw new PlanValidationException("The selection changed. Check and review it again.");
+   if(!ReferenceEquals(review,Current)||review.Closed||review.Generation!=Volatile.Read(ref generation)||review.InputRevision!=session.InputRevision)throw new PlanValidationException("The selection changed. Check and review it again.");
    if(!policyConfirmed)throw new PlanValidationException("Confirm the company policy review before running changes.");
-   if(clock.GetUtcNow()<review.CreatedAt||clock.GetUtcNow()>=review.CreatedAt.AddMinutes(10))throw new PlanValidationException("This review expired. Check and review again.");
+   if(clock.GetElapsedTime(review.StartedTimestamp)>=TimeSpan.FromMinutes(10)||clock.GetUtcNow()<review.CreatedAt||clock.GetUtcNow()>=review.CreatedAt.AddMinutes(10))throw new PlanValidationException("This review expired. Check and review again.");
    if(review.State=="Blocked")throw new PlanValidationException("Resolve blocked items before running changes.");
    if(review.Plan is null)
    {await AppendAsync(review,"skip","Check-only or already correct: no changes were needed or dispatched.",ct);review.State="Finished";await CloseAsync(review);return null;}
@@ -207,7 +225,7 @@ public sealed class ReviewRunService(OperationRegistry operations,PlanService pl
    }
    catch(Exception error) when(error is IOException or UnauthorizedAccessException or ObjectDisposedException)
    {result=result with{EvidenceComplete=false};review.State="Finished — log incomplete";}
-   await CloseAsync(review);return result;
+   session.RecordRun(result,review.Plan);await CloseAsync(review);return result;
   }
   catch
   {
@@ -217,6 +235,16 @@ public sealed class ReviewRunService(OperationRegistry operations,PlanService pl
     try{await AppendAsync(review,"stop","The review/run stopped. Inspect the recorded results before retrying; no automatic retry will occur.",CancellationToken.None);}catch(Exception){}finally{await CloseAsync(review);}
    }
    throw;
+  }
+  finally{gate.Release();}
+ }
+ public async Task CompleteChecksAsync(ReviewRun review,CancellationToken ct)
+ {
+  if(!await gate.WaitAsync(0,ct))throw new PlanValidationException("A check or change is already running.");
+  try
+  {
+   if(!ReferenceEquals(review,Current)||review.Closed||review.Plan is not null||review.Rows.Any(r=>r.ChangeRequested))throw new PlanValidationException("Only a live check-only review can finish without approval.");
+   await AppendAsync(review,"finish","Check-only run finished. No changes were approved or dispatched.",ct);review.State="Finished";await CloseAsync(review);
   }
   finally{gate.Release();}
  }
@@ -235,7 +263,8 @@ public sealed class ReviewRunService(OperationRegistry operations,PlanService pl
    values=values.Select(o=>o.CheckId=="deployment.installed-product"&&o.Value is JsonElement actual&&o.State==ObservationState.Known?o with{CheckId="deployment.review-state",Value=StrictJson.Value(original with{Inventory=StrictJson.Read<DeploymentInventory>(StrictJson.Bytes(actual))})}:o).ToArray();
   }
   var preview=values.Count>0?ActionPreviewFormatter.Describe(row.Task,row.Request,values,row.Readiness):row.Preview with{Current="Not rechecked",NeedsChange=false};
-  if(result.Outcome!=ActionOutcome.AppliedVerified)preview=preview with{Status=result.Outcome==ActionOutcome.CancelledBeforeExecution?PreviewStatus.NotChecked:PreviewStatus.Blocked,NeedsChange=false};
+  if(result.Outcomes is {} outcomes)preview=preview with{Status=outcomes.ExpectedStateVerified==true?PreviewStatus.AlreadyCorrect:PreviewStatus.Unknown,NeedsChange=false};
+  if(result.Outcome!=ActionOutcome.AppliedVerified)preview=preview with{Status=result.Outcome==ActionOutcome.CancelledBeforeExecution?PreviewStatus.NotChecked:result.Outcomes is not null&&result.Outcome is ActionOutcome.OutcomeUnknown or ActionOutcome.AppliedUnverified?PreviewStatus.Unknown:PreviewStatus.Blocked,NeedsChange=false};
   return preview with{Explanation=result.Reason+" "+preview.Explanation,NeedsChange=false};
  }
  static void UpdateAfter(ReviewRun review,PlannedAction action,ActionResult result)
@@ -249,12 +278,12 @@ public sealed class ReviewRunService(OperationRegistry operations,PlanService pl
   public Task BeforeActionAsync(ReviewedPlan plan,PlannedAction action,CancellationToken ct)
   {
    var row=review.Items.Single(r=>r.Request is not null&&CanonicalJson.Digest(r.Request)==CanonicalJson.Digest(action.Request));
-   return owner.AppendAsync(review,"start",$"{row.Task.Title}; Current={row.Preview.Current}; Expected={row.Preview.Expected}; Source={row.Preview.Source}; Reviewed before (freshly rechecked)={Raw(action.Before)}",ct);
+   return owner.AppendAsync(review,"start",$"{row.Task.Title}; Current={row.Preview.Current}; Expected={row.Preview.Expected}; Source={row.Preview.Source}; Measured at review={Raw(action.Before)}; Expected at dispatch={Raw(Settings.PowerPlanSequence.AtDispatch(plan,action).Before)}",ct);
   }
   public async Task AfterActionAsync(ReviewedPlan plan,PlannedAction action,ActionResult result,CancellationToken ct)
   {
    UpdateAfter(review,action,result);var row=review.Items.Single(r=>r.Request is not null&&CanonicalJson.Digest(r.Request)==CanonicalJson.Digest(action.Request));
-   await owner.AppendAsync(review,"result",$"{row.Task.Title}; Outcome={result.Outcome}; Current={row.AfterPreview!.Current}; Expected={row.AfterPreview.Expected}; Status={ActionPreviewFormatter.StatusLabel(row.AfterPreview.Status)}; Actor={result.Actor?.UserName??"Not started / not confirmed"}; SID={result.Actor?.Sid??"Not confirmed"}; Source={row.AfterPreview.Source}; {result.Reason}; Readback={Raw(result.After)}",ct);
+   await owner.AppendAsync(review,"result",$"{row.Task.Title}; Outcome={result.Outcome}; Action completed={result.Outcomes?.ActionCompleted?.ToString()??"Not separately established"}; Expected state verified={result.Outcomes?.ExpectedStateVerified?.ToString()??"Unknown"}; Original symptom resolved={result.Outcomes?.OriginalSymptomResolved?.ToString()??"Unknown"}; Current={row.AfterPreview!.Current}; Expected={row.AfterPreview.Expected}; Status={ActionPreviewFormatter.StatusLabel(row.AfterPreview.Status)}; Actor={result.Actor?.UserName??"Not started / not confirmed"}; SID={result.Actor?.Sid??"Not confirmed"}; Source={row.AfterPreview.Source}; {result.Reason}; Readback={Raw(result.After)}",ct);
   }
  }
 }

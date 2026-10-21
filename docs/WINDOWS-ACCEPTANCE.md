@@ -2,6 +2,8 @@
 
 No real device settings or client applications have been changed by this cloud task. Do not infer vendor installation or interactive UAC acceptance from build/test/render results.
 
+Automatic push and pull-request CI runs builds, tests, package integrity checks and read-only packaged-app renders. The real standard-account/private-runtime startup acceptance step is opt-in: an authorized manual workflow dispatch must explicitly set `native_runtime_acceptance=true`. It creates a disposable Windows account and installs the private runtime on the runner. Default CI success does not establish that this opt-in acceptance step ran.
+
 ## Observed automation
 
 - `049b2fd`: [Windows/Linux CI](https://github.com/Willzy12h/Local_Device_Toolkit/actions/runs/38660754520) passed 77 tests, native token/pipe/junction checks, PowerShell 5.1 parsing, self-contained packaging and five actual extracted-application WPF renders.
@@ -16,6 +18,8 @@ No real device settings or client applications have been changed by this cloud t
 
 Use a dedicated authorized Windows 11 x64 workstation and record the exact portable ZIP SHA-256, commit, Windows build, accounts, before/after evidence IDs and outcome for each case.
 
+For silent diagnostics, run both `all` and `fast` through the EXE and CMD, confirm no toolkit windows/UAC, inspect fresh JSON/HTML/log files and verify monitored settings remain unchanged. Test an already elevated engineer account separately, missing probe targets, empty/all-disabled config, 0/2 selections, duplicate/unknown keys, refused `=1`, restricted script policy and a missing-runtime first launch without pop-ups. The current CI covers a Windows Server standard account and the shared runtime installer; it does not replace physical Windows 11 or fully silent first-install acceptance. Config-driven device changes remain unimplemented.
+
 | Case | Status |
 | --- | --- |
 | Extracted package without SDK, spaces/Unicode path | Earlier CI passed; final package/render outcome is recorded in the workflow run |
@@ -28,7 +32,27 @@ Use a dedicated authorized Windows 11 x64 workstation and record the exact porta
 | Approved MSI, OneDrive, original-user MSIX/bundles and Office offline media | Synthetic metadata/guard coverage; actual vendor media/install acceptance pending |
 | 3010/1641, detached bootstrapper, interrupted process, durable guard and reviewed resolution | Contract/process tests; representative vendor/reboot interaction pending |
 | 100%, 150%, 200% actual display DPI, high contrast, keyboard focus and Narrator | Pending physical accessibility acceptance; compact renders are not a substitute |
+| Saved-report search, newest-first loaded pages, clearing search for session/manual selections, preview invalidation and rebuilding before export | Local source/build and portable ordering tests; interactive Windows acceptance pending |
 
 Client RMM/EDR media, tenant sign-in, licensing rights and client-specific authorization must be supplied through the approved engineer/vendor process. The toolkit does not invent these or collect administrator passwords.
 
 Exact current commit/run outcomes, including the final archive verification and 21 normal/compact WPF views, are available in [Verify native toolkit](https://github.com/Willzy12h/Local_Device_Toolkit/actions/workflows/verify.yml). A failed or unrun step is not native acceptance.
+
+## Engineer readiness expansion — 16 October 2026
+
+The expansion adds 24 local checks, four separate power timeout actions, DNS cache refresh and a guarded Defender signature request. Linux fixtures and cross-compilation do **not** establish Windows 11 acceptance. Until a recorded disposable-device run is attached, the following remain pending:
+
+- Same-engineer UAC and alternate-credential refusal for all new and legacy power writes/restoration; protected prefix validation across multiple selected power actions; all four indices and scheme preserved; exact raw-seconds restoration and concurrent scheme/policy changes.
+- S0/S3 laptops, battery/no-battery desktops, VM/unsupported media-health providers, multi-battery systems, localized WinRE/time output, denied provider/channel access, encrypted/suspended volumes and recovery references without key retrieval.
+- VPN/split-DNS/NRPT changes, positive/negative cache hypotheses, no cache restoration claim, only selected-host retest, offline/third-party AV/passive Defender, configured source order, update process timeout/cancellation/restart and explicit protected reconciliation.
+- Local/shared/unavailable printer inventory without document/owner data, literal-target identity, approved-profile inventory and unresolved installer states. No actual installer media or customer sign-in is supplied by this repository.
+- App sleep/resume, wall-clock rollback and waiting at UAC beyond the review deadline; original app restart must require a new review.
+- Native normal/compact layouts for local task lists, incident/network inputs, each repair review, power timeouts and handover; keyboard/tab order, high contrast, Narrator and physical DPI.
+
+CI renders native WPF without executing mutations and parses scripts under Windows PowerShell 5.1. These checks complement this matrix; they do not replace it. A manual-only checklist is scoped to its selected requirements and original engineer, not a certification of the eventual end user's device or tenant state.
+
+Native CI evidence for `e472383`: [run 38890927681](https://github.com/Willzy12h/Local_Device_Toolkit/actions/runs/38890927681) passed both jobs, 469 tests, PowerShell 5.1 checks, complete 858-file portable package verification, extracted self-contained app launch and 37 normal/compact renders. The actual dated read-only review log is included in the artifact. The Windows Server runner does not satisfy the physical Windows 11, interactive UAC or accessibility matrix above. Exact archive provenance and SHA-256 are in [the execution record](superpowers/2026-10-16-engineer-readiness-execution.md).
+
+## Silent private runtime startup — 18 October 2026
+
+The lightweight edition adds Start.exe using the built-in framework to show WPF startup progress before .NET 10 is available. Missing runtime installation uses pinned Microsoft Core/Desktop ZIPs, runs without elevation, and automatically opens the main app. No runtime-install reboot or app relaunch is required. The offline self-contained edition remains available. Native CI exercises an actual missing-runtime first run with a controlled global-discovery fixture and temporary standard Windows account, incompatible inherited runtime flags, subsequent reuse, policy-blocked native feedback and private worker runtime loading/refusal in the elevated parent. Interactive UAC approval is not automated by that refusal check. [Run 39159445568](https://github.com/Willzy12h/Local_Device_Toolkit/actions/runs/39159445568) passed at fde9e16: 481 tests on both platforms, a real standard-account missing-runtime UI/download/install/launch path, reuse, blocked-policy feedback, native views and private worker runtime loading/refusal. The test verified the new account SID and non-elevated token and removed the account afterward. Windows Server CI is not physical Windows 11 acceptance; interactive UAC remains unverified. Physical Windows 11 acceptance above remains pending.

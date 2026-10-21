@@ -1,0 +1,23 @@
+{
+  "local.update.history": {
+    "count": 20
+  },
+  "local.storage.capacity": {
+    "volumeId": "C:",
+    "requiredBytes": 0
+  },
+  "local.bitlocker.state": {
+    "volumeId": "C:"
+  },
+  "local.storage.health": {
+    "volumeId": "C:"
+  },
+  "local.network.dns": {
+    "hostname": "replace-with-approved-host.example.invalid",
+    "queryType": "A"
+  },
+  "local.network.tcp": {
+    "host": "replace-with-approved-host.example.invalid",
+    "port": 443
+  }
+}

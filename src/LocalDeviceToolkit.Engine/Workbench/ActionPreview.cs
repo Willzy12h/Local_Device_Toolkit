@@ -5,7 +5,7 @@ using LocalDeviceToolkit.Engine.Deployments;
 using LocalDeviceToolkit.Engine.Settings;
 namespace LocalDeviceToolkit.Engine.Workbench;
 
-public enum PreviewStatus { NotChecked,AlreadyCorrect,Different,Missing,Unreadable,Blocked,Manual }
+public enum PreviewStatus { NotChecked,AlreadyCorrect,Different,Missing,Unreadable,Blocked,Manual,Observed,Unknown,NotApplicable }
 public sealed record ActionPreview(string Title,string Current,string Expected,PreviewStatus Status,string Explanation,string Source,string Account,bool NeedsChange);
 
 /// <summary>Formats captured evidence without reading the device or authorising a write.</summary>
@@ -13,11 +13,46 @@ public static class ActionPreviewFormatter
 {
  public static string StatusLabel(PreviewStatus status)=>status switch
  {
-  PreviewStatus.NotChecked=>"Not checked",PreviewStatus.AlreadyCorrect=>"Already correct",PreviewStatus.Different=>"Different",PreviewStatus.Missing=>"Missing",PreviewStatus.Unreadable=>"Unreadable",PreviewStatus.Blocked=>"Blocked",PreviewStatus.Manual=>"Manual verification",_=>throw new ArgumentOutOfRangeException(nameof(status))
+  PreviewStatus.Observed=>"Observed",PreviewStatus.Unknown=>"Unknown",PreviewStatus.NotApplicable=>"Not applicable",PreviewStatus.NotChecked=>"Not checked",PreviewStatus.AlreadyCorrect=>"Already correct",PreviewStatus.Different=>"Different",PreviewStatus.Missing=>"Missing",PreviewStatus.Unreadable=>"Unreadable",PreviewStatus.Blocked=>"Blocked",PreviewStatus.Manual=>"Manual verification",_=>throw new ArgumentOutOfRangeException(nameof(status))
  };
  public static ActionPreview Describe(TaskDefinition task,ActionRequest? request,IReadOnlyList<ProbeObservation> observations,ActionReadiness? readiness=null)
  {
+  if(LocalProbeValues.IsRegistered(task.Id))
+  {
+   var o=observations.SingleOrDefault(x=>x.CheckId==task.Id);if(o is null)return new(task.Title,"Not checked","Not supplied",PreviewStatus.NotChecked,"Choose inputs, then check.","","Original engineer",false);
+   if(o.State!=ObservationState.Known||o.Value is not JsonElement raw||!LocalProbeValues.Accepts(task.Id,raw))
+   {
+    var unknown=Diagnostics.DiagnosticInterpreter.Summarize(Diagnostics.DiagnosticInterpreter.Interpret(o));
+    return new(task.Title,"Unknown","Not supplied",o.State==ObservationState.NotSupported?PreviewStatus.NotApplicable:PreviewStatus.Unknown,"Signposts: "+unknown.Signposts.Count(f=>f.SecurityRelevant)+" security; "+unknown.Signposts.Count(f=>f.RequiredUnknown)+" required/incomplete. "+o.Reason+"; captured "+o.CapturedAt.ToString("O")+"; evidence "+o.EvidenceCaptureId,o.Source,"Original engineer",false);
+   }
+   var v=StrictJson.Read<LocalProbeValue>(StrictJson.Bytes(raw));var status=v.Status switch {"Current"=>PreviewStatus.AlreadyCorrect,"Different"=>PreviewStatus.Different,"Missing"=>PreviewStatus.Missing,"Unknown"=>PreviewStatus.Unknown,"Not applicable"=>PreviewStatus.NotApplicable,_=>PreviewStatus.Observed};
+   var explanation=string.Join(Environment.NewLine,v.Details.Where(p=>p.Key!="eventRecords").Select(p=>p.Key+": "+p.Value));
+   var diagnostic=Diagnostics.DiagnosticInterpreter.Summarize(Diagnostics.DiagnosticInterpreter.Interpret(o));
+   if(diagnostic.Expanded.Count>0)
+   {
+    var expanded=string.Join(Environment.NewLine+Environment.NewLine,diagnostic.Expanded.Select(f=>"Observed: "+f.Observed+"\nWhy it matters: "+f.Why+"\nNext step: "+f.NextStep+"\n"+f.Confidence+"; captured "+o.CapturedAt.ToString("O")+"; evidence "+string.Join(", ",f.CaptureIds)));
+    explanation="Signposts: "+diagnostic.Signposts.Count(f=>f.SecurityRelevant)+" security; "+diagnostic.Signposts.Count(f=>f.RequiredUnknown)+" required/incomplete.\n"+expanded+"\n"+diagnostic.Remaining.Count+" additional finding(s). Full permitted evidence remains in Task details.\n\n"+explanation;
+   }
+   if(o.Coverage is {} coverage)explanation+=Environment.NewLine+(coverage.Complete?"Collection complete":"Collection incomplete")+"; "+string.Join("; ",coverage.Limitations)+(coverage.HasMore?" More events available; request the next page explicitly.":"");
+   return new(task.Title,v.Current,v.Expected??"Not supplied",status,explanation,o.Source,"Original engineer",false);
+  }
   var operation=request?.OperationId??task.OperationId;
+  if(operation is "diagnostics.refresh-dns-cache" or "diagnostics.update-defender-signatures")
+  {
+   var o=observations.SingleOrDefault(o=>o.CheckId=="repair.review-state");
+   if(o?.Value is not JsonElement raw||o.State!=ObservationState.Known)return new(task.Title,"Not checked","Configure reviewed request",PreviewStatus.NotChecked,"Select and configure this action individually.","","Administrator",false);
+   var state=StrictJson.Read<LocalDeviceToolkit.Engine.Diagnostics.RepairSnapshot>(StrictJson.Bytes(raw));
+   return new(task.Title,state.Current,operation=="diagnostics.refresh-dns-cache"?"Refresh whole-device cache once; retest selected hostname":"Request signatures using configured/default sources",state.CanAct?PreviewStatus.Different:PreviewStatus.Blocked,state.Reason+Environment.NewLine+string.Join(Environment.NewLine,state.Details.Select(p=>p.Key+": "+p.Value)),o.Source,"Administrator",state.CanAct&&request is not null);
+  }
+  if(operation?.StartsWith("settings.power.",StringComparison.Ordinal)==true)
+  {
+   var o=observations.SingleOrDefault(o=>o.CheckId=="power.timeout-state");
+   if(o?.Value is not JsonElement raw||o.State!=ObservationState.Known)return new(task.Title,"Not checked","Choose timeout",PreviewStatus.NotChecked,"Configure this timeout, then check and review.","Windows power APIs","Original engineer · administrator",false);
+   var state=StrictJson.Read<PowerTimeoutState>(StrictJson.Bytes(raw));var slot=Enum.GetValues<PowerSlot>().Single(s=>PowerTimeoutOperation.OperationId(s)==operation);
+   if(request is null)return new(task.Title,Duration(state.Get(slot)),"Choose timeout",PreviewStatus.Observed,"Active scheme: "+state.ActiveScheme,o.Source,"Original engineer",false);
+   var target=PowerTimeoutOperation.Seconds(PowerTimeoutOperation.Input(request.Parameters).Minutes);var same=state.Get(slot)==target;var blocked=readiness is {CanExecute:false};
+   return new(task.Title,Duration(state.Get(slot)),Duration(target),blocked?PreviewStatus.Blocked:same?PreviewStatus.AlreadyCorrect:PreviewStatus.Different,"Scheme: "+state.ActiveScheme+"; AC sleep="+Duration(state.SleepAc)+"; battery sleep="+Duration(state.SleepDc)+"; AC display="+Duration(state.DisplayAc)+"; battery display="+Duration(state.DisplayDc)+". Preserve all unselected indices. "+readiness?.Reason,o.Source,"Original engineer · administrator",!same&&!blocked);
+  }
   var definition=FixedSettingOperation.Definitions.SingleOrDefault(d=>d.OperationId==operation);
   string account=readiness is not null
    ?readiness.Privilege==PrivilegeRequirement.Administrator?"Administrator":readiness.Scope==OperationScope.Machine?"Current user (device setting)":"Original signed-in user"
@@ -69,7 +104,7 @@ public static class ActionPreviewFormatter
    if(operation=="settings.restore-recorded")
    {
     var restore=Read<RestorationSnapshot>(value);
-    var registered=FixedSettingOperation.Definitions.Single(d=>d.Setting==restore.Setting);
+    var registered=FixedSettingOperation.RestorableDefinitions.Single(d=>d.Setting==restore.Setting);
     if(observation.CheckId!="setting.restore."+restore.Setting)throw new JsonException("Restoration setting and check do not match.");
     var restored=Restoration(restore);
     expected=restored.expected;
@@ -202,6 +237,11 @@ public static class ActionPreviewFormatter
  }
  static (string current,string expected,PreviewStatus status,string explanation) Restoration(RestorationSnapshot snapshot)
  {
+  if(PowerTimeoutOperation.IsSetting(snapshot.Setting))
+  {
+   var current=Read<PowerTimeoutState>(snapshot.Current);var target=Read<PowerTimeoutState>(snapshot.Target);var slot=PowerTimeoutOperation.Slot(snapshot.Setting);
+   return(Duration(current.Get(slot)),Duration(target.Get(slot)),current==target?PreviewStatus.AlreadyCorrect:PreviewStatus.Different,"Restore the exact recorded seconds for "+slot+". Preserve all other indices and the recorded active scheme "+target.ActiveScheme+".");
+  }
   if(snapshot.Setting==SettingId.NoAcSleep)
   {
    var current=Read<AcSleepState>(snapshot.Current);var target=Read<AcSleepState>(snapshot.Target);

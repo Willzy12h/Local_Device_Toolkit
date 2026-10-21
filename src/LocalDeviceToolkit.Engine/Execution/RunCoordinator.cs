@@ -11,6 +11,7 @@ public sealed class RunCoordinator(PlanService plans,OperationRegistry operation
   if(!await gate.WaitAsync(0,CancellationToken.None))throw new PlanValidationException("An operation is already running.");
   try
   {
+   if(plan.Lifetime is not {} lifetime||lifetime.IsExpired(Environment.TickCount64)||lifetime.ParentProcessId!=Environment.ProcessId||lifetime.ParentProcessStartedAt!=ReviewLifetime.Start().ParentProcessStartedAt)throw new PlanValidationException("A new review in this app session is required.");
    if(consumed.Contains(plan.Id))throw new PlanValidationException("This plan has already been used; review a fresh plan.");
    stop.ThrowIfCancellationRequested();var context=await contexts.GetCurrentAsync(stop);
    var initial=plans.Validate(plan,context,catalogue.Identity,plan.Actions.ToDictionary(a=>a.Id,a=>a.BeforeDigest),clock.GetUtcNow());
@@ -105,7 +106,7 @@ public sealed class LocalActionDispatcher(OperationRegistry registry,IExecutionC
   var validation=new PlanService(registry,clock??TimeProvider.System).ValidateAction(plan,action,context,plan.Catalogue,before,(clock??TimeProvider.System).GetUtcNow());
   if(!validation.IsValid)return new(action.Id,ActionOutcome.Failed,null,"Not started: "+string.Join(" ",validation.Reasons),[]);
   ct.ThrowIfCancellationRequested();
-  try{return await operation.ExecuteAsync(context,action,ct);}
+  try{return await operation.ExecuteAsync(context,Settings.PowerPlanSequence.AtDispatch(plan,action),ct);}
   catch(Exception){return new(action.Id,ActionOutcome.OutcomeUnknown,null,"The action's completion could not be confirmed; reconcile before retrying.",[]);}
  }
 }

@@ -19,7 +19,7 @@ public sealed class WorkbenchTests
   var f=new Fixture();f.Session.Navigate("setup","windows");var setup=f.Session.Tasks().Single(t=>t.Definition.Id=="windows.file-extensions");
   var capture=await f.Session.CaptureAsync([setup.Definition.Id],default);
   f.Session.Navigate("diagnostics","configuration");var diagnostic=f.Session.Tasks().Single(t=>t.Definition.Id==setup.Definition.Id);
-  Assert.Same(setup.Definition,diagnostic.Definition);Assert.Equal("Meets standard",diagnostic.Status);Assert.Equal(capture.CapturedAt,diagnostic.CapturedAt);Assert.Single(f.Store.Records);Assert.Single(f.Session.Captures);
+  Assert.Same(setup.Definition,diagnostic.Definition);Assert.Equal("Meets standard",diagnostic.Status);Assert.Equal(capture.CapturedAt,diagnostic.CapturedAt);Assert.Single(f.Store.Records,x=>x.Kind=="capture");Assert.Single(f.Store.Records,x=>x.Kind=="capture-selection.v2");Assert.Single(f.Session.Captures);
  }
  [Fact] public async Task Failed_save_does_not_present_capture_as_durable_evidence()
  {

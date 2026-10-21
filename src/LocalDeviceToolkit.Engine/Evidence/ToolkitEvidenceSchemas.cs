@@ -6,6 +6,8 @@ public static class ToolkitEvidenceSchemas
  public static EvidenceSchemaRegistry Create()
  {
   var schemas=new EvidenceSchemaRegistry();
+  schemas.Register<Diagnostics.DiagnosticReconciliation>("diagnostic-reconciliation.v1",(v,r)=>
+  {if(v.Id!=r.Id||v.Context!=r.Context||v.At!=r.RecordedAt||v.At.Offset!=TimeSpan.Zero||!v.Actor.IsElevated||v.Summary.Length>4096)throw new EvidenceValidationException("Invalid protected diagnostic reconciliation.");});
   schemas.Register<ReviewedPlan>("plan",(plan,record)=>
   {
    if(plan.Id!=record.Id||plan.Context!=record.Context||plan.CreatedAt!=record.RecordedAt||plan.Actions is null||plan.Actions.Count is <1 or >100||plan.Actions.Any(a=>a is null||a.Request is null||a.Before is null||a.Before.Count==0)||plan.Digest!=CanonicalJson.Digest(plan with { Digest="" }))throw new EvidenceValidationException("Invalid reviewed-plan evidence.");

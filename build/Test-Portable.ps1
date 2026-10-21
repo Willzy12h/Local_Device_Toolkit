@@ -130,7 +130,7 @@ try{
  if(-not $files.ContainsKey('package-manifest.json')){throw 'Root package-manifest.json is required.'}
  $manifest=Read-JsonEntry $files['package-manifest.json'] 8388608
  Assert-Members $manifest @('schemaVersion','commit','builtAt','runtime','selfContained','workingTreeDirty','files')
- if($manifest['schemaVersion'] -isnot [decimal] -or $manifest['schemaVersion'] -ne 1 -or $manifest['runtime'] -cne 'win-x64' -or $manifest['selfContained'] -isnot [bool] -or -not $manifest['selfContained'] -or $manifest['workingTreeDirty'] -isnot [bool]){throw 'Manifest must declare schema 1, win-x64 and selfContained true with an explicit dirty flag.'}
+ if($manifest['schemaVersion'] -isnot [decimal] -or $manifest['schemaVersion'] -ne 1 -or $manifest['runtime'] -cne 'win-x64' -or $manifest['selfContained'] -isnot [bool] -or $manifest['workingTreeDirty'] -isnot [bool]){throw 'Manifest must declare schema 1, win-x64 and a boolean selfContained with an explicit dirty flag.'}
  if($manifest['commit'] -isnot [string] -or $manifest['commit'] -cnotmatch '\A[0-9a-f]{40}\z'){throw 'Manifest commit must be a complete lowercase Git commit.'}
  if($ExpectedCommit -and $manifest['commit'] -cne $ExpectedCommit){throw 'Manifest commit does not match ExpectedCommit.'}
  $builtAt=[DateTimeOffset]::MinValue
@@ -167,16 +167,24 @@ try{
   'device.facts'=@{path='diagnostics/Get-DeviceFacts.ps1';readOnly=$true}
   'settings.user'=@{path='settings/Invoke-UserSetting.ps1';readOnly=$false}
   'deployments.msix'=@{path='deployments/Invoke-CurrentUserMsix.ps1';readOnly=$false}
+  'probes.common'=@{path='diagnostics/Read-ProbeRequest.ps1';readOnly=$true}
+  'probes.readiness'=@{path='diagnostics/Get-ReadinessFacts.ps1';readOnly=$true}
+  'probes.hardware'=@{path='diagnostics/Get-HardwareFacts.ps1';readOnly=$true}
+  'probes.network'=@{path='diagnostics/Get-NetworkFacts.ps1';readOnly=$true}
+  'probes.services'=@{path='diagnostics/Get-SecurityServiceFacts.ps1';readOnly=$true}
+  'probes.events'=@{path='diagnostics/Get-IncidentEvents.ps1';readOnly=$true}
+  'repair.read'=@{path='diagnostics/Get-RepairState.ps1';readOnly=$true}
+  'repair.defender'=@{path='diagnostics/Invoke-DefenderSignatureUpdate.ps1';readOnly=$false}
  }
  foreach($scriptPrefix in @('scripts/','worker/scripts/')){
   if(-not $files.ContainsKey($scriptPrefix+'registry.json')){throw 'Critical script registry is missing.'}
   $registry=Read-JsonEntry $files[$scriptPrefix+'registry.json'] 1048576
   Assert-Members $registry @('schemaVersion','scripts')
-  if($registry['schemaVersion'] -isnot [decimal] -or $registry['schemaVersion'] -ne 1 -or $registry['scripts'] -isnot [Collections.Generic.List[object]] -or $registry['scripts'].Count -ne 3){throw 'Script registry must declare exactly the three known scripts in schema 1.'}
+  if($registry['schemaVersion'] -isnot [decimal] -or $registry['schemaVersion'] -ne 1 -or $registry['scripts'] -isnot [Collections.Generic.List[object]] -or $registry['scripts'].Count -ne $expectedScripts.Count){throw 'Script registry must declare exactly the known script inventory in schema 1.'}
   $scriptIds=New-Object 'Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
   foreach($registered in $registry['scripts']){
    Assert-Members $registered @('id','path','sha256','readOnly')
-   if($registered['id'] -isnot [string] -or -not (@('device.facts','settings.user','deployments.msix') -ccontains $registered['id']) -or -not $scriptIds.Add($registered['id'])){throw 'Unknown or duplicate registered script identity.'}
+   if($registered['id'] -isnot [string] -or -not $expectedScripts.ContainsKey($registered['id']) -or -not $scriptIds.Add($registered['id'])){throw 'Unknown or duplicate registered script identity.'}
    $expected=$expectedScripts[$registered['id']]
    if($registered['path'] -cne $expected.path -or $registered['readOnly'] -isnot [bool] -or $registered['readOnly'] -ne $expected.readOnly -or $registered['sha256'] -isnot [string] -or $registered['sha256'] -cnotmatch '\A[0-9a-f]{64}\z'){throw 'Registered script path, read-only flag or hash is invalid.'}
    $scriptPath=$scriptPrefix+$registered['path']
@@ -184,27 +192,40 @@ try{
    if((Get-EntryDigest $files[$scriptPath]) -cne $registered['sha256']){throw "Script registry pin mismatch: $scriptPath"}
   }
  }
+ foreach($leaf in @('Run-Silent.cmd','Diagnostics.config.example','ProbeInputs.json.example','HOW-TO-USE.txt')){if(-not $files.ContainsKey($leaf)){throw "Silent diagnostic asset is missing: $leaf"}}
+ foreach($leaf in @('Start.exe','Start.cmd','Start.ps1','Runtime.ps1')){if(-not $files.ContainsKey($leaf)){if(-not $manifest['selfContained']){throw "Lightweight startup asset is missing: $leaf"};throw "Startup asset is missing: $leaf"}}
+ Assert-Amd64 $files['Start.exe']
  foreach($prefix in @('','worker/')){
   $name=if($prefix.Length -eq 0){'LocalDeviceToolkit.App'}else{'LocalDeviceToolkit.Worker'}
-  foreach($leaf in @(($name+'.exe'),($name+'.dll'),($name+'.runtimeconfig.json'),'coreclr.dll','PresentationFramework.dll','System.Private.CoreLib.dll','hostfxr.dll','hostpolicy.dll')){
+  $requiredRuntime=@(($name+'.exe'),($name+'.dll'),($name+'.runtimeconfig.json'))
+  if($manifest['selfContained']){$requiredRuntime+=@('coreclr.dll','PresentationFramework.dll','System.Private.CoreLib.dll','hostfxr.dll','hostpolicy.dll')}
+  elseif($files.ContainsKey($prefix+'coreclr.dll')){throw 'Lightweight package unexpectedly bundles a private Core runtime.'}
+  foreach($leaf in $requiredRuntime){
    if(-not $files.ContainsKey($prefix+$leaf)){throw "Critical bundled application/worker/runtime file is missing: $prefix$leaf"}
   }
   Assert-Amd64 $files[$prefix+$name+'.exe']
   $config=Read-JsonEntry $files[$prefix+$name+'.runtimeconfig.json'] 1048576
   if($config -isnot [Collections.Generic.Dictionary[string,object]] -or -not $config.ContainsKey('runtimeOptions')){throw 'runtimeOptions is missing.'}
   $options=$config['runtimeOptions']
-  if($options -isnot [Collections.Generic.Dictionary[string,object]] -or $options.ContainsKey('framework') -or $options.ContainsKey('frameworks') -or -not $options.ContainsKey('includedFrameworks')){throw 'Framework-dependent or unproven bundled runtime configuration.'}
-  $frameworks=$options['includedFrameworks']
-  if($frameworks -isnot [Collections.Generic.List[object]]){throw 'includedFrameworks must be an array.'}
+  if($options -isnot [Collections.Generic.Dictionary[string,object]]){throw 'Invalid runtimeOptions.'}
+  if($manifest['selfContained']){
+   if($options.ContainsKey('framework') -or $options.ContainsKey('frameworks') -or -not $options.ContainsKey('includedFrameworks')){throw 'Framework-dependent or unproven bundled runtime configuration.'}
+   $frameworks=$options['includedFrameworks']
+  }else{
+   if($options.ContainsKey('includedFrameworks') -or $options.ContainsKey('framework') -or -not $options.ContainsKey('frameworks')){throw 'Lightweight package must declare both required shared frameworks.'}
+   $frameworks=$options['frameworks']
+  }
+  if($frameworks -isnot [Collections.Generic.List[object]]){throw 'Framework declarations must be an array.'}
   $included=New-Object 'Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
   foreach($framework in $frameworks){
    Assert-Members $framework @('name','version')
+   if(-not $manifest['selfContained'] -and ($framework['version'] -cnotmatch '^10\.0\.\d+$' -or $framework['name'] -cnotin @('Microsoft.NETCore.App','Microsoft.WindowsDesktop.App'))){throw 'Lightweight package requires .NET 10 Desktop and Core frameworks.'}
    if($framework['name'] -isnot [string] -or $framework['version'] -isnot [string] -or $framework['version'] -notmatch '^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$' -or -not $included.Add($framework['name'])){throw 'Invalid/duplicate included framework identity.'}
   }
   if(-not $included.Contains('Microsoft.NETCore.App') -or -not $included.Contains('Microsoft.WindowsDesktop.App')){throw 'Both bundled NETCore and WindowsDesktop frameworks are required.'}
  }
  $result=[pscustomobject][ordered]@{
-  SchemaVersion=1;ZipPath=$ZipPath;Sha256=$zipSha;Commit=$manifest['commit'];BuiltAt=$manifest['builtAt'];Files=$listed.Count;Bytes=$attestedBytes;Runtime='win-x64';SelfContained=$true;WorkingTreeDirty=$manifest['workingTreeDirty'];
+  SchemaVersion=1;ZipPath=$ZipPath;Sha256=$zipSha;Commit=$manifest['commit'];BuiltAt=$manifest['builtAt'];Files=$listed.Count;Bytes=$attestedBytes;Runtime='win-x64';SelfContained=$manifest['selfContained'];WorkingTreeDirty=$manifest['workingTreeDirty'];
   ArtifactKind=$(if($manifest['workingTreeDirty']){'DirtyReviewArtifact'}else{'CleanSourceIntegrityArtifact'});
   CompletedUtc=[DateTimeOffset]::UtcNow.ToString('o');IntegrityVerified=$true;NativeLaunchVerified=$false;SignatureTrustVerified=$false;CatalogueTrustVerified=$false;
   Limitations=@('ZIP bytes and manifest consistency only; native GUI launch and device behavior require separate Windows acceptance.','Manifest hashes do not prove code-signing, publisher approval, catalogue trust or release authenticity.','This package inspection does not approve or validate vendor installer media.','A dirty source tree is a review artifact, not a clean release.')

@@ -32,7 +32,13 @@ public sealed class OperationRegistry
 }
 public static class ObservationFingerprint
 {
- public static string Of(IReadOnlyList<ProbeObservation> observations)=>CanonicalJson.Digest(observations.OrderBy(o=>o.ControlId,StringComparer.Ordinal).ThenBy(o=>o.CheckId,StringComparer.Ordinal).Select(o=>new{o.ControlId,o.CheckId,o.State,o.Value,o.Source,o.Reason}).ToArray());
+ static object? Value(ProbeObservation o)
+ {
+  if(o.CheckId=="repair.review-state"&&o.ControlId is "diagnostics.refresh-dns-cache" or "diagnostics.update-defender-signatures"&&o.Value is {} raw)
+  {var s=StrictJson.Read<Diagnostics.RepairSnapshot>(StrictJson.Bytes(raw),65536);if(s.AuthorizationDigest.Length!=64||!s.AuthorizationDigest.All(Uri.IsHexDigit)||s.Details.Count>32)throw new PlanValidationException("Invalid diagnostic authorization state.");return new{s.AuthorizationDigest,s.CanAct,s.Reason};}
+  return o.Value;
+ }
+ public static string Of(IReadOnlyList<ProbeObservation> observations)=>CanonicalJson.Digest(observations.OrderBy(o=>o.ControlId,StringComparer.Ordinal).ThenBy(o=>o.CheckId,StringComparer.Ordinal).Select(o=>new{o.ControlId,o.CheckId,o.State,Value=Value(o),o.Source,o.Reason}).ToArray());
 }
 public sealed class DeploymentQueue(DeviceContext context,OperationRegistry registry)
 {
@@ -79,7 +85,7 @@ public sealed class PlanService(OperationRegistry registry,TimeProvider clock)
    var before=Array.AsReadOnly(captured.Select(o=>o with { Value=o.Value?.Clone() }).ToArray());
    actions.Add(new(Guid.NewGuid(),request,readiness,before,ObservationFingerprint.Of(before)));
   }
-  var now=clock.GetUtcNow();var plan=new ReviewedPlan(Guid.NewGuid(),context,catalogue.Identity,now,now.AddMinutes(10),actions.AsReadOnly(),"");
+  var now=clock.GetUtcNow();var plan=new ReviewedPlan(Guid.NewGuid(),context,catalogue.Identity,now,now.AddMinutes(10),actions.AsReadOnly(),""){Lifetime=ReviewLifetime.Start()};
   plan=plan with { Digest=CanonicalJson.Digest(plan) };
   if(StrictJson.Bytes(plan).Length>900*1024)throw new PlanValidationException("This plan is too large for the worker protocol; review a smaller batch.");
   return plan;
@@ -95,6 +101,7 @@ public sealed class PlanService(OperationRegistry registry,TimeProvider clock)
   try
   {
    if(plan.Id==Guid.Empty||plan.Actions is null||plan.Actions.Count is <1 or >100||plan.Actions.Any(a=>a is null)||plan.Actions.Select(a=>a.Id).Distinct().Count()!=plan.Actions.Count)throw new PlanValidationException("Invalid action inventory.");
+   if(plan.Lifetime is null||plan.Lifetime.IsExpired(Environment.TickCount64))reasons.Add("Review elapsed limit exceeded or historical plan lacks live review provenance.");
    if(plan.Digest!=CanonicalJson.Digest(plan with { Digest="" }))reasons.Add("The reviewed plan has changed.");
    if(plan.Context!=context)reasons.Add("The device or original-user context has changed.");
    if(!SupportedTarget(context))reasons.Add("This device is not a supported deployment target.");
@@ -124,7 +131,7 @@ public sealed class PlanService(OperationRegistry registry,TimeProvider clock)
   var reasons=BaseReasons(plan,context,catalogue,now);
   if(reasons.Count!=0)return new(false,reasons.AsReadOnly());
   if(!plan.Actions.Any(a=>a.Id==action.Id&&CanonicalJson.Digest(a)==CanonicalJson.Digest(action)))reasons.Add("The requested action is not the reviewed action.");
-  try{ValidateBefore(before,now);if(ObservationFingerprint.Of(before)!=action.BeforeDigest)reasons.Add("The target changed after review.");}
+  try{ValidateBefore(before,now);if(ObservationFingerprint.Of(before)!=Settings.PowerPlanSequence.AtDispatch(plan,action).BeforeDigest)reasons.Add("The target changed after review.");}
   catch(PlanValidationException e){reasons.Add(e.Message);}
   return new(reasons.Count==0,reasons.AsReadOnly());
  }

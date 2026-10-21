@@ -63,7 +63,12 @@ public sealed class WorkflowCatalogue
  public static WorkflowCatalogue LoadShipped()
  {
   var files=CatalogueLoader.Verify(CatalogueLoader.ShippedFiles());
-  return new(StrictJson.Read<TaskDefinition[]>(files["tasks.json"]),StrictJson.Read<WorkflowDefinition[]>(files["workflows.json"]));
+  var local=LocalProbeCatalogue.All.Select(p=>new TaskDefinition(p.Id,p.Title,[p.Id],[p.Id],null)).ToArray();
+  var powers=Enum.GetValues<Settings.PowerSlot>().Select(slot=>new TaskDefinition(Settings.PowerTimeoutOperation.OperationId(slot),slot switch{Settings.PowerSlot.SleepAc=>"Sleep timeout · plugged in",Settings.PowerSlot.SleepDc=>"Sleep timeout · battery",Settings.PowerSlot.DisplayAc=>"Display timeout · plugged in",_=>"Display timeout · battery"},["CFG-WIN-020"],[],Settings.PowerTimeoutOperation.OperationId(slot))).ToArray();
+  var repairs=Enum.GetValues<Diagnostics.DiagnosticRepairKind>().Select(kind=>new TaskDefinition(Diagnostics.DiagnosticRepairOperation.OperationId(kind),kind==Diagnostics.DiagnosticRepairKind.DnsCache?"Refresh device DNS cache":"Request Defender signatures",[],[],Diagnostics.DiagnosticRepairOperation.OperationId(kind))).ToArray();
+  var workflows=StrictJson.Read<WorkflowDefinition[]>(files["workflows.json"]).Select(w=>w with {Stages=w.Stages.Append(new WorkflowStage("local","Device checks",local.Concat(powers).Concat(repairs).Select(t=>t.Id).ToArray())).ToArray()}).ToArray();
+  workflows=workflows.Select(w=>w with{Stages=w.Stages.Append(new WorkflowStage("all","All tasks",w.Stages.SelectMany(s=>s.TaskIds).Distinct(StringComparer.Ordinal).ToArray())).ToArray()}).ToArray();
+  return new(StrictJson.Read<TaskDefinition[]>(files["tasks.json"]).Concat(local).Concat(powers).Concat(repairs).ToArray(),workflows);
  }
  public TaskDefinition ResolveTask(string id)=>tasks.TryGetValue(id,out var task)?task:throw new CatalogueValidationException("Unknown task: "+id);
  public TaskDefinition ResolveWorkflowTask(string workflow,string stage,string id)

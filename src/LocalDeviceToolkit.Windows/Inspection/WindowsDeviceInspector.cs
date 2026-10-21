@@ -1,23 +1,28 @@
 using LocalDeviceToolkit.Core;
 using LocalDeviceToolkit.Engine.Execution;
+using LocalDeviceToolkit.Engine.Catalogue;
 using System.Text.Json;
 namespace LocalDeviceToolkit.Windows.Inspection;
 public sealed record WindowsFact(string CheckId,ObservationState State,JsonElement? Value,string Source,DateTimeOffset CapturedAt,string Reason);
 public sealed record WindowsFactsResponse(int SchemaVersion,IReadOnlyList<WindowsFact> Facts);
 public interface IWindowsFactsSource { Task<IReadOnlyList<WindowsFact>> ReadAsync(IReadOnlyList<string> checkIds,CancellationToken ct); }
 public interface IExecutionActorProvider { Task<ExecutionActor> GetActorAsync(CancellationToken ct); }
-public sealed class WindowsDeviceInspector(IExecutionContextProvider contexts,IExecutionActorProvider actors,IWindowsFactsSource source,LocalCatalogue catalogue,TimeProvider clock):IDeviceInspector
+public sealed class WindowsDeviceInspector(IExecutionContextProvider contexts,IExecutionActorProvider actors,IWindowsFactsSource source,LocalCatalogue catalogue,TimeProvider clock,ILocalProbeSource? localSource=null):IDeviceInspector
 {
  public async Task<DeviceCapture> CaptureAsync(CaptureRequest request,CancellationToken ct)
  {
   var context=await contexts.GetCurrentAsync(ct);var actor=await actors.GetActorAsync(ct);
   if(request.ControlIds.Count==0||request.ControlIds.Count>100)throw new ArgumentException("Select a bounded set of controls.");
-  var selected=request.ControlIds.Distinct(StringComparer.Ordinal).Select(id=>catalogue.Controls.SingleOrDefault(c=>c.Id==id)??throw new CatalogueValidationException("Unknown control: "+id)).ToArray();
-  var checks=selected.SelectMany(c=>c.CheckIds).Distinct(StringComparer.Ordinal).ToArray();
+  var localIds=request.ControlIds.Where(LocalProbeValues.IsRegistered).Distinct(StringComparer.Ordinal).ToArray();
+  var selected=request.ControlIds.Where(id=>!LocalProbeValues.IsRegistered(id)).Distinct(StringComparer.Ordinal).Select(id=>catalogue.Controls.SingleOrDefault(c=>c.Id==id)??throw new CatalogueValidationException("Unknown control: "+id)).ToArray();
+  var allowed=selected.SelectMany(c=>c.CheckIds).Concat(localIds).Distinct(StringComparer.Ordinal).ToArray();
+  var checks=request.CheckIds?.ToArray()??allowed;
+  if(checks.Length>128||checks.Distinct(StringComparer.Ordinal).Count()!=checks.Length||checks.Any(id=>!allowed.Contains(id,StringComparer.Ordinal)))throw new CatalogueValidationException("The requested checks do not belong to the selected controls.");
   IReadOnlyList<WindowsFact> facts=[];
-  if(checks.Length>0)
+  var legacyChecks=checks.Where(id=>!LocalProbeValues.IsRegistered(id)).ToArray();
+  if(legacyChecks.Length>0)
   {
-   try{facts=await source.ReadAsync(checks,ct);}
+   try{facts=await source.ReadAsync(legacyChecks,ct);}
    catch(OperationCanceledException){throw;}
    catch(Exception e) when(e is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException)
    {facts=[];}
@@ -26,7 +31,7 @@ public sealed class WindowsDeviceInspector(IExecutionContextProvider contexts,IE
   foreach(var control in selected)
   {
    if(control.CheckIds.Length==0){observations.Add(new(control.Id,"manual",ObservationState.Manual,null,"Build standard",now,control.ManualInstructions));continue;}
-   foreach(var check in control.CheckIds)
+   foreach(var check in control.CheckIds.Where(id=>checks.Contains(id,StringComparer.Ordinal)))
    {
     var matches=facts.Where(f=>f.CheckId==check).ToArray();
     if(matches.Length!=1||matches[0].CapturedAt.Offset!=TimeSpan.Zero||matches[0].CapturedAt>now.AddMinutes(2)||matches[0].CapturedAt<now.AddMinutes(-10)||(matches[0].State==ObservationState.Known&&(!matches[0].Value.HasValue||!ProbeValues.Accepts(check,matches[0].Value!.Value))))
@@ -35,7 +40,16 @@ public sealed class WindowsDeviceInspector(IExecutionContextProvider contexts,IE
     {var fact=matches[0];observations.Add(new(control.Id,check,fact.State,fact.Value?.Clone(),fact.Source,fact.CapturedAt,fact.Reason));}
    }
   }
-  return new(Guid.NewGuid(),context,catalogue.Identity,request.Origin,actor,now,observations.AsReadOnly());
+  if(request.Inputs is not null&&request.Inputs.Keys.Any(id=>!localIds.Contains(id,StringComparer.Ordinal)))throw new CatalogueValidationException("Inputs do not belong to selected checks.");
+  foreach(var id in localIds.Where(id=>checks.Contains(id,StringComparer.Ordinal)))
+  {
+   var input=request.Inputs?.GetValueOrDefault(id)??StrictJson.Value(new{});LocalProbeCatalogue.ValidateInput(id,input);
+   var target=LocalProbeCatalogue.TargetDigest(id,input,context);
+   var result=localSource is not null?await localSource.ReadAsync(id,input,context,ct):new LocalProbeResult(2,id,target,ObservationState.Unavailable,null,"Local inspection",now,new(false,false,0,null,["Provider unavailable"]),"Provider unavailable.");
+   if(result.CheckId!=id||result.TargetDigest!=target||result.SchemaVersion!=2||result.State==ObservationState.Known&&(result.Value is null||!LocalProbeValues.Accepts(id,StrictJson.Value(result.Value))))throw new InvalidDataException("Local evidence does not match the selected target.");
+   observations.Add(new(id,id,result.State,result.Value is null?null:StrictJson.Value(result.Value),result.Source,result.CapturedAt,result.Reason){Coverage=result.Coverage,TargetDigest=target,LocalSchemaVersion=2,RuleVersion="2026-10-15"});
+  }
+  var captureId=Guid.NewGuid();return new(captureId,context,catalogue.Identity,request.Origin,actor,clock.GetUtcNow(),observations.Select(o=>LocalProbeValues.IsRegistered(o.CheckId)?o with{EvidenceCaptureId=captureId}:o).ToArray());
  }
 }
 public enum PolicyInspectionState { NoObservedConflict,ConflictObserved,Unavailable }
