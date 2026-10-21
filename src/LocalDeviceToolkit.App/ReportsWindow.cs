@@ -1,4 +1,5 @@
 using System.IO;
+using System.ComponentModel;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -21,6 +22,7 @@ public sealed class ReportsWindow : Window
  readonly DataGrid controls = new() { IsReadOnly = true, AutoGenerateColumns = false, MinHeight = 160, MaxHeight = 260 };
  readonly CheckBox identifiers=new(){Content="Include permitted identifying details in export (review preview before sharing)",IsChecked=false};
  readonly Button next = new() { Content = "Next history page", IsEnabled = false };
+ readonly TextBox historySearch=new(){MaxLength=256,MinWidth=240,Margin=new Thickness(4),ToolTip="Search this loaded page by record kind, device, engineer, record ID or UTC date."};
  readonly List<HistoryDiagnostic> diagnostics = [];
  readonly HashSet<Guid> seen = [];
  string? cursor;
@@ -38,7 +40,7 @@ public sealed class ReportsWindow : Window
   var panel = new DockPanel { Margin = new Thickness(20) }; Content = new ScrollViewer{Content=panel,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};
   var top = new StackPanel(); DockPanel.SetDock(top, Dock.Top); panel.Children.Add(top);
   top.Children.Add(new TextBlock { Text = "Saved evidence and snapshot reports", FontSize = 24 });
-  top.Children.Add(new TextBlock { Text = "Select saved records with Ctrl/Shift. History pages use record IDs, not date order. Reports use only selected records; selection never executes or replays an action.", TextWrapping = TextWrapping.Wrap });
+  top.Children.Add(new TextBlock { Text = "Select saved records with Ctrl/Shift. Each loaded page shows newest records first; pages still use record IDs, not global date order. Reports use only selected records; selection never executes or replays an action.", TextWrapping = TextWrapping.Wrap });
   var buttons = new WrapPanel { Margin = new Thickness(0, 8, 0, 8) }; top.Children.Add(buttons);
   buttons.Children.Add(purpose);
   AddButton(buttons, "First history page", () => LoadPageAsync(true));
@@ -52,11 +54,26 @@ public sealed class ReportsWindow : Window
   AddButton(buttons, "Export JSON", () => ExportAsync(ReportFormat.Json));
   top.Children.Add(identifiers);identifiers.Click+=(_,_)=>{if(report is not null)details.Text=ReportDisclosure.Render(ReportDisclosure.Project(report,identifiers.IsChecked==true),ReportFormat.Json);};
   AddButton(buttons,"Compare two selected captures",CompareAsync);
+  var search=new WrapPanel();search.Children.Add(new Label{Content="Search loaded history page:",Target=historySearch});search.Children.Add(historySearch);
+  var clearSearch=new Button{Content="Clear search",Margin=new Thickness(4),Padding=new Thickness(8,4,8,4)};clearSearch.Click+=(_,_)=>{if(!busy)historySearch.Clear();};search.Children.Add(clearSearch);top.Children.Add(search);
+  history.Items.SortDescriptions.Add(new(nameof(HistoryItem.Time),ListSortDirection.Descending));
+  history.Items.SortDescriptions.Add(new(nameof(HistoryItem.Id),ListSortDirection.Ascending));
+  history.Items.Filter=item=>item is HistoryItem row&&row.ToString().Contains(historySearch.Text.Trim(),StringComparison.OrdinalIgnoreCase);
+  historySearch.TextChanged+=(_,_)=>{history.SelectedItems.Clear();history.Items.Refresh();ClearPreview();HistoryStatus();};
+  history.SelectionChanged+=(_,_)=>{ClearPreview();HistoryStatus();};
+  purpose.SelectionChanged+=(_,_)=>ClearPreview();
   top.Children.Add(history); top.Children.Add(status);
   foreach (var (header, path, width) in new[] { ("Control", "ControlId", 100d), ("Name", "Name", 230d), ("Status", "Status", 150d), ("Captured UTC", "CapturedAt", 190d), ("Stale", "Stale", 60d), ("Reason", "Reason", 450d) })
    controls.Columns.Add(new DataGridTextColumn { Header = header, Binding = new System.Windows.Data.Binding(path), Width = width });
   DockPanel.SetDock(controls, Dock.Top); panel.Children.Add(controls); panel.Children.Add(details);
   Loaded += async (_, _) => await GuardAsync(() => LoadPageAsync(true));
+ }
+ void ClearPreview(){report=null;controls.ItemsSource=null;details.Clear();}
+ void HistoryStatus()
+ {
+  status.Text=$"Loaded page: {history.Items.Count} matching of {seen.Count} records; {history.SelectedItems.Count} selected. Search applies only to this page. "+
+   (cursor is null?"End of enumerated history reached.":"More history exists; use Next history page.")+
+   (diagnostics.Count==0?"":"\nHistory diagnostics:\n"+string.Join("\n",diagnostics.Select(d=>d.FileName+": "+d.Code+" — "+d.Message)));
  }
  void AddButton(Panel panel, string label, Func<Task> action, bool enabled = true)
  {
@@ -65,11 +82,11 @@ public sealed class ReportsWindow : Window
  }
  async Task GuardAsync(Func<Task> action)
  {
-  if (busy) return; busy = true;
+  if (busy) return; busy = true;history.IsEnabled=false;historySearch.IsEnabled=false;purpose.IsEnabled=false;
   try { await action(); }
   catch (Exception e) when (e is IOException or UnauthorizedAccessException or EvidenceValidationException or InvalidOperationException or ArgumentException or JsonException)
   { status.Text = "Unable to complete: " + e.Message; }
-  finally { busy = false; }
+  finally { busy = false;history.IsEnabled=true;historySearch.IsEnabled=true;purpose.IsEnabled=true; }
  }
  async Task ViewRecordAsync()
  {
@@ -85,8 +102,7 @@ public sealed class ReportsWindow : Window
   var page = await service.ReadHistoryAsync(cursor, CancellationToken.None);
   foreach (var record in page.Entries) AddRecord(record.Id, record.Kind, record.RecordedAt, record.Context);
   diagnostics.AddRange(page.Diagnostics); cursor = page.NextCursor; next.IsEnabled = cursor is not null;
-  status.Text = $"Current page: {seen.Count} records. " + (cursor is null ? "End of enumerated history reached." : "More history exists; use Next history page.") +
-   (diagnostics.Count == 0 ? "" : "\nHistory diagnostics:\n" + string.Join("\n", diagnostics.Select(d => d.FileName + ": " + d.Code + " — " + d.Message)));
+  ClearPreview();HistoryStatus();
  }
  void AddRecord(Guid id, string kind, DateTimeOffset time, DeviceContext context)
  {
@@ -94,6 +110,7 @@ public sealed class ReportsWindow : Window
  }
  Task SelectSessionAsync()
  {
+  historySearch.Clear();
   history.SelectedItems.Clear();
   foreach (var capture in session.Captures)
   {
@@ -135,6 +152,7 @@ public sealed class ReportsWindow : Window
   var dialog = new ManualReviewWindow(session.Catalogue) { Owner = this };
   if (dialog.ShowDialog() != true) return;
   var review = await recorder.RecordAsync(dialog.ControlId, dialog.Outcome, dialog.Note, dialog.Source, dialog.ScopeReason, CancellationToken.None);
+  historySearch.Clear();
   AddRecord(review.Id, "manual-review", review.ReviewedAt, review.Context);
   history.SelectedItems.Add(history.Items.Cast<HistoryItem>().Single(i => i.Id == review.Id));
   report = null; status.Text = "Saved original-engineer manual review. Build the report to apply eligible reviews; failing or unavailable automatic evidence remains unresolved.";

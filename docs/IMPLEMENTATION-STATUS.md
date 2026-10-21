@@ -1,6 +1,12 @@
 # Implementation status
 
-Updated 18 October 2026. Implemented source and observed automation are separate from real-device acceptance.
+Updated 21 October 2026. Implemented source and observed automation are separate from real-device acceptance.
+
+## Final reporting and integration changes
+
+Saved history supports page-local search and newest-first presentation, with stale previews cleared before a new export. Silent HTML/log reports summarize requested/completed/different/incomplete/excluded checks and explicitly identify a zero-check run. Incident groups now have deterministic ordering and explain their count and first/last UTC timestamps. These changes preserve evidence schemas, diagnostic exit codes and reviewed action authority.
+
+The final local Release build passes with zero warnings/errors and **513 tests: 359 engine +154 adapter**, zero failures/skips. All 11 script hashes/syntax checks pass. The real standard-account/private-runtime CI acceptance step now requires an authorized manual dispatch with `native_runtime_acceptance=true`; automatic push/PR checks do not create that account or install the private runtime. Local validation and limitations are recorded in [the local review record](LOCAL-REVIEW-2026-10-21.md). Current CI and merge status are on PRs [#3](https://github.com/Willzy12h/Local_Device_Toolkit/pull/3) and [#2](https://github.com/Willzy12h/Local_Device_Toolkit/pull/2). Codex Security deep scanning remains blocked by unavailable server tools; no security report has been generated.
 
 ## Silent diagnostics
 
@@ -18,7 +24,7 @@ Fast mode retains ordinary short waits and excludes only explicitly marked timed
 - Original-user file extensions, UK region/keyboard preservation and exact consumer Copilot removal; long paths, fast startup, AC-only sleep and privilege-aware timezone. Recorded restoration supports the five fixed settings and refuses drift.
 - Reviewed local MSI, per-machine OneDrive, original-user MSIX/bundles/dependencies and offline Office Deployment Tool profiles. Complete media hashes, Windows signer verification, protected approvals/staging, durable product guards and explicit read-only reconciliation/resolution.
 - Handover, diagnostic and deployment reports; separate manual reviews, raw immutable record viewing, bounded history, and safe non-overwriting HTML/CSV/JSON exports.
-- Three pinned scripts with closed parameters. No generic elevated command runner, tenant sign-in, cloud host or automatic policy bypass.
+- Eleven pinned scripts with closed parameters. No generic elevated command runner, tenant sign-in, cloud host or automatic policy bypass.
 - Self-contained Windows x64 packaging, all-file inventory and an independent ZIP integrity verifier. Normal and compact native UI smoke journeys include the actual dialogs.
 - Checksum-verified SDK 10.0.401 and PowerShell 7.6.0 cloud setup, locked restore and reusable activation instructions.
 

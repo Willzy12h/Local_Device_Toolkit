@@ -69,7 +69,9 @@ Use **Restore a recorded local setting** under Windows configuration to select a
 
 Open **Reports & history → Open saved reports & history**. Select saved records with Ctrl/Shift and create a setup handover, diagnostic ticket or deployment audit. A deployment run loads its actual reviewed plan. Read-only reports need no fabricated deployment run.
 
-History is paged by record ID, not globally by date; use **Next history page** beyond the first 100 files. Corrupt/unavailable records remain visible as notices. **View saved record JSON** reopens a verified original record, including older catalogue versions, for inspection/copying. Projected compliance reports require a matching reference catalogue.
+History is paged by record ID, not globally by date; use **Next history page** beyond the first 100 files. Within each loaded page, records appear newest first. **Search loaded history page** matches record kind, device, original engineer, record ID or UTC date, ignoring case. Search examines only the loaded page; a page with no matches does not establish that no matching evidence exists elsewhere. The matching/loaded counts and history diagnostics remain visible. Clear the search or move to another page as needed.
+
+Changing the search, selected records, report purpose or history page clears the previous report preview; build a report again before export. **Select session captures** and recording a manual review clear the search so the selected records remain visible. Corrupt/unavailable records remain visible as notices. **View saved record JSON** reopens a verified original record, including older catalogue versions, for inspection/copying. Projected compliance reports require a matching reference catalogue.
 
 Record explicit manual reviews with source/note and an exclusion or applicability reason where appropriate. They cannot override missing, malformed, denied or failing automatic evidence. Reports retain source IDs, original requester, actual actors, dates, before/after values and limitations. Evidence older than ten minutes is a dated snapshot, not current compliance. Export HTML, CSV or JSON deliberately; existing exports are preserved.
 
@@ -117,6 +119,8 @@ Start.exe --silent --preset fast --config "C:\Engineer\Diagnostics.config" --inp
 ```
 
 Each run creates a new dated `.log`, `.json` and `.html` under `%LOCALAPPDATA%\LocalDeviceToolkit\logs`, sharing a unique basename. The HTML is an at-a-glance current/expected/status table; JSON supports automation. Reports are local operator records and can contain device paths and network details. Review them before sharing; use the interactive minimized report export for wider disclosure. Startup/runtime failures use separate dated `startup-silent-*`, `startup-launcher-*` or `app-error-*` logs. Existing files are preserved. Evidence remains in the normal evidence store; companion reports are not approval or execution authority.
+
+The HTML and log also summarize requested, completed, different, incomplete and excluded tasks. Completed tasks include checks that found differences; this is not a count of compliant tasks. Missing inputs, denied access, manual work and incomplete saved evidence remain incomplete. Excluded tasks were not requested. If a config excludes every task, an explicit notice explains that exit 0 does not establish device readiness. Reports also explain that `fast` and `all` currently include the same diagnostics because no timed performance tests ship. Exit codes and the JSON schema remain unchanged.
 
 | Exit | Meaning |
 | --- | --- |

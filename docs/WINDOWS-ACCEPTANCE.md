@@ -2,6 +2,8 @@
 
 No real device settings or client applications have been changed by this cloud task. Do not infer vendor installation or interactive UAC acceptance from build/test/render results.
 
+Automatic push and pull-request CI runs builds, tests, package integrity checks and read-only packaged-app renders. The real standard-account/private-runtime startup acceptance step is opt-in: an authorized manual workflow dispatch must explicitly set `native_runtime_acceptance=true`. It creates a disposable Windows account and installs the private runtime on the runner. Default CI success does not establish that this opt-in acceptance step ran.
+
 ## Observed automation
 
 - `049b2fd`: [Windows/Linux CI](https://github.com/Willzy12h/Local_Device_Toolkit/actions/runs/38660754520) passed 77 tests, native token/pipe/junction checks, PowerShell 5.1 parsing, self-contained packaging and five actual extracted-application WPF renders.
@@ -30,6 +32,7 @@ For silent diagnostics, run both `all` and `fast` through the EXE and CMD, confi
 | Approved MSI, OneDrive, original-user MSIX/bundles and Office offline media | Synthetic metadata/guard coverage; actual vendor media/install acceptance pending |
 | 3010/1641, detached bootstrapper, interrupted process, durable guard and reviewed resolution | Contract/process tests; representative vendor/reboot interaction pending |
 | 100%, 150%, 200% actual display DPI, high contrast, keyboard focus and Narrator | Pending physical accessibility acceptance; compact renders are not a substitute |
+| Saved-report search, newest-first loaded pages, clearing search for session/manual selections, preview invalidation and rebuilding before export | Local source/build and portable ordering tests; interactive Windows acceptance pending |
 
 Client RMM/EDR media, tenant sign-in, licensing rights and client-specific authorization must be supplied through the approved engineer/vendor process. The toolkit does not invent these or collect administrator passwords.
 

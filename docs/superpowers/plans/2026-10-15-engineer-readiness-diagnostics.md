@@ -1,5 +1,7 @@
 # Engineer Readiness and Diagnostics Implementation Plan
 
+Historical implementation plan. Source execution, deliberate deviations and measured checks are recorded in the [execution record](../2026-10-16-engineer-readiness-execution.md). Unchecked drafting steps below do not establish missing source features; current remaining work is tracked in [implementation status](../../IMPLEMENTATION-STATUS.md) and [Windows acceptance](../../WINDOWS-ACCEPTANCE.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Deliver the approved 24-check/six-action expansion with exact selection, quiet diagnostics, verified changes and clear handover evidence.

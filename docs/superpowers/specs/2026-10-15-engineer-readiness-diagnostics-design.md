@@ -1,6 +1,6 @@
 # Engineer readiness, quiet diagnostics and approved fixes
 
-**Status: approved by the user in chat on 15 October 2026; not implemented.** This expands the earlier twelve-check/two-action proposal following the request to improve the toolkit and add features. Design approval permits implementation planning; it does not authorize a change to any engineer's device. The [implementation plan](../plans/2026-10-15-engineer-readiness-diagnostics.md) is awaiting its own review and execution-method selection.
+**Status: approved on 15 October 2026; source implementation and automated verification are recorded in the [execution record](../2026-10-16-engineer-readiness-execution.md).** This design expands the earlier twelve-check/two-action proposal. Historical plan checkboxes are not the current completion ledger; consult [implementation status](../../IMPLEMENTATION-STATUS.md) and [Windows acceptance](../../WINDOWS-ACCEPTANCE.md) for remaining limits. Source implementation does not authorize a change to any engineer's device.
 
 Baseline reviewed: `2fe1e4d`. Supporting material: [original research](../../research/2026-10-15-windows-toolkit-recommendations.md), [78-source manifest](../../research/2026-10-15-windows-toolkit-sources.json), and [supplemental Microsoft sources](../../research/2026-10-15-windows-toolkit-expansion-sources.json). Release scope, UI choices and thresholds below are engineering decisions, not Microsoft requirements.
 

@@ -5,7 +5,12 @@ public sealed record DiagnosticSummary(IReadOnlyList<DiagnosticFinding> Expanded
 public sealed record IncidentGroup(string Channel,string Provider,int EventId,string Resource,int Count,DateTimeOffset FirstUtc,DateTimeOffset LastUtc,IReadOnlyList<long> RecordIds);
 public static class IncidentGrouper
 {
- public static IReadOnlyList<IncidentGroup> Group(IEnumerable<EventEvidence> events)=>events.GroupBy(e=>new {e.Channel,e.Provider,e.EventId,e.Resource,Signature=CanonicalJson.Digest(e.Fields),Window=e.TimeUtc.UtcTicks/TimeSpan.FromMinutes(15).Ticks}).Select(g=>new IncidentGroup(g.Key.Channel,g.Key.Provider,g.Key.EventId,g.Key.Resource,g.Count(),g.Min(e=>e.TimeUtc),g.Max(e=>e.TimeUtc),g.Select(e=>e.RecordId).ToArray())).OrderByDescending(g=>g.LastUtc).ToArray();
+ public static IReadOnlyList<IncidentGroup> Group(IEnumerable<EventEvidence> events)=>events
+  .GroupBy(e=>new {e.Channel,e.Provider,e.EventId,e.Resource,Signature=CanonicalJson.Digest(e.Fields),Window=e.TimeUtc.UtcTicks/TimeSpan.FromMinutes(15).Ticks})
+  .OrderByDescending(g=>g.Max(e=>e.TimeUtc))
+  .ThenBy(g=>g.Key.Channel,StringComparer.Ordinal).ThenBy(g=>g.Key.Provider,StringComparer.Ordinal).ThenBy(g=>g.Key.EventId)
+  .ThenBy(g=>g.Key.Resource,StringComparer.Ordinal).ThenBy(g=>g.Key.Signature,StringComparer.Ordinal)
+  .Select(g=>new IncidentGroup(g.Key.Channel,g.Key.Provider,g.Key.EventId,g.Key.Resource,g.Count(),g.Min(e=>e.TimeUtc),g.Max(e=>e.TimeUtc),g.OrderBy(e=>e.TimeUtc).ThenBy(e=>e.RecordId).Select(e=>e.RecordId).ToArray())).ToArray();
 }
 public static class DiagnosticInterpreter
 {
@@ -24,7 +29,11 @@ public static class DiagnosticInterpreter
   if(observation.CheckId=="local.events.incident"&&value?.Details.TryGetValue("eventRecords",out var records)==true)
   {
    var events=StrictJson.Read<EventEvidence[]>(System.Text.Encoding.UTF8.GetBytes(records),120000);
-   foreach(var group in IncidentGrouper.Group(events))findings.Add(ExplainEvent(events.First(e=>e.Channel==group.Channel&&e.RecordId==group.RecordIds[0])) with{CaptureIds=captureIds});
+   foreach(var group in IncidentGrouper.Group(events))
+   {
+    var finding=ExplainEvent(events.First(e=>e.Channel==group.Channel&&e.RecordId==group.RecordIds[0]));
+    findings.Add(finding with{Observed=finding.Observed+$" Group: {group.Count} events; first UTC {group.FirstUtc:O}; last UTC {group.LastUtc:O}.",CaptureIds=captureIds});
+   }
   }
   return findings;
  }

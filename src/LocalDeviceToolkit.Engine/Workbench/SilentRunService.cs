@@ -99,12 +99,15 @@ public sealed class SilentRunService(WorkbenchSession session,ReviewRunService r
    }
    foreach(var pair in skipped){rows.Add(pair.Key,pair.Value);await reviews.AppendAsync(review,"skip",pair.Value.TaskId+"; "+pair.Value.Status+"; "+pair.Value.Reason,ct);}
    var ordered=tasks.Select(t=>rows[t.Task.Id]).ToArray();
-   var incomplete=ordered.Any(r=>r.Status is not ("Already correct" or "Different" or "Missing" or "Observed" or "Not applicable" or "Excluded timed test" or "Excluded by config"));
+   var incomplete=ordered.Any(r=>!Completed(r.Status)&&!Excluded(r.Status));
    var exit=!evidenceComplete?1:incomplete?2:ordered.Any(r=>r.Status is "Different" or "Missing")?3:0;
    var summary=new SilentRunSummary(1,review.RunId,options.Preset,started,clock.GetUtcNow(),true,evidenceComplete,exit,review.FilePath,ordered);
+   var coverage=Coverage(summary);
+   var presetNote=options.Preset=="fast"&&!tasks.Any(t=>t.Task.TimedPerformanceTest)?"Fast and all currently include the same diagnostics; no timed performance tests ship.":"Fast excludes only explicitly marked timed performance tests; ordinary provider timeouts remain enabled.";
    var json=Path.ChangeExtension(review.FilePath,"json");var html=Path.ChangeExtension(review.FilePath,"html");
    await reviews.AppendAsync(review,"silent",$"Preset={options.Preset}; Check only; no changes, deployments, UAC or manual review confirmations. {ordered.Length} diagnostic task results. Config={options.ConfigFile??"All diagnostics"}; Excluded timed tests={ordered.Count(t=>t.Status=="Excluded timed test")}. Short checks and ordinary provider timeouts remain enabled.",ct);
-   await WriteNewAsync(html,Html(summary),ct);
+   await reviews.AppendAsync(review,"coverage",coverage+" "+presetNote,ct);
+   await WriteNewAsync(html,Html(summary,coverage,presetNote),ct);
    await WriteNewAsync(json,JsonSerializer.Serialize(summary,new JsonSerializerOptions(StrictJson.Options){WriteIndented=true}),ct);
    await reviews.AppendAsync(review,"summary",$"Exit={exit}; JSON={json}; HTML={html}; completed checks do not certify manual tasks or deployments.",ct);
    await reviews.CompleteChecksAsync(review,ct);
@@ -116,6 +119,15 @@ public sealed class SilentRunService(WorkbenchSession session,ReviewRunService r
    throw;
   }
  }
+ static bool Completed(string status)=>status is "Already correct" or "Different" or "Missing" or "Observed" or "Not applicable";
+ static bool Excluded(string status)=>status is "Excluded timed test" or "Excluded by config";
+ static string Coverage(SilentRunSummary summary)
+ {
+  var excluded=summary.Tasks.Count(t=>Excluded(t.Status));var requested=summary.Tasks.Count-excluded;
+  var completed=summary.Tasks.Count(t=>Completed(t.Status));var differences=summary.Tasks.Count(t=>t.Status is "Different" or "Missing");
+  return $"Requested: {requested}; Completed: {completed}; Differences: {differences}; Incomplete: {requested-completed}; Excluded: {excluded}."+
+   (requested==0?" No checks requested; exit 0 does not establish device readiness.":"");
+ }
  static bool CanReadSetting(string? operation)=>operation is not null&&(FixedSettingOperation.Definitions.Any(d=>d.OperationId==operation)||operation.StartsWith("settings.uk-",StringComparison.Ordinal)||operation=="apps.remove-consumer-copilot");
  static async Task WriteNewAsync(string path,string text,CancellationToken ct)
  {
@@ -123,11 +135,11 @@ public sealed class SilentRunService(WorkbenchSession session,ReviewRunService r
   await using var stream=new FileStream(path,FileMode.CreateNew,FileAccess.Write,FileShare.Read,4096,FileOptions.Asynchronous);
   await stream.WriteAsync(new UTF8Encoding(false,true).GetBytes(text),ct);await stream.FlushAsync(ct);stream.Flush(true);
  }
- static string Html(SilentRunSummary summary)
+ static string Html(SilentRunSummary summary,string coverage,string presetNote)
  {
   static string E(string value)=>WebUtility.HtmlEncode(value);
   var text=new StringBuilder("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; style-src 'unsafe-inline'\"><title>Toolkit check report</title><style>body{font:15px Segoe UI,system-ui;margin:2rem}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:.6rem;text-align:left;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere}</style></head><body><h1>Device checks</h1>");
-  text.Append("<p>Check only · ").Append(E(summary.Preset)).Append(" · ").Append(E(summary.StartedAt.ToString("O"))).Append(" · Exit ").Append(summary.ExitCode).Append(" · Evidence complete: ").Append(summary.EvidenceComplete).Append("</p><p>No changes or deployments were applied. Missing, blocked and manual tasks remain incomplete. This local report may contain device and network details.</p><table><tr><th>Task</th><th>Status</th><th>Current</th><th>Expected</th><th>Details / source</th></tr>");
+  text.Append("<p>Check only · ").Append(E(summary.Preset)).Append(" · ").Append(E(summary.StartedAt.ToString("O"))).Append(" · Exit ").Append(summary.ExitCode).Append(" · Evidence complete: ").Append(summary.EvidenceComplete).Append("</p><p>").Append(E(coverage)).Append("</p><p>").Append(E(presetNote)).Append("</p><p>No changes or deployments were applied. Differences need review; blocked and manual tasks remain incomplete. This local report may contain device and network details.</p><table><tr><th>Task</th><th>Status</th><th>Current</th><th>Expected</th><th>Details / source</th></tr>");
   foreach(var r in summary.Tasks)text.Append("<tr><td>").Append(E(r.Title+"\n"+r.TaskId)).Append("</td><td>").Append(E(r.Status)).Append("</td><td>").Append(E(r.Current)).Append("</td><td>").Append(E(r.Expected)).Append("</td><td>").Append(E(r.Reason+"\n"+r.Source)).Append("</td></tr>");
   return text.Append("</table></body></html>").ToString();
  }

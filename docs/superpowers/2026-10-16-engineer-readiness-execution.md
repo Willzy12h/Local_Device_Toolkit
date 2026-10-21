@@ -26,7 +26,7 @@ The downloaded ZIP matched its manifest commit and verification report: **858 fi
 
 The first Ubuntu CI run failed 11 script fixtures because `TOOLKIT_TEST_PWSH` was not activated. The workflow now exports the existing runner PowerShell path; the corrected full job passed without weakening assertions or adding dependencies. The subsequent documentation-only commit records these results; the artifact belongs to the exact source commit above.
 
-[Draft PR #3](https://github.com/Willzy12h/Local_Device_Toolkit/pull/3) is stacked on #2 and remains unmerged pending the device matrix below.
+[PR #3](https://github.com/Willzy12h/Local_Device_Toolkit/pull/3) was prepared stacked on #2. The user authorized integration on 21 October 2026; consult the PR for current merge status. Integration does not complete the device matrix below.
 
 ## Remaining acceptance and limitations
 
@@ -54,5 +54,5 @@ The first Ubuntu CI run failed 11 script fixtures because `TOOLKIT_TEST_PWSH` wa
 
 ## Deferred minors
 
-- Incident grouping lacks a deterministic tie-breaker for equal times, and explanations do not show group count/first–last by default; full permitted records remain available.
+- Resolved in the 21 October 2026 integration changes: incident groups and their record IDs have deterministic time/identity ordering; explanations show the group count and first/last UTC timestamps. Synthetic regressions cover equal-time input reordering and displayed ranges.
 - Reopening handover starts a new manual checklist; prior attestations are saved and viewable in history but are not automatically repopulated into the new window.

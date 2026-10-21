@@ -51,6 +51,7 @@ public sealed class SilentRunTests
   Assert.DoesNotContain(fast.Summary.Tasks,t=>t.Status=="Excluded timed test");
   Assert.Contains(fast.Summary.Tasks,t=>t.TaskId=="local.battery.capacity"&&t.Status!="Excluded timed test");
   Assert.NotEqual(all.Summary.LogFile,fast.Summary.LogFile);Assert.True(File.Exists(all.JsonFile));Assert.True(File.Exists(fast.JsonFile));
+  Assert.Contains("Fast and all currently include the same diagnostics",await File.ReadAllTextAsync(fast.HtmlFile));
  }
  [Fact] public void Fast_excludes_only_explicit_timed_tests()
  {
@@ -87,6 +88,27 @@ public sealed class SilentRunTests
   using var f=new ReviewFixture();var path=f.LogDirectory+".config";await File.WriteAllTextAsync(path,"# No selections\n");
   var result=await new SilentRunService(f.Session,f.Service,f.Clock).RunAsync(new("fast",null,path),new Dictionary<string,JsonElement>(),default);
   Assert.All(result.Summary.Tasks,t=>Assert.Equal("Excluded by config",t.Status));Assert.Empty(f.Session.Captures);Assert.Equal(0,result.Summary.ExitCode);
+  Assert.Contains("Requested: 0",await File.ReadAllTextAsync(result.HtmlFile));
+  Assert.Contains("No checks requested; exit 0 does not establish device readiness.",await File.ReadAllTextAsync(result.HtmlFile));
+  Assert.Contains("No checks requested; exit 0 does not establish device readiness.",await File.ReadAllTextAsync(result.Summary.LogFile));
+ }
+ [Fact] public async Task Report_summarizes_requested_different_and_excluded_checks()
+ {
+  using var f=new ReviewFixture();var path=f.LogDirectory+".config";await File.WriteAllTextAsync(path,"showfileextensions=2\n");
+  var result=await new SilentRunService(f.Session,f.Service,f.Clock).RunAsync(new("all",null,path),new Dictionary<string,JsonElement>(),default);
+  var html=await File.ReadAllTextAsync(result.HtmlFile);var excluded=result.Summary.Tasks.Count-1;
+  Assert.Contains("Requested: 1",html);Assert.Contains("Completed: 1",html);Assert.Contains("Differences: 1",html);
+  Assert.Contains("Incomplete: 0",html);Assert.Contains("Excluded: "+excluded,html);
+  Assert.Contains("Requested: 1",await File.ReadAllTextAsync(result.Summary.LogFile));
+  Assert.Equal(3,result.Summary.ExitCode);Assert.Equal(0,f.Backend.Writes);
+ }
+ [Fact] public async Task Requested_but_blocked_check_remains_incomplete_in_report_summary()
+ {
+  using var f=new ReviewFixture();var path=f.LogDirectory+".config";await File.WriteAllTextAsync(path,"local.network.dns=2\n");
+  var result=await new SilentRunService(f.Session,f.Service,f.Clock).RunAsync(new("all",null,path),new Dictionary<string,JsonElement>(),default);
+  var html=await File.ReadAllTextAsync(result.HtmlFile);
+  Assert.Contains("Requested: 1",html);Assert.Contains("Completed: 0",html);Assert.Contains("Incomplete: 1",html);
+  Assert.Equal(2,result.Summary.ExitCode);Assert.Equal(0,f.Backend.Writes);
  }
  [Fact] public void Inputs_use_the_existing_closed_probe_schemas()
  {
@@ -118,6 +140,7 @@ public sealed class SilentRunTests
   var result=await new SilentRunService(f.Session,f.Service,f.Clock).RunAsync(new("all",null,config),new Dictionary<string,JsonElement>(),default);
   Assert.Equal(1,result.Summary.ExitCode);Assert.True(f.Backend.Reads>0);Assert.Equal(0,f.Backend.Writes);
   Assert.Contains("evidence",await File.ReadAllTextAsync(result.Summary.LogFile),StringComparison.OrdinalIgnoreCase);
+  var html=await File.ReadAllTextAsync(result.HtmlFile);Assert.Contains("Completed: 0",html);Assert.Contains("Incomplete: 1",html);
  }
  static string Source([System.Runtime.CompilerServices.CallerFilePath]string source="")=>source;
 }
