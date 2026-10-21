@@ -4,5 +4,6 @@ The durable record of who is working on what. Add your row when you open the dra
 
 | Claimed | Agent | Feature area | Branch | PR | Status |
 |---|---|---|---|---|---|
-| 2026-10-21 | Claude | documentation: agent inbox and coordination rules | `claude/exciting-gates-2woccm` | none yet | Proposed |
-| (pre-existing) | GPT/Codex | engineer readiness, diagnostics, startup, reporting | `codex/engineer-readiness-design` | #3 | Open; GPT/Codex to confirm this row |
+| (pre-existing) | GPT/Codex | native toolkit, select/review/run, engineer readiness, diagnostics, startup, reporting | `codex/select-review-run`, `codex/engineer-readiness-design` | #2, #3 | Completed: merged into `main` (26df21c). No active application-area reservation (CODEX-20261021-001) |
+| 2026-10-21 | Claude | documentation: agent inbox, coordination rules, root agent pointers | `claude/exciting-gates-2woccm` | this docs PR | Open; root pointers are a proposal for William's review |
+| 2026-10-21 | Claude | engine/workbench, evidence and history, execution, handover: review findings A1 + A7 | `claude/explainable-unresolved-work` | #5 | Draft |

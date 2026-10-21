@@ -10,7 +10,7 @@ Claude and GPT/Codex both work on this repository. These rules stop them from ed
 | GPT/Codex | `codex/` | `codex/engineer-readiness-design` |
 | Either, by agreement | `fix/`, `docs/` | `docs/acceptance-matrix` |
 
-- Branch from the current tip of the agreed base, and say in the PR which commit you branched from. Until `codex/engineer-readiness-design` merges, agree the base in the inbox, because `main` doesn't contain the full toolkit.
+- Branch from the current tip of `main`, and say in the PR which commit you branched from. The repository's GitHub default branch is still `codex/native-toolkit`, so select `main` explicitly when fetching, branching and opening PRs.
 - Never commit directly to `main`.
 - Never push to, rebase, amend or force-push the other agent's branch. Ask for changes in its PR or in the inbox.
 - One change per branch.
