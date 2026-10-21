@@ -58,6 +58,7 @@ jobs:
           }
           ./build/Verify-ScriptRegistry.ps1
       - name: Verify native WPF task selection with synthetic context only
+        timeout-minutes: 2
         run: |
           dotnet build tests/LocalDeviceToolkit.App.SmokeTests/LocalDeviceToolkit.App.SmokeTests.csproj -c Release -warnaserror
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -32,7 +33,7 @@ internal static class Program
   var workflows = WorkflowCatalogue.LoadShipped();
   var catalogue = CatalogueLoader.LoadShipped();
   var unused = new NoDeviceAccess();
-  var operations = new OperationRegistry(workflows, []);
+  var operations = new OperationRegistry(workflows, [unused]);
   var session = new WorkbenchSession(TestData.Context, catalogue, workflows, unused, unused, operations);
   var plans = new PlanService(operations, TimeProvider.System);
   var coordinator = new RunCoordinator(plans, operations, unused, catalogue, unused, unused, TimeProvider.System);
@@ -45,7 +46,11 @@ internal static class Program
    Pump();
    var grid = (DataGrid)window.FindName("SetupRows");
    var row = grid.Items.Cast<TaskSelectionRow>().Single(r => r.Definition.Id == "readiness.secure-boot");
+   var check = (Button)window.FindName("CheckStage");
+   var checkOnly = (Button)window.FindName("CheckTickedTasks");
+   Require(!check.IsEnabled && !checkOnly.IsEnabled, "Empty selection must disable both multi-task check buttons.");
    grid.SelectedItem = row;
+   Require(!row.Selected, "Highlighting a row must not tick its task checkbox.");
    grid.ScrollIntoView(row, grid.Columns[0]);
    grid.CurrentCell = new DataGridCellInfo(row, grid.Columns[0]);
    grid.BeginEdit(); Pump();
@@ -57,9 +62,48 @@ internal static class Program
    Require(checkbox.IsChecked == true, "The real Setup checkbox did not toggle.");
    Require(row.Selected, "The visibly ticked Setup checkbox was not committed to the selected task model.");
    Require(grid.Items.Cast<TaskSelectionRow>().Count(r => r.Selected) == 1, "Setup must select exactly the ticked task.");
+   Require(check.IsEnabled && checkOnly.IsEnabled && check.Content.ToString()!.EndsWith("(1)"), "Task count and check buttons must update immediately after ticking.");
+   var second = grid.Items.Cast<TaskSelectionRow>().Single(r => r.Definition.Id == "readiness.tpm");
+   ToggleSetup(second);
+   Require(second.Selected && row.Selected && check.Content.ToString()!.EndsWith("(2)"), "Multiple Setup ticks must be retained and counted.");
+   var panel = (FrameworkElement)window.FindName("WorkflowPanel");
+   panel.IsEnabled = false; Pump();
+   Require(second.Selected && row.Selected, "Disabling the workflow while a check starts must not discard ticks.");
+   panel.IsEnabled = true; Pump();
+   ToggleSetup(second); ToggleSetup(row);
+   Require(!second.Selected && !row.Selected && !check.IsEnabled && !checkOnly.IsEnabled, "Unticking all tasks must clear the count and disable checks.");
+   typeof(MainWindow).GetMethod("NavigateWorkspace", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, ["diagnostics", "health"]);
+   Pump();
+   var diagnostics = (ListBox)window.FindName("TaskList");
+   diagnostics.ScrollIntoView(row); Pump();
+   var diagnosticCheckbox = Find<CheckBox>(diagnostics, b => ReferenceEquals(b.DataContext, row)) ?? throw new InvalidOperationException("Diagnostics checkbox was not rendered.");
+   typeof(ToggleButton).GetMethod("OnClick", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(diagnosticCheckbox, null);
+   Pump();
+   Require(row.Selected && check.IsEnabled && check.Content.ToString()!.EndsWith("(1)"), "Diagnostics must retain its working checkbox behavior and task count.");
    Require(session.Queue.Requests.Count == 0, "A read-only checkbox test must never queue changes.");
-   Console.WriteLine("PASS: native Setup checkbox updates selection without device access.");
+   typeof(ToggleButton).GetMethod("OnClick", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(diagnosticCheckbox, null);
+   Pump();
+   typeof(MainWindow).GetMethod("NavigateWorkspace", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, ["setup", "windows"]);
+   Pump();
+   var setting = grid.Items.Cast<TaskSelectionRow>().Single(r => r.Definition.Id == "windows.file-extensions");
+   ToggleSetup(setting);
+   Require(setting.Selected && setting.ChangeRequested && session.Queue.Requests.Count == 1, "A setting tick must retain its existing review-change intent without dispatch.");
+   ToggleSetup(setting);
+   Require(!setting.Selected && !setting.ChangeRequested && session.Queue.Requests.Count == 0 && !check.IsEnabled, "Unticking a setting must remove only its pending intent and disable empty checks.");
+   Console.WriteLine("PASS: native Setup and Diagnostics ticks, multiple selection, unticking, task counts, check-start state and reviewed setting intent; no device access.");
    return 0;
+
+   void ToggleSetup(TaskSelectionRow item)
+   {
+    grid.SelectedItem = item;
+    grid.ScrollIntoView(item, grid.Columns[0]);
+    grid.CurrentCell = new DataGridCellInfo(item, grid.Columns[0]);
+    grid.BeginEdit(); Pump();
+    var box = Find<CheckBox>(grid, b => ReferenceEquals(b.DataContext, item)) ?? throw new InvalidOperationException("Setup checkbox was not rendered.");
+    box.Focus();
+    typeof(ToggleButton).GetMethod("OnClick", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(box, null);
+    Pump();
+   }
   }
   catch (Exception error) { Console.Error.WriteLine(error); return 1; }
   finally { window.Close(); application.Shutdown(); }
@@ -81,7 +125,7 @@ internal static class Program
  }
  static string Source([System.Runtime.CompilerServices.CallerFilePath] string source = "") => source;
 
- sealed class NoDeviceAccess : IDeviceInspector, IEvidenceStore, IExecutionContextProvider, IActionDispatcher
+ sealed class NoDeviceAccess : IDeviceInspector, IEvidenceStore, IExecutionContextProvider, IActionDispatcher, ILocalOperation
  {
   static Exception Refused() => new InvalidOperationException("Selection tests cannot read or modify device state or evidence.");
   public Task<DeviceCapture> CaptureAsync(CaptureRequest request, CancellationToken ct) => throw Refused();
@@ -90,5 +134,11 @@ internal static class Program
   public Task<HistoryPage> ReadHistoryAsync(string? cursor, CancellationToken ct) => throw Refused();
   public Task<DeviceContext> GetCurrentAsync(CancellationToken ct) => throw Refused();
   public Task<ActionResult> DispatchAsync(ReviewedPlan plan, PlannedAction action, CancellationToken ct) => throw Refused();
+  public string Id => "settings.show-file-extensions";
+  public void ValidateParameters(JsonElement parameters) { _ = parameters.GetProperty("enabled").GetBoolean(); }
+  public string GetTargetKey(DeviceContext context, JsonElement parameters) => "synthetic.extensions";
+  public Task<ActionReadiness> InspectAsync(DeviceContext context, JsonElement parameters, CancellationToken ct) => throw Refused();
+  public Task<IReadOnlyList<ProbeObservation>> CaptureBeforeAsync(DeviceContext context, JsonElement parameters, CancellationToken ct) => throw Refused();
+  public Task<ActionResult> ExecuteAsync(DeviceContext context, PlannedAction action, CancellationToken ct) => throw Refused();
  }
 }

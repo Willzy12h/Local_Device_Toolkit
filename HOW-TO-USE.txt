@@ -4,7 +4,8 @@ LOCAL DEVICE TOOLKIT - QUICK GUIDE
 START HERE
 1. Extract the whole ZIP to a local folder. Keep all files and subfolders.
 2. Open Start.exe using your normal engineer account.
-3. Choose New device setup or Diagnostics. Select each task you want.
+3. Choose New device setup or Diagnostics. Tick each task checkbox you want.
+   Check and review shows the ticked count; highlighting a row is not a tick.
 
 The first lightweight launch may download its required runtime into the
 toolkit folder. That runtime install needs no admin rights or restart.
