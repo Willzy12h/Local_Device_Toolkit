@@ -77,7 +77,9 @@ Record explicit manual reviews with source/note and an exclusion or applicabilit
 
 User evidence is under `%LOCALAPPDATA%\LocalDeviceToolkit\evidence`. Protected machine journals/media/runtime are under `%PROGRAMDATA%\LocalDeviceToolkit` with administrator/SYSTEM writes. Approved profiles additionally permit user reads; user caches cannot authorize machine changes. Do not edit journals or delete pending guards to force a retry.
 
-PowerShell execution policy and downloaded-file markings are preserved. If approved scripts cannot run, the result remains unavailable/uncertain. Use the organization's approved signing/distribution process; there is no automatic policy bypass, module installation or file unblocking.
+**Explicit CMD startup option:** `Start.cmd` launches the fixed `Start.ps1` with `-ExecutionPolicy Bypass` for that PowerShell process only, as requested for unsigned test-package startup. It does not persist a CurrentUser/LocalMachine policy, unblock files or override organisation Group Policy. `Start.exe` and `Run-Silent.cmd` retain their existing startup policy behavior. Use `Start.cmd` when choosing this process-only startup option.
+
+Diagnostic and action providers still remove inherited process-policy overrides and use ordinary PowerShell execution policy. If their approved scripts cannot run, results remain unavailable/uncertain; starting the interface does not establish that diagnostics can run. Use the organization's approved signing/distribution process for those scripts. No module installation or file unblocking is performed.
 
 ## Silent diagnostics: EXE or CMD
 
