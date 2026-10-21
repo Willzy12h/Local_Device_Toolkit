@@ -130,7 +130,13 @@ public sealed class EvidenceStore:IEvidenceStore
    // Directory.Exists is also false when the path cannot be inspected; only a confirmed absence is empty history.
    if(File.Exists(root))return new([], [new("","HistoryUnavailable","The evidence path is not a directory.")], null);
    try{using var probe=Directory.EnumerateFileSystemEntries(root).GetEnumerator();probe.MoveNext();}
-   catch(DirectoryNotFoundException) when(cursor is null){return new([], [new("","NoHistory","The evidence directory has not been created.")], null);}
+   catch(DirectoryNotFoundException) when(cursor is null)
+   {
+    // A file where a parent directory belongs also reports "not found"; only missing or real directories are an absent store.
+    for(var parent=Path.GetDirectoryName(root);parent is not null;parent=Path.GetDirectoryName(parent))
+     if(File.Exists(parent))return new([], [new("","HistoryUnavailable","A parent of the evidence path is not a directory.")], null);
+    return new([], [new("","NoHistory","The evidence directory has not been created.")], null);
+   }
    catch(Exception e) when(e is IOException or UnauthorizedAccessException){return new([], [new("","HistoryUnavailable","The evidence directory could not be inspected.")], null);}
   }
   string? after=null;

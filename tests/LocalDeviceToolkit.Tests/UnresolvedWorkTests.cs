@@ -44,6 +44,24 @@ public sealed class UnresolvedWorkTests
  }
 
  [Fact]
+ public async Task File_at_an_ancestor_of_the_evidence_path_stays_incomplete_while_a_missing_parent_is_empty()
+ {
+  var root = Path.Combine(Path.GetTempPath(), "unresolved-ancestor-" + Guid.NewGuid().ToString("N"));
+  try
+  {
+   Directory.CreateDirectory(root); var blocker = Path.Combine(root, "LocalDeviceToolkit"); File.WriteAllText(blocker, "not a directory");
+   var store = new EvidenceStore(Path.Combine(blocker, "evidence"), ToolkitEvidenceSchemas.Create(), TestData.Context);
+   Assert.Equal("HistoryUnavailable", Assert.Single((await store.ReadHistoryAsync(null, default)).Diagnostics).Code);
+   var session = Session(store); await session.LoadActionHistoryAsync(default);
+   Assert.Equal(UnresolvedWorkCodes.HistoryUnavailable, Assert.Single(session.UnresolvedWork).Code);
+   var missingParent = Session(new EvidenceStore(Path.Combine(root, "absent", "LocalDeviceToolkit", "evidence"), ToolkitEvidenceSchemas.Create(), TestData.Context));
+   await missingParent.LoadActionHistoryAsync(default);
+   Assert.False(missingParent.HasUnresolvedWork);
+  }
+  finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+ }
+
+ [Fact]
  public async Task Corrupt_record_is_named_and_keeps_history_incomplete()
  {
   var root = Path.Combine(Path.GetTempPath(), "unresolved-corrupt-" + Guid.NewGuid().ToString("N"));
