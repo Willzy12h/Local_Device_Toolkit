@@ -7,6 +7,19 @@ using LocalDeviceToolkit.Engine.Evidence;
 using LocalDeviceToolkit.Engine.Assessment;
 namespace LocalDeviceToolkit.Engine.Workbench;
 public sealed record TaskStatus(TaskDefinition Definition,string Status,string Summary,DateTimeOffset? CapturedAt);
+public sealed record UnresolvedWorkReason(string Code,string Summary)
+{
+ public string? FileName{get;init;}
+ public Guid? RecordId{get;init;}
+ public Guid? RunId{get;init;}
+ public Guid? ActionId{get;init;}
+}
+/// <summary>Stable codes for <see cref="UnresolvedWorkReason"/>.</summary>
+public static class UnresolvedWorkCodes
+{
+ public const string HistoryNotLoaded="HistoryNotLoaded",HistoryUnavailable="HistoryUnavailable",HistoryRecordUnreadable="HistoryRecordUnreadable",HistoryLimitReached="HistoryLimitReached";
+ public const string QueuedChanges="QueuedChanges",RunEvidenceIncomplete="RunEvidenceIncomplete",ActionNeedsFollowUp="ActionNeedsFollowUp",ActionRecordWithoutRun="ActionRecordWithoutRun";
+}
 public sealed class WorkbenchSession
 {
  readonly IDeviceInspector inspector;readonly IEvidenceStore evidence;readonly List<DeviceCapture> captures=[];readonly SemaphoreSlim gate=new(1,1);
@@ -23,8 +36,30 @@ public sealed class WorkbenchSession
  public void SetInputs(string id,JsonElement value){LocalProbeCatalogue.ValidateInput(id,value);if(CanonicalJson.Digest(Inputs(id))!=CanonicalJson.Digest(value)){inputs[id]=value.Clone();InputRevision++;}}
  bool Matches(ProbeObservation o)=>!LocalProbeValues.IsRegistered(o.CheckId)||o.TargetDigest==LocalProbeCatalogue.TargetDigest(o.CheckId,Inputs(o.CheckId),Context);
  readonly Dictionary<Guid,RunRecord> runs=[];readonly Dictionary<Guid,string> actionOperations=[];readonly HashSet<Guid> reconciled=[];readonly HashSet<Guid> intentActions=[];readonly HashSet<Guid> resultActions=[];bool historyComplete;
+ readonly List<UnresolvedWorkReason> historyReasons=[];
+ public const int MaxHistoryPages=100;
  bool Resolved(Guid actionId)=>reconciled.Contains(actionId)&&actionOperations.GetValueOrDefault(actionId) is "diagnostics.update-defender-signatures" or "packages.install";
- public bool HasUnresolvedWork=>!historyComplete||Queue.Requests.Count>0||runs.Values.Any(r=>!r.EvidenceComplete||r.Results.Any(a=>!Resolved(a.ActionId)&&(a.Outcome is ActionOutcome.OutcomeUnknown or ActionOutcome.Failed or ActionOutcome.RestartRequired||a.Outcome==ActionOutcome.AppliedUnverified&&(a.Outcomes is null||a.Outcomes.ActionCompleted!=true||a.Outcomes.ExpectedStateVerified==false))))||intentActions.Concat(resultActions).Any(id=>!Resolved(id)&&!runs.Values.Any(r=>r.Results.Any(a=>a.ActionId==id)));
+ bool NeedsFollowUp(ActionResult a)=>!Resolved(a.ActionId)&&(a.Outcome is ActionOutcome.OutcomeUnknown or ActionOutcome.Failed or ActionOutcome.RestartRequired||a.Outcome==ActionOutcome.AppliedUnverified&&(a.Outcomes is null||a.Outcomes.ActionCompleted!=true||a.Outcomes.ExpectedStateVerified==false));
+ string Operation(Guid actionId)=>actionOperations.GetValueOrDefault(actionId)??"Unknown operation";
+ /// <summary>Every reason handover cannot treat local action history as settled. Reasons explain; they never resolve anything.</summary>
+ public IReadOnlyList<UnresolvedWorkReason> UnresolvedWork
+ {
+  get
+  {
+   var reasons=new List<UnresolvedWorkReason>();
+   if(!historyComplete)reasons.AddRange(historyReasons.Count>0?historyReasons:[new(UnresolvedWorkCodes.HistoryNotLoaded,"Saved action history has not been loaded in this session.")]);
+   if(Queue.Requests.Count>0)reasons.Add(new(UnresolvedWorkCodes.QueuedChanges,$"{Queue.Requests.Count} queued change(s) have not been run or removed."));
+   foreach(var run in runs.Values.OrderBy(r=>r.StartedAt).ThenBy(r=>r.Id))
+   {
+    if(!run.EvidenceComplete)reasons.Add(new(UnresolvedWorkCodes.RunEvidenceIncomplete,$"Run {run.Id:D} did not save complete evidence; recorded outcomes may be missing."){RunId=run.Id});
+    foreach(var a in run.Results.Where(NeedsFollowUp))reasons.Add(new(UnresolvedWorkCodes.ActionNeedsFollowUp,$"{Operation(a.ActionId)}: {a.Outcome} in run {run.Id:D}. {a.Reason}"){RunId=run.Id,ActionId=a.ActionId});
+   }
+   foreach(var id in intentActions.Concat(resultActions).Distinct().Where(id=>!Resolved(id)&&!runs.Values.Any(r=>r.Results.Any(a=>a.ActionId==id))))
+    reasons.Add(new(UnresolvedWorkCodes.ActionRecordWithoutRun,$"{Operation(id)}: a dispatch intent or result was saved without a run record, so its outcome is not established."){ActionId=id});
+   return reasons.AsReadOnly();
+  }
+ }
+ public bool HasUnresolvedWork=>UnresolvedWork.Count>0;
  public void RecordRun(RunRecord run,ReviewedPlan? plan=null)
  {
   if(run.Context!=Context)throw new EvidenceValidationException("Run history belongs to another context.");runs[run.Id]=run;
@@ -44,26 +79,37 @@ public sealed class WorkbenchSession
  }
  public async Task LoadActionHistoryAsync(CancellationToken ct)
  {
-  historyComplete=false;string? cursor=null;bool valid=true;
+  historyComplete=false;historyReasons.Clear();string? cursor=null;
   try
   {
-   for(var pageNumber=0;pageNumber<100;pageNumber++)
+   for(var pageNumber=0;pageNumber<MaxHistoryPages;pageNumber++)
    {
-    var page=await evidence.ReadHistoryAsync(cursor,ct);valid&=page.Diagnostics.Count==0;
+    var page=await evidence.ReadHistoryAsync(cursor,ct);
+    // A store that was never created is empty, complete history; every other diagnostic keeps history incomplete.
+    var neverCreated=cursor is null&&page.NextCursor is null&&page.Entries.Count==0&&page.Diagnostics is [{Code:"NoHistory"}];
+    if(!neverCreated)foreach(var d in page.Diagnostics)
+     historyReasons.Add(d.FileName.Length==0?new(UnresolvedWorkCodes.HistoryUnavailable,$"Saved history could not be read completely: {d.Code}. {d.Message}"):new(UnresolvedWorkCodes.HistoryRecordUnreadable,$"Saved record {d.FileName} could not be used: {d.Code}. {d.Message}"){FileName=d.FileName});
     foreach(var record in page.Entries)
     {
-     if(record.Kind=="run")RecordRun(StrictJson.Read<RunRecord>(StrictJson.Bytes(record.Data)));
-     else if(record.Kind=="plan"){var p=StrictJson.Read<ReviewedPlan>(StrictJson.Bytes(record.Data));foreach(var a in p.Actions)actionOperations[a.Id]=a.Request.OperationId;}
-     else if(record.Kind=="intent"){var intent=StrictJson.Read<IntentRecord>(StrictJson.Bytes(record.Data));intentActions.Add(intent.Action.Id);actionOperations[intent.Action.Id]=intent.Action.Request.OperationId;}
-     else if(record.Kind=="result")resultActions.Add(StrictJson.Read<ResultRecord>(StrictJson.Bytes(record.Data)).Result.ActionId);
-     else if(record.Kind=="diagnostic-reconciliation.v1")RecordDiagnosticResolution(record);
-     else if(record.Kind=="deployment-resolution")RecordDeploymentResolution(record);
+     try
+     {
+      if(record.Kind=="run")RecordRun(StrictJson.Read<RunRecord>(StrictJson.Bytes(record.Data)));
+      else if(record.Kind=="plan"){var p=StrictJson.Read<ReviewedPlan>(StrictJson.Bytes(record.Data));foreach(var a in p.Actions)actionOperations[a.Id]=a.Request.OperationId;}
+      else if(record.Kind=="intent"){var intent=StrictJson.Read<IntentRecord>(StrictJson.Bytes(record.Data));intentActions.Add(intent.Action.Id);actionOperations[intent.Action.Id]=intent.Action.Request.OperationId;}
+      else if(record.Kind=="result")resultActions.Add(StrictJson.Read<ResultRecord>(StrictJson.Bytes(record.Data)).Result.ActionId);
+      else if(record.Kind=="diagnostic-reconciliation.v1")RecordDiagnosticResolution(record);
+      else if(record.Kind=="deployment-resolution")RecordDeploymentResolution(record);
+     }
+     catch(Exception e) when(e is EvidenceValidationException or System.Text.Json.JsonException)
+     {historyReasons.Add(new(UnresolvedWorkCodes.HistoryRecordUnreadable,$"Saved {record.Kind} record {record.Id:D} could not be applied: {(e is EvidenceValidationException v?v.Message:e.GetType().Name)}"){RecordId=record.Id});}
     }
-    cursor=page.NextCursor;if(cursor is null){historyComplete=valid;return;}
+    cursor=page.NextCursor;if(cursor is null){historyComplete=historyReasons.Count==0;return;}
    }
+   historyReasons.Add(new(UnresolvedWorkCodes.HistoryLimitReached,$"Saved history continues beyond {MaxHistoryPages} pages; later records were not checked, so unresolved actions may be missing."));
   }
   catch(OperationCanceledException){throw;}
-  catch(Exception e) when(e is IOException or UnauthorizedAccessException or EvidenceValidationException or System.Text.Json.JsonException){historyComplete=false;}
+  catch(Exception e) when(e is IOException or UnauthorizedAccessException or EvidenceValidationException or System.Text.Json.JsonException)
+  {historyReasons.Add(new(UnresolvedWorkCodes.HistoryUnavailable,$"Saved history could not be read: {(e is EvidenceValidationException v?v.Message:e.GetType().Name)}"));}
  }
  public IReadOnlyList<DeviceCapture> Captures=>captures.AsReadOnly();
  public void Navigate(string area,string? stage=null)

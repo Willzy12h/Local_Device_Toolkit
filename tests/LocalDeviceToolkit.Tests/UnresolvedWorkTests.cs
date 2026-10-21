@@ -5,6 +5,7 @@ using LocalDeviceToolkit.Engine.Catalogue;
 using LocalDeviceToolkit.Engine.Evidence;
 using LocalDeviceToolkit.Engine.Execution;
 using LocalDeviceToolkit.Engine.Planning;
+using LocalDeviceToolkit.Engine.Reporting;
 using LocalDeviceToolkit.Engine.Workbench;
 using Xunit;
 
@@ -40,6 +41,97 @@ public sealed class UnresolvedWorkTests
    Assert.True(session.HasUnresolvedWork);
   }
   finally { if (File.Exists(root)) File.Delete(root); }
+ }
+
+ [Fact]
+ public async Task Corrupt_record_is_named_and_keeps_history_incomplete()
+ {
+  var root = Path.Combine(Path.GetTempPath(), "unresolved-corrupt-" + Guid.NewGuid().ToString("N"));
+  try
+  {
+   Directory.CreateDirectory(root); var name = Guid.NewGuid().ToString("D") + ".json";
+   File.WriteAllText(Path.Combine(root, name), "{ not evidence");
+   var session = Session(new EvidenceStore(root, ToolkitEvidenceSchemas.Create(), TestData.Context));
+   await session.LoadActionHistoryAsync(default);
+   var reason = Assert.Single(session.UnresolvedWork);
+   Assert.Equal(UnresolvedWorkCodes.HistoryRecordUnreadable, reason.Code); Assert.Equal(name, reason.FileName); Assert.Contains(name, reason.Summary);
+   Assert.True(session.HasUnresolvedWork);
+  }
+  finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+ }
+
+ [Fact]
+ public async Task Unreadable_storage_and_unloaded_history_are_explicit_reasons()
+ {
+  var root = Path.Combine(Path.GetTempPath(), "unresolved-file-reason-" + Guid.NewGuid().ToString("N"));
+  try
+  {
+   File.WriteAllText(root, "not a directory");
+   var session = Session(new EvidenceStore(root, ToolkitEvidenceSchemas.Create(), TestData.Context));
+   Assert.Equal(UnresolvedWorkCodes.HistoryNotLoaded, Assert.Single(session.UnresolvedWork).Code);
+   await session.LoadActionHistoryAsync(default);
+   Assert.Equal(UnresolvedWorkCodes.HistoryUnavailable, Assert.Single(session.UnresolvedWork).Code);
+  }
+  finally { if (File.Exists(root)) File.Delete(root); }
+ }
+
+ [Fact]
+ public async Task History_traversal_limit_is_an_explicit_reason()
+ {
+  var store = new EndlessStore();
+  var session = Session(store);
+  await session.LoadActionHistoryAsync(default);
+  Assert.Equal(WorkbenchSession.MaxHistoryPages, store.Reads);
+  Assert.Equal(UnresolvedWorkCodes.HistoryLimitReached, Assert.Single(session.UnresolvedWork).Code);
+ }
+
+ [Fact]
+ public async Task Uncertain_action_reason_names_the_run_and_action_across_restart()
+ {
+  var root = Path.Combine(Path.GetTempPath(), "unresolved-restart-" + Guid.NewGuid().ToString("N"));
+  try
+  {
+   var store = new EvidenceStore(root, ToolkitEvidenceSchemas.Create(), TestData.Context); var now = DateTimeOffset.UtcNow; var actionId = Guid.NewGuid();
+   var run = new RunRecord(Guid.NewGuid(), Guid.NewGuid(), TestData.Context, now, now, [new(actionId, ActionOutcome.OutcomeUnknown, TestData.Actor, "Synthetic uncertain outcome", [])], true);
+   await store.SaveNewAsync(EvidenceRecord.Create(run.Id, "run", run.Context, now, StrictJson.Value(run)), default);
+   foreach (var _ in new[] { 1, 2 })
+   {
+    var session = Session(store); await session.LoadActionHistoryAsync(default);
+    var reason = Assert.Single(session.UnresolvedWork);
+    Assert.Equal(UnresolvedWorkCodes.ActionNeedsFollowUp, reason.Code); Assert.Equal(run.Id, reason.RunId); Assert.Equal(actionId, reason.ActionId);
+    Assert.Contains("OutcomeUnknown", reason.Summary);
+   }
+  }
+  finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+ }
+
+ [Fact]
+ public async Task Clean_profile_with_satisfied_manual_requirement_is_ready_and_reasons_reach_handover()
+ {
+  var root = Path.Combine(Path.GetTempPath(), "unresolved-handover-" + Guid.NewGuid().ToString("N"));
+  try
+  {
+   var session = Session(new EvidenceStore(root, ToolkitEvidenceSchemas.Create(), TestData.Context));
+   await session.LoadActionHistoryAsync(default);
+   var now = DateTimeOffset.UtcNow; var item = "manual.display"; var target = new string('c', 64);
+   var check = new ManualCheck(Guid.NewGuid(), item, target, TestData.Context, ManualReviewOutcome.Verified, "Synthetic external display test", TestData.Actor, now.AddMinutes(-1));
+   var profile = new ClientChecklist("session", 1, "Client", new Dictionary<string, JsonElement>(), [item], false);
+   var targets = new Dictionary<string, string> { { item, target } };
+   Assert.Equal("Ready for handover", HandoverService.Evaluate(profile, TestData.Context, [], [check], now, targets, session.HasUnresolvedWork, unresolvedWork: session.UnresolvedWork).State);
+   var reasons = new[] { new UnresolvedWorkReason(UnresolvedWorkCodes.QueuedChanges, "1 queued change(s) have not been run or removed.") };
+   var blocked = HandoverService.Evaluate(profile, TestData.Context, [], [check], now, targets, true, unresolvedWork: reasons);
+   Assert.Equal("Outstanding work", blocked.State); Assert.Contains(blocked.Outstanding, o => o.Contains(UnresolvedWorkCodes.QueuedChanges, StringComparison.Ordinal));
+   Assert.Contains("Unresolved or uncertain actions", HandoverService.Evaluate(profile, TestData.Context, [], [check], now, targets, true).Outstanding);
+  }
+  finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+ }
+
+ sealed class EndlessStore : IEvidenceStore
+ {
+  public int Reads { get; private set; }
+  public Task SaveNewAsync(EvidenceRecord record, CancellationToken ct) => throw new InvalidOperationException("Read-only fixture.");
+  public Task<EvidenceRecord> LoadAsync(Guid id, CancellationToken ct) => throw new InvalidOperationException("Read-only fixture.");
+  public Task<HistoryPage> ReadHistoryAsync(string? cursor, CancellationToken ct) { Reads++; return Task.FromResult(new HistoryPage([], [], "next-page")); }
  }
 
  public static TheoryData<string> PreflightFailures => new() { "InvalidData", "Win32", "Json", "PlatformNotSupported" };

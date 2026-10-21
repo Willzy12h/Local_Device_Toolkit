@@ -12,7 +12,7 @@ public static class HandoverService
  {
   ["manual.display"]="External display",["manual.audio"]="Audio output",["manual.microphone"]="Microphone",["manual.camera"]="Camera",["manual.keyboard"]="Keyboard",["manual.touchpad"]="Touchpad",["manual.printer"]="Selected printer",["manual.vpn"]="VPN connectivity",["manual.signin"]="Application sign-in",["manual.backup"]="Backup verification",["manual.recovery"]="Recovery-key retrieval (reference only; never enter the key)"
  };
- public static HandoverResult Evaluate(ClientChecklist profile,DeviceContext context,IReadOnlyList<ProbeObservation> observations,IReadOnlyList<ManualCheck> manual,DateTimeOffset now,IReadOnlyDictionary<string,string>? manualTargets=null,bool hasUnresolvedActions=false,IReadOnlyDictionary<string,string>? localTargets=null)
+ public static HandoverResult Evaluate(ClientChecklist profile,DeviceContext context,IReadOnlyList<ProbeObservation> observations,IReadOnlyList<ManualCheck> manual,DateTimeOffset now,IReadOnlyDictionary<string,string>? manualTargets=null,bool hasUnresolvedActions=false,IReadOnlyDictionary<string,string>? localTargets=null,IReadOnlyList<Workbench.UnresolvedWorkReason>? unresolvedWork=null)
  {
   ReferenceProfiles.Validate(profile);var outstanding=new List<string>();var exceptions=new List<string>();
   foreach(var id in profile.RequiredItems)
@@ -31,7 +31,9 @@ public static class HandoverService
     var value=StrictJson.Read<LocalProbeValue>(StrictJson.Bytes(raw));if(expected.ValueKind!=System.Text.Json.JsonValueKind.String||value.Current!=expected.GetString())outstanding.Add(id);
    }
   }
-  if(hasUnresolvedActions)outstanding.Add("Unresolved or uncertain actions");
+  // Specific reasons replace the generic line; a caller-supplied flag without reasons still blocks.
+  if(unresolvedWork is {Count:>0})outstanding.AddRange(unresolvedWork.Select(r=>"Unresolved work ("+r.Code+"): "+r.Summary));
+  else if(hasUnresolvedActions)outstanding.Add("Unresolved or uncertain actions");
   if(profile.RequiredItems.Count==0)outstanding.Add("Choose required checks for this client; an empty checklist cannot establish readiness.");
   return new(outstanding.Count>0?"Outstanding work":exceptions.Count>0?"Ready with reviewed exceptions":"Ready for handover",outstanding,exceptions);
  }

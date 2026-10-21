@@ -125,7 +125,14 @@ public sealed class EvidenceStore:IEvidenceStore
  public async Task<HistoryPage> ReadHistoryAsync(string? cursor,CancellationToken ct)
  {
   RefuseReparsePath(root);
-  if(!Directory.Exists(root))return new([], [new("","NoHistory","The evidence directory has not been created.")], null);
+  if(!Directory.Exists(root))
+  {
+   // Directory.Exists is also false when the path cannot be inspected; only a confirmed absence is empty history.
+   if(File.Exists(root))return new([], [new("","HistoryUnavailable","The evidence path is not a directory.")], null);
+   try{using var probe=Directory.EnumerateFileSystemEntries(root).GetEnumerator();probe.MoveNext();}
+   catch(DirectoryNotFoundException) when(cursor is null){return new([], [new("","NoHistory","The evidence directory has not been created.")], null);}
+   catch(Exception e) when(e is IOException or UnauthorizedAccessException){return new([], [new("","HistoryUnavailable","The evidence directory could not be inspected.")], null);}
+  }
   string? after=null;
   if(cursor is not null)
   {
