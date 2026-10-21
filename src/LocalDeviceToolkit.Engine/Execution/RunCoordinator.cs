@@ -63,6 +63,8 @@ public sealed class RunCoordinator(PlanService plans,OperationRegistry operation
       complete=false;result=new(action.Id,dispatched?ActionOutcome.OutcomeUnknown:ActionOutcome.Failed,null,dispatched?"Execution or evidence became unavailable; reconcile before retrying.":"Not started: required evidence could not be saved or inspected.",[]);
      }
      catch(Exception) when(dispatched){result=new(action.Id,ActionOutcome.OutcomeUnknown,null,"The execution outcome could not be confirmed; reconcile before retrying.",[]);}
+     // Any other preflight failure happened before dispatch: nothing was started, so record it and keep earlier results.
+     catch(Exception e) when(!dispatched){result=new(action.Id,ActionOutcome.Failed,null,"Not started: the pre-dispatch check could not complete ("+e.GetType().Name+"). Check and review again.",[]);}
     }
     bool resultSaved=true;
     try
