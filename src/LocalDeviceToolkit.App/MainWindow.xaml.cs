@@ -158,7 +158,9 @@ public partial class MainWindow:Window
  }
  void ShowTask()
  {
-  var selected=TaskList.SelectedItem as TaskSelectionRow;CheckSelected.IsEnabled=selected is not null&&!isBusy;CheckStage.IsEnabled=!isBusy;
+  var selected=TaskList.SelectedItem as TaskSelectionRow;CheckSelected.IsEnabled=selected is not null&&!isBusy;
+  var selectedCount=selections.Values.Count(r=>r.Selected);CheckStage.Content=$"Check and review ({selectedCount})";CheckStage.IsEnabled=!isBusy&&selectedCount>0;
+  CheckTickedTasks.Content=$"Check ticked tasks ({selectedCount})";CheckTickedTasks.IsEnabled=CheckStage.IsEnabled;
   ProtectedRead.IsEnabled=false;
   if(selected is not null&&!isBusy)
   {
@@ -209,7 +211,7 @@ public partial class MainWindow:Window
   else foreach(var request in session.Queue.Requests.Where(r=>r.TaskId==row.Definition.Id).ToArray())session.Queue.Remove(request);
   UpdateSelectionStatus();
  }
- void UpdateSelectionStatus(){QueueShortcut.Content=$"Selected changes ({session.Queue.Requests.Count})";StatusLine.Text=$"{selections.Values.Count(r=>r.Selected)} selected • {selections.Values.Count(r=>r.Selected&&r.ChangeRequested)} changes requested. Configure required inputs before review. "+selections.Values.Count(r=>r.Selected&&!session.Tasks(Search.Text,selectedScenario).Any(t=>t.Definition.Id==r.Definition.Id))+" selected outside this view.";UpdateQueueButtons();}
+ void UpdateSelectionStatus(){QueueShortcut.Content=$"Selected changes ({session.Queue.Requests.Count})";StatusLine.Text=$"{selections.Values.Count(r=>r.Selected)} selected • {selections.Values.Count(r=>r.Selected&&r.ChangeRequested)} changes requested. Configure required inputs before review. "+selections.Values.Count(r=>r.Selected&&!session.Tasks(Search.Text,selectedScenario).Any(t=>t.Definition.Id==r.Definition.Id))+" selected outside this view.";UpdateQueueButtons();ShowTask();}
  void SetupTask_Changed(object sender,SelectionChangedEventArgs e){if(SetupRows.SelectedItem is TaskSelectionRow row)TaskList.SelectedItem=row;}
  void ConfigureRow_Click(object sender,RoutedEventArgs e){if(sender is FrameworkElement{DataContext:TaskSelectionRow row}){TaskList.SelectedItem=row;ReviewFix_Click(sender,e);}}
  async void CheckSelected_Click(object sender,RoutedEventArgs e){if(TaskList.SelectedItem is TaskSelectionRow row){row.Selected=true;reviewRuns.Invalidate();await CheckReviewAsync(true,onlyTask:row.Definition.Id);}}
@@ -218,7 +220,7 @@ public partial class MainWindow:Window
  async Task CheckReviewAsync(bool checkOnly=false,Guid? parentRun=null,string? onlyTask=null)=>await RunUiAsync(async()=>
  {
   var chosen=selections.Values.Where(r=>r.Selected&&(onlyTask is null||r.Definition.Id==onlyTask)).Select(r=>new ReviewSelection(r.Definition.Id,r.Origin,!checkOnly&&r.ChangeRequested,session.Queue.Requests.FirstOrDefault(q=>q.TaskId==r.Definition.Id))).ToArray();
-  if(chosen.Length==0)throw new InvalidOperationException("Select at least one individual task to check.");
+  if(chosen.Length==0)throw new InvalidOperationException("Tick at least one task checkbox before checking.");
   var timer=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(500)};timer.Tick+=(_,_)=>{if(reviewRuns.Current is {} live){LiveLog.Text=live.FilePath+Environment.NewLine+live.LogText;LiveLog.ScrollToEnd();}};timer.Start();LiveLog.Visibility=Visibility.Visible;
   ReviewRun run;try{run=await reviewRuns.CheckAsync(chosen,lifetime.Token,parentRun,new RunLabels(ClientLabel.Text,TicketLabel.Text));}finally{timer.Stop();if(reviewRuns.Current is {} latest)LiveLog.Text=latest.FilePath+Environment.NewLine+latest.LogText;}
   RefreshTasks();LiveLog.Text=run.FilePath+Environment.NewLine+run.LogText;
