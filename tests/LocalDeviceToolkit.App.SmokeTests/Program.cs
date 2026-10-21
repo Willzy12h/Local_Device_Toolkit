@@ -15,6 +15,7 @@ using LocalDeviceToolkit.Engine.Evidence;
 using LocalDeviceToolkit.Engine.Execution;
 using LocalDeviceToolkit.Engine.Planning;
 using LocalDeviceToolkit.Engine.Reporting;
+using LocalDeviceToolkit.Engine.Settings;
 using LocalDeviceToolkit.Engine.Workbench;
 using LocalDeviceToolkit.Tests;
 
@@ -135,7 +136,7 @@ internal static class Program
   public Task<DeviceContext> GetCurrentAsync(CancellationToken ct) => throw Refused();
   public Task<ActionResult> DispatchAsync(ReviewedPlan plan, PlannedAction action, CancellationToken ct) => throw Refused();
   public string Id => "settings.show-file-extensions";
-  public void ValidateParameters(JsonElement parameters) { _ = parameters.GetProperty("enabled").GetBoolean(); }
+  public void ValidateParameters(JsonElement parameters) { _ = StrictJson.Read<SettingParameters>(StrictJson.Bytes(parameters)); }
   public string GetTargetKey(DeviceContext context, JsonElement parameters) => "synthetic.extensions";
   public Task<ActionReadiness> InspectAsync(DeviceContext context, JsonElement parameters, CancellationToken ct) => throw Refused();
   public Task<IReadOnlyList<ProbeObservation>> CaptureBeforeAsync(DeviceContext context, JsonElement parameters, CancellationToken ct) => throw Refused();
